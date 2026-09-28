@@ -12,10 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import de.yummify.app.ui.theme.*
 
 @Composable
 fun NotionSyncBadge(
@@ -35,7 +33,7 @@ fun NotionSyncBadge(
 
     Surface(
         shape = CircleShape,
-        color = SurfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier
     ) {
         Row(
@@ -47,14 +45,14 @@ fun NotionSyncBadge(
                 modifier = Modifier
                     .size(8.dp)
                     .background(
-                        color = if (isActive) Secondary.copy(alpha = alpha) else Outline,
+                        color = if (isActive) MaterialTheme.colorScheme.secondary.copy(alpha = alpha) else MaterialTheme.colorScheme.outline,
                         shape = CircleShape
                     )
             )
             Text(
                 text = if (isActive) "Aktiv" else "Getrennt",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isActive) Secondary else Outline,
+                color = if (isActive) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -80,7 +78,7 @@ fun NotionStatusBanner(
 
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = SurfaceContainerLow,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = modifier.fillMaxWidth()
     ) {
         Row(
@@ -95,19 +93,19 @@ fun NotionStatusBanner(
                 Box(
                     modifier = Modifier
                         .size(10.dp)
-                        .background(Secondary, CircleShape)
+                        .background(MaterialTheme.colorScheme.secondary, CircleShape)
                 )
                 Column {
                     Text(
                         text = "Notion DB: $recipeCount Rezepte synchronisiert",
                         style = MaterialTheme.typography.labelMedium,
-                        color = OnSurface,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
                         text = "Zuletzt aktualisiert: $lastSyncTime",
                         style = MaterialTheme.typography.labelSmall,
-                        color = OnSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -116,8 +114,8 @@ fun NotionStatusBanner(
                 shape = CircleShape,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                 colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = SurfaceContainerHigh,
-                    contentColor = OnSurfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 Icon(
@@ -167,10 +165,10 @@ fun CategoryFilterChips(
                     )
                 },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = PrimaryFixed,
-                    selectedLabelColor = OnPrimaryFixed,
-                    containerColor = SurfaceContainerLow,
-                    labelColor = OnSurfaceVariant
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 shape = CircleShape
             )

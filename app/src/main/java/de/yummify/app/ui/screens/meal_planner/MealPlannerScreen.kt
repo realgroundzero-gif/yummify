@@ -23,7 +23,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import de.yummify.app.data.model.MealPlanItem
 import de.yummify.app.data.model.MealType
-import de.yummify.app.ui.theme.*
 
 @Composable
 fun MealPlannerScreen(
@@ -41,7 +40,7 @@ fun MealPlannerScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(SurfaceBackground),
+            .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 100.dp)
     ) {
         // Week Navigator
@@ -58,15 +57,15 @@ fun MealPlannerScreen(
                     onClick = {},
                     modifier = Modifier
                         .size(40.dp)
-                        .background(SurfaceContainer, CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainer, CircleShape)
                 ) {
-                    Icon(Icons.Filled.ChevronLeft, null, tint = OnSurface)
+                    Icon(Icons.Filled.ChevronLeft, null, tint = MaterialTheme.colorScheme.onSurface)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "AKTUELLE WOCHE",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Primary,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
@@ -76,7 +75,7 @@ fun MealPlannerScreen(
                             append(state.weekRange)
                         },
                         style = MaterialTheme.typography.headlineSmall,
-                        color = OnSurface,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -84,9 +83,9 @@ fun MealPlannerScreen(
                     onClick = {},
                     modifier = Modifier
                         .size(40.dp)
-                        .background(SurfaceContainer, CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainer, CircleShape)
                 ) {
-                    Icon(Icons.Filled.ChevronRight, null, tint = OnSurface)
+                    Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -100,8 +99,8 @@ fun MealPlannerScreen(
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryFixed,
-                    contentColor = OnPrimaryFixed
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             ) {
                 Icon(
@@ -116,11 +115,11 @@ fun MealPlannerScreen(
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.width(8.dp))
-                Surface(shape = CircleShape, color = SurfaceBackground.copy(alpha = 0.5f)) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)) {
                     Text(
                         "KI Sync",
                         style = MaterialTheme.typography.labelSmall,
-                        color = OnPrimaryFixed,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
@@ -142,7 +141,7 @@ fun MealPlannerScreen(
                             .width(if (day.isToday) 56.dp else 48.dp)
                             .clickable { viewModel.selectDay(day.key) },
                         shape = RoundedCornerShape(18.dp),
-                        color = if (isSelected) Primary else SurfaceContainerLow,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow,
                         shadowElevation = if (isSelected) 4.dp else 0.dp
                     ) {
                         Column(
@@ -152,20 +151,20 @@ fun MealPlannerScreen(
                             Text(
                                 text = if (day.isToday) "Heute" else day.key,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (isSelected) OnPrimary else OnSurfaceVariant,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                             Text(
                                 text = "${day.dayOfMonth}",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = if (isSelected) OnPrimary else OnSurface,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .background(
-                                        if (isSelected) PrimaryFixed else if (day.isToday) Secondary else OutlineVariant,
+                                        if (isSelected) MaterialTheme.colorScheme.onPrimary else if (day.isToday) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outlineVariant,
                                         CircleShape
                                     )
                             )
@@ -182,7 +181,7 @@ fun MealPlannerScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp),
                 shape = RoundedCornerShape(24.dp),
-                color = SurfaceContainer
+                color = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -194,22 +193,22 @@ fun MealPlannerScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Icon(Icons.Filled.LocalFireDepartment, null, tint = Primary, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Filled.LocalFireDepartment, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                             Text(
                                 "Tagesübersicht (${state.selectedDayKey})",
                                 style = MaterialTheme.typography.titleSmall,
-                                color = OnSurface,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
                         val pct = if (state.targetCalories > 0)
                             (state.totalCalories * 100 / state.targetCalories)
                         else 0
-                        Surface(shape = CircleShape, color = SecondaryContainer) {
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
                             Text(
                                 "$pct% Erreicht",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = Secondary,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                             )
@@ -228,13 +227,13 @@ fun MealPlannerScreen(
                                 append(" / ${state.targetCalories} kcal")
                             },
                             style = MaterialTheme.typography.headlineSmall,
-                            color = OnSurface,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             "${state.targetCalories - state.totalCalories} kcal übrig",
                             style = MaterialTheme.typography.labelSmall,
-                            color = OnSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Spacer(Modifier.height(6.dp))
@@ -246,8 +245,8 @@ fun MealPlannerScreen(
                             .fillMaxWidth()
                             .height(10.dp)
                             .clip(CircleShape),
-                        color = Primary,
-                        trackColor = SurfaceContainerHighest
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                     )
                     Spacer(Modifier.height(12.dp))
                     // Protein / Carbs mini bars
@@ -259,14 +258,14 @@ fun MealPlannerScreen(
                             label = "Protein",
                             current = state.totalProtein,
                             target = state.targetProtein,
-                            color = Secondary,
+                            color = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.weight(1f)
                         )
                         MiniMacroBar(
                             label = "Kohlenhydrate",
                             current = state.totalCarbs,
                             target = state.targetCarbs,
-                            color = Tertiary,
+                            color = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -284,23 +283,23 @@ fun MealPlannerScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(Icons.Filled.Restaurant, null, tint = Primary, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Filled.Restaurant, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     Text(
                         "Mahlzeiten-Plan",
                         style = MaterialTheme.typography.titleMedium,
-                        color = OnSurface,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 Text(
                     "${state.dayMeals.size} Mahlzeiten geplant",
                     style = MaterialTheme.typography.labelSmall,
-                    color = OnSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        // Meal Slots: always show 4 slots
+        // Meal Slots
         val allMealTypes = listOf(MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACK)
         items(allMealTypes) { mealType ->
             val meal = state.dayMeals.firstOrNull { it.mealType == mealType }
@@ -323,17 +322,17 @@ private fun MiniMacroBar(
     color: Color,
     modifier: Modifier = Modifier
 ) {
-    Surface(modifier = modifier, shape = RoundedCornerShape(16.dp), color = SurfaceContainerLow) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Column(modifier = Modifier.padding(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(label, style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariant)
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
                     "${current}g / ${target}g",
                     style = MaterialTheme.typography.labelSmall,
-                    color = OnSurface,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -345,7 +344,7 @@ private fun MiniMacroBar(
                     .height(6.dp)
                     .clip(CircleShape),
                 color = color,
-                trackColor = SurfaceContainerHighest
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
             )
         }
     }
@@ -362,7 +361,7 @@ private fun MealSlotCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = SurfaceContainerLow
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -374,25 +373,25 @@ private fun MealSlotCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Surface(shape = CircleShape, color = SurfaceContainerHigh) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                         Text(
                             mealType.timeSlot,
                             style = MaterialTheme.typography.labelSmall,
-                            color = OnSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                     Text(
                         mealType.displayName,
                         style = MaterialTheme.typography.labelMedium,
-                        color = OnSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
                 if (meal != null) {
                     Surface(
                         shape = CircleShape,
-                        color = if (meal.isCooked) SecondaryContainer else SurfaceContainerHigh,
+                        color = if (meal.isCooked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier.clickable { onToggleCooked() }
                     ) {
                         Row(
@@ -403,13 +402,13 @@ private fun MealSlotCard(
                             Icon(
                                 if (meal.isCooked) Icons.Filled.Check else Icons.Filled.RadioButtonUnchecked,
                                 null,
-                                tint = if (meal.isCooked) Secondary else OnSurfaceVariant,
+                                tint = if (meal.isCooked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 if (meal.isCooked) "Gekocht" else "Geplant",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (meal.isCooked) Secondary else OnSurfaceVariant,
+                                color = if (meal.isCooked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -439,17 +438,17 @@ private fun MealSlotCard(
                         Text(
                             meal.recipeTitle,
                             style = MaterialTheme.typography.titleSmall,
-                            color = OnSurface,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Icon(Icons.Filled.LocalFireDepartment, null, tint = OnSurfaceVariant, modifier = Modifier.size(13.dp))
-                                Text("${meal.calories} kcal", style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariant)
+                                Icon(Icons.Filled.LocalFireDepartment, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp))
+                                Text("${meal.calories} kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Icon(Icons.Filled.Schedule, null, tint = OnSurfaceVariant, modifier = Modifier.size(13.dp))
-                                Text("${meal.cookTimeMinutes} Min.", style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariant)
+                                Icon(Icons.Filled.Schedule, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp))
+                                Text("${meal.cookTimeMinutes} Min.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -462,20 +461,20 @@ private fun MealSlotCard(
                         .height(64.dp)
                         .clickable {},
                     shape = RoundedCornerShape(16.dp),
-                    color = SurfaceContainer,
-                    border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.5f))
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 ) {
                     Row(
                         modifier = Modifier.fillMaxSize(),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.Add, null, tint = Outline, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "Rezept hinzufügen",
                             style = MaterialTheme.typography.labelMedium,
-                            color = Outline
+                            color = MaterialTheme.colorScheme.outline
                         )
                     }
                 }

@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import de.yummify.app.data.model.Recipe
-import de.yummify.app.ui.theme.*
 
 @Composable
 fun RecipeHeroCard(
@@ -48,7 +47,7 @@ fun RecipeHeroCard(
             .fillMaxWidth()
             .clickable { onCardClick(recipe) },
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
@@ -70,8 +69,8 @@ fun RecipeHeroCard(
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color(0x80000000)),
-                                startY = 200f
+                                colors = listOf(Color.Transparent, Color(0x99000000)),
+                                startY = 150f
                             )
                         )
                 )
@@ -91,7 +90,7 @@ fun RecipeHeroCard(
                             Text(
                                 text = tag,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = Secondary,
+                                color = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                             )
                         }
@@ -112,14 +111,14 @@ fun RecipeHeroCard(
                         Icon(
                             Icons.Filled.Schedule,
                             contentDescription = null,
-                            tint = Tertiary,
+                            tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
                             "${recipe.cookTimeMinutes} Min.",
                             style = MaterialTheme.typography.labelMedium,
-                            color = OnSurface
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -129,7 +128,7 @@ fun RecipeHeroCard(
                         .align(Alignment.BottomStart)
                         .padding(12.dp),
                     shape = CircleShape,
-                    color = InverseSurface.copy(alpha = 0.85f)
+                    color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.85f)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -145,7 +144,7 @@ fun RecipeHeroCard(
                         Text(
                             "${recipe.score} Notion Score",
                             style = MaterialTheme.typography.labelSmall,
-                            color = InverseOnSurface,
+                            color = MaterialTheme.colorScheme.inverseOnSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -163,7 +162,7 @@ fun RecipeHeroCard(
                         Text(
                             text = recipe.title,
                             style = MaterialTheme.typography.headlineSmall,
-                            color = OnSurface,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -171,7 +170,7 @@ fun RecipeHeroCard(
                         Text(
                             text = recipe.description,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = OnSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -186,7 +185,7 @@ fun RecipeHeroCard(
                         Icon(
                             imageVector = if (isFav) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                             contentDescription = "Favorit",
-                            tint = if (isFav) Primary else Outline
+                            tint = if (isFav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                         )
                     }
                 }
@@ -194,7 +193,7 @@ fun RecipeHeroCard(
                 // Footer
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 12.dp),
-                    color = SurfaceContainerHighest
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -204,13 +203,13 @@ fun RecipeHeroCard(
                     Text(
                         text = "✓ Zutaten im Vorrat vorhanden",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Secondary
+                        color = MaterialTheme.colorScheme.secondary
                     )
                     TextButton(onClick = { onCardClick(recipe) }) {
                         Text(
                             text = "Kochen →",
                             style = MaterialTheme.typography.labelMedium,
-                            color = Primary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -231,7 +230,7 @@ fun RecipeListCard(
             .fillMaxWidth()
             .clickable { onCardClick(recipe) },
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
@@ -253,13 +252,13 @@ fun RecipeListCard(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(6.dp)
-                        .background(InverseSurface.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.85f), RoundedCornerShape(6.dp))
                         .padding(horizontal = 5.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = "${recipe.cookTimeMinutes}m",
                         style = MaterialTheme.typography.labelSmall,
-                        color = InverseOnSurface,
+                        color = MaterialTheme.colorScheme.inverseOnSurface,
                         fontSize = 10.sp
                     )
                 }
@@ -275,21 +274,21 @@ fun RecipeListCard(
                     Text(
                         text = "Zuletzt: ${recipe.lastCookedDate}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Secondary,
+                        color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.height(3.dp))
                     Text(
                         text = recipe.title,
                         style = MaterialTheme.typography.titleMedium,
-                        color = OnSurface,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${recipe.calories} kcal",
                         style = MaterialTheme.typography.bodySmall,
-                        color = OnSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(Modifier.height(8.dp))
@@ -297,13 +296,13 @@ fun RecipeListCard(
                     recipe.tags.take(2).forEach { tag ->
                         Box(
                             modifier = Modifier
-                                .background(SecondaryContainer, CircleShape)
+                                .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Text(
                                 text = tag,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = OnSecondaryContainer,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }

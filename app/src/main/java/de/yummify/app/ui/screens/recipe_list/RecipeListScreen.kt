@@ -19,7 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.yummify.app.ui.components.*
-import de.yummify.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +31,7 @@ fun RecipeListScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(SurfaceBackground),
+            .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 100.dp)
     ) {
         // Search Bar
@@ -87,13 +86,13 @@ fun RecipeListScreen(
                         Text(
                             text = "REZEPT DES TAGES",
                             style = MaterialTheme.typography.labelLarge,
-                            color = Primary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Notion Empfehlung",
                             style = MaterialTheme.typography.labelSmall,
-                            color = OnSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     RecipeHeroCard(
@@ -121,17 +120,17 @@ fun RecipeListScreen(
                     Text(
                         text = "Deine Rezeptsammlung",
                         style = MaterialTheme.typography.titleLarge,
-                        color = OnSurface,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Surface(
                         shape = CircleShape,
-                        color = SurfaceContainerHigh
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Text(
                             text = "${state.filteredRecipes.size} Rezepte",
                             style = MaterialTheme.typography.labelSmall,
-                            color = OnSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
@@ -141,7 +140,7 @@ fun RecipeListScreen(
                     Text(
                         text = "Sortierung ↕",
                         style = MaterialTheme.typography.labelMedium,
-                        color = Primary,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -155,7 +154,7 @@ fun RecipeListScreen(
                     modifier = Modifier.fillMaxWidth().padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Primary)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
         } else if (state.filteredRecipes.isEmpty()) {
@@ -170,7 +169,7 @@ fun RecipeListScreen(
                         Text(
                             "Keine Rezepte gefunden",
                             style = MaterialTheme.typography.titleMedium,
-                            color = OnSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -196,7 +195,7 @@ private fun SearchBarRow(
 ) {
     Surface(
         shape = RoundedCornerShape(50),
-        color = SurfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier.fillMaxWidth()
     ) {
         Row(
@@ -206,7 +205,7 @@ private fun SearchBarRow(
             Icon(
                 Icons.Filled.Search,
                 contentDescription = null,
-                tint = Outline,
+                tint = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(22.dp)
             )
             TextField(
@@ -216,13 +215,15 @@ private fun SearchBarRow(
                     Text(
                         "Rezepte & Zutaten in Notion durchsuchen...",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Outline
+                        color = MaterialTheme.colorScheme.outline
                     )
                 },
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = SurfaceContainer,
-                    unfocusedContainerColor = SurfaceContainer,
-                    disabledContainerColor = SurfaceContainer,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                     focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                     unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                 ),
@@ -230,7 +231,7 @@ private fun SearchBarRow(
                 singleLine = true
             )
             IconButton(onClick = {}) {
-                Icon(Icons.Filled.Tune, contentDescription = "Filter", tint = OnSurfaceVariant)
+                Icon(Icons.Filled.Tune, contentDescription = "Filter", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

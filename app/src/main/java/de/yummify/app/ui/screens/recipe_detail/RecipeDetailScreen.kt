@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import de.yummify.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +38,7 @@ fun RecipeDetailScreen(
 
     if (recipe == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = Primary)
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
         return
     }
@@ -49,7 +48,7 @@ fun RecipeDetailScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(SurfaceBackground),
+            .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 120.dp)
     ) {
         // Hero Image
@@ -86,26 +85,26 @@ fun RecipeDetailScreen(
                     IconButton(
                         onClick = onBack,
                         modifier = Modifier
-                            .background(SurfaceBackground.copy(alpha = 0.9f), CircleShape)
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
                     ) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Zurück", tint = OnSurface)
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Zurück", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IconButton(
                             onClick = { viewModel.toggleFavorite() },
-                            modifier = Modifier.background(SurfaceBackground.copy(alpha = 0.9f), CircleShape)
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
                         ) {
                             Icon(
                                 if (state.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                                 contentDescription = "Favorit",
-                                tint = Primary
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                         IconButton(
                             onClick = {},
-                            modifier = Modifier.background(SurfaceBackground.copy(alpha = 0.9f), CircleShape)
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
                         ) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "Mehr", tint = OnSurface)
+                            Icon(Icons.Filled.MoreVert, contentDescription = "Mehr", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -116,14 +115,14 @@ fun RecipeDetailScreen(
                         .padding(16.dp)
                 ) {
                     recipe.tags.firstOrNull()?.let { tag ->
-                        Surface(shape = CircleShape, color = Secondary) {
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondary) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
-                                Icon(Icons.Filled.Eco, null, tint = OnSecondary, modifier = Modifier.size(12.dp))
+                                Icon(Icons.Filled.Eco, null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(12.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text(tag, style = MaterialTheme.typography.labelSmall, color = OnSecondary)
+                                Text(tag, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondary)
                             }
                         }
                         Spacer(Modifier.height(6.dp))
@@ -150,7 +149,7 @@ fun RecipeDetailScreen(
                 QuickInfoBadge(icon = "🔥", label = "${recipe.calories} kcal")
                 QuickInfoBadge(icon = "⭐", label = "${recipe.score}")
                 QuickInfoBadge(icon = "👤", label = recipe.difficulty)
-                QuickInfoBadge(icon = "💶", label = recipe.estimatedCost, containerColor = SecondaryContainer)
+                QuickInfoBadge(icon = "💶", label = recipe.estimatedCost, containerColor = MaterialTheme.colorScheme.secondaryContainer)
             }
         }
 
@@ -161,7 +160,7 @@ fun RecipeDetailScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 shape = RoundedCornerShape(20.dp),
-                color = SurfaceContainerLow
+                color = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -173,18 +172,18 @@ fun RecipeDetailScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Box(Modifier.size(8.dp).background(Secondary, CircleShape))
+                            Box(Modifier.size(8.dp).background(MaterialTheme.colorScheme.secondary, CircleShape))
                             Text(
                                 "Notion-Datenbank",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = OnSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Surface(shape = RoundedCornerShape(6.dp), color = SurfaceContainerHighest) {
+                        Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
                             Text(
                                 "Bidirektional",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = OnSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
@@ -202,11 +201,11 @@ fun RecipeDetailScreen(
                             Surface(
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp),
-                                color = SurfaceContainer
+                                color = MaterialTheme.colorScheme.surfaceContainer
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
-                                    Text(label, style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariant)
-                                    Text(value, style = MaterialTheme.typography.titleSmall, color = OnSurface, fontWeight = FontWeight.SemiBold)
+                                    Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(value, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
@@ -222,7 +221,7 @@ fun RecipeDetailScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 shape = RoundedCornerShape(20.dp),
-                color = SurfaceContainer
+                color = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 Row(
                     modifier = Modifier
@@ -235,15 +234,15 @@ fun RecipeDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Filled.Restaurant, null, tint = Primary, modifier = Modifier.size(22.dp))
+                        Icon(Icons.Filled.Restaurant, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
                         Text(
                             "Portionen",
                             style = MaterialTheme.typography.titleSmall,
-                            color = OnSurface,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                    Surface(shape = CircleShape, color = SurfaceContainerHigh) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(4.dp),
@@ -253,14 +252,14 @@ fun RecipeDetailScreen(
                                 onClick = { viewModel.adjustServings(-1) },
                                 modifier = Modifier
                                     .size(36.dp)
-                                    .background(SurfaceBackground, CircleShape)
+                                    .background(MaterialTheme.colorScheme.surface, CircleShape)
                             ) {
-                                Icon(Icons.Filled.Remove, null, tint = OnSurface, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Remove, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
                             }
                             Text(
                                 "${state.servings}",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Primary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.widthIn(min = 24.dp),
                             )
@@ -268,9 +267,9 @@ fun RecipeDetailScreen(
                                 onClick = { viewModel.adjustServings(1) },
                                 modifier = Modifier
                                     .size(36.dp)
-                                    .background(SurfaceBackground, CircleShape)
+                                    .background(MaterialTheme.colorScheme.surface, CircleShape)
                             ) {
-                                Icon(Icons.Filled.Add, null, tint = OnSurface, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
@@ -290,18 +289,18 @@ fun RecipeDetailScreen(
                 Text(
                     "Zutaten",
                     style = MaterialTheme.typography.titleLarge,
-                    color = OnSurface,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Icon(Icons.Filled.CheckCircle, null, tint = Secondary, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Filled.CheckCircle, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(14.dp))
                     Text(
                         "Vorrat abgeglichen",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Secondary,
+                        color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -316,7 +315,7 @@ fun RecipeDetailScreen(
                     .padding(horizontal = 16.dp, vertical = 3.dp)
                     .clickable { viewModel.toggleIngredient(ingredient.name) },
                 shape = RoundedCornerShape(14.dp),
-                color = SurfaceContainerLow
+                color = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -327,30 +326,30 @@ fun RecipeDetailScreen(
                         modifier = Modifier
                             .size(26.dp)
                             .background(
-                                if (isChecked) Secondary else SurfaceContainerHighest,
+                                if (isChecked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceContainerHighest,
                                 RoundedCornerShape(8.dp)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         if (isChecked) {
-                            Icon(Icons.Filled.Check, null, tint = OnSecondary, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(16.dp))
                         }
                     }
                     Text(
                         text = "${ingredient.getFormattedAmount(multiplier)} ${ingredient.name}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (isChecked) OnSurfaceVariant else OnSurface,
+                        color = if (isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                         textDecoration = if (isChecked) TextDecoration.LineThrough else TextDecoration.None,
                         modifier = Modifier.weight(1f)
                     )
                     Surface(
                         shape = CircleShape,
-                        color = if (ingredient.isAvailableInPantry) SecondaryContainer.copy(alpha = 0.5f) else PrimaryFixed.copy(alpha = 0.6f)
+                        color = if (ingredient.isAvailableInPantry) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
                     ) {
                         Text(
                             text = if (ingredient.isAvailableInPantry) "Im Vorrat" else "Kaufen",
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (ingredient.isAvailableInPantry) Secondary else Primary,
+                            color = if (ingredient.isAvailableInPantry) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
@@ -363,7 +362,7 @@ fun RecipeDetailScreen(
             Text(
                 "Zubereitung",
                 style = MaterialTheme.typography.titleLarge,
-                color = OnSurface,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
@@ -377,8 +376,8 @@ fun RecipeDetailScreen(
                     .padding(horizontal = 16.dp, vertical = 4.dp)
                     .clickable { viewModel.setCurrentStep(index) },
                 shape = RoundedCornerShape(16.dp),
-                color = if (isActive) PrimaryFixed else SurfaceContainerLow,
-                border = if (isActive) BorderStroke(2.dp, Primary) else null
+                color = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+                border = if (isActive) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
             ) {
                 Row(
                     modifier = Modifier.padding(14.dp),
@@ -388,7 +387,7 @@ fun RecipeDetailScreen(
                         modifier = Modifier
                             .size(32.dp)
                             .background(
-                                if (isActive) Primary else SurfaceContainerHigh,
+                                if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
                                 CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -396,14 +395,14 @@ fun RecipeDetailScreen(
                         Text(
                             "${index + 1}",
                             style = MaterialTheme.typography.labelLarge,
-                            color = if (isActive) OnPrimary else OnSurfaceVariant,
+                            color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Text(
                         text = step,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (isActive) OnPrimaryFixed else OnSurface,
+                        color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                         lineHeight = 22.sp
                     )
                 }
@@ -416,7 +415,7 @@ fun RecipeDetailScreen(
 private fun QuickInfoBadge(
     icon: String,
     label: String,
-    containerColor: Color = SurfaceContainerHigh,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     modifier: Modifier = Modifier
 ) {
     Surface(shape = CircleShape, color = containerColor, modifier = modifier) {
@@ -426,7 +425,7 @@ private fun QuickInfoBadge(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(icon, fontSize = 14.sp)
-            Text(label, style = MaterialTheme.typography.labelMedium, color = OnSurface)
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }

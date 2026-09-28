@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import de.yummify.app.data.model.ShoppingItem
-import de.yummify.app.ui.theme.*
 
 val CategoryEmoji = mapOf(
     "Obst & Gemüse" to "🥦",
@@ -50,7 +49,7 @@ fun ShoppingListScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(SurfaceBackground),
+            .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 100.dp)
     ) {
         // Header
@@ -70,21 +69,21 @@ fun ShoppingListScreen(
                     Text(
                         "Einkaufsliste",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = OnSurface,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Surface(shape = CircleShape, color = PrimaryFixed) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
                         Text(
                             "${state.openItems} offen",
                             style = MaterialTheme.typography.labelSmall,
-                            color = OnPrimaryFixed,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
                 }
                 IconButton(onClick = {}) {
-                    Icon(Icons.Filled.MoreVert, null, tint = OnSurfaceVariant)
+                    Icon(Icons.Filled.MoreVert, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -103,8 +102,8 @@ fun ShoppingListScreen(
                     onClick = { viewModel.applyFilter("missing") },
                     label = { Text("Nur fehlende (${state.openItems})", style = MaterialTheme.typography.labelMedium) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Primary,
-                        selectedLabelColor = OnPrimary
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = CircleShape
                 )
@@ -130,7 +129,7 @@ fun ShoppingListScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp),
                 shape = RoundedCornerShape(20.dp),
-                color = SurfaceContainerLow
+                color = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -144,13 +143,13 @@ fun ShoppingListScreen(
                         Box {
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = Secondary.copy(alpha = 0.12f),
+                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
                                 modifier = Modifier.size(30.dp)
                             ) {
                                 Icon(
                                     Icons.Filled.Sync,
                                     null,
-                                    tint = Secondary,
+                                    tint = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier
                                         .padding(6.dp)
                                         .then(if (state.isSyncing) Modifier.rotate(syncRotation) else Modifier)
@@ -159,22 +158,22 @@ fun ShoppingListScreen(
                             Box(
                                 Modifier
                                     .size(8.dp)
-                                    .background(Secondary, CircleShape)
+                                    .background(MaterialTheme.colorScheme.secondary, CircleShape)
                                     .align(Alignment.TopEnd)
                                     .offset(x = 2.dp, y = (-2).dp)
                             )
                         }
                         Column {
                             Text(
-                                "Notion-Sync: Yummify - Einkaufe",
+                                "Notion-Sync: Yummify - Einkäufe",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = OnSurface,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
                                 "Vor 2 Min. synchronisiert • Bidirektional aktiv",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = OnSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -182,7 +181,7 @@ fun ShoppingListScreen(
                         Icon(
                             Icons.Filled.Refresh,
                             null,
-                            tint = Secondary,
+                            tint = MaterialTheme.colorScheme.secondary,
                             modifier = if (state.isSyncing) Modifier.rotate(syncRotation) else Modifier
                         )
                     }
@@ -197,7 +196,7 @@ fun ShoppingListScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp),
                 shape = RoundedCornerShape(24.dp),
-                color = SurfaceContainerHigh
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -208,19 +207,19 @@ fun ShoppingListScreen(
                         Text(
                             "WOCHENPLAN ZUTATEN",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Primary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             "Frische Vorräte bereitstellen",
                             style = MaterialTheme.typography.titleMedium,
-                            color = OnSurface,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             "Automatisch aggregiert aus ${state.allItems.distinctBy { it.recipeName }.size} Rezepten",
                             style = MaterialTheme.typography.bodySmall,
-                            color = OnSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Box(
@@ -269,7 +268,7 @@ private fun CollapsibleSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 5.dp),
         shape = RoundedCornerShape(24.dp),
-        color = SurfaceContainerLow
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // Section header
@@ -290,20 +289,20 @@ private fun CollapsibleSection(
                         Text(
                             title,
                             style = MaterialTheme.typography.titleSmall,
-                            color = OnSurface,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             "$openCount von ${items.size} offen",
                             style = MaterialTheme.typography.labelSmall,
-                            color = OnSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 Icon(
                     if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                     null,
-                    tint = OnSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -332,7 +331,7 @@ private fun ShoppingItemRow(
             .fillMaxWidth()
             .clickable { onToggle() },
         shape = RoundedCornerShape(16.dp),
-        color = if (item.isChecked) SurfaceContainer.copy(alpha = 0.5f) else SurfaceContainer
+        color = if (item.isChecked) MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainer
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -343,20 +342,20 @@ private fun ShoppingItemRow(
                 modifier = Modifier
                     .size(24.dp)
                     .background(
-                        if (item.isChecked) Secondary else SurfaceContainerHighest,
+                        if (item.isChecked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceContainerHighest,
                         RoundedCornerShape(7.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 if (item.isChecked) {
-                    Icon(Icons.Filled.Check, null, tint = OnSecondary, modifier = Modifier.size(15.dp))
+                    Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(15.dp))
                 }
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "${item.amountWithUnit} ${item.name}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (item.isChecked) OnSurfaceVariant else OnSurface,
+                    color = if (item.isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Medium,
                     textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
                 )
@@ -365,20 +364,20 @@ private fun ShoppingItemRow(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Icon(Icons.Filled.MenuBook, null, tint = Primary, modifier = Modifier.size(11.dp))
-                        Text(recipe, style = MaterialTheme.typography.labelSmall, color = Primary)
+                        Icon(Icons.Filled.MenuBook, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
+                        Text(recipe, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 item.note?.let { note ->
                     if (item.recipeName == null) {
-                        Text(note, style = MaterialTheme.typography.labelSmall, color = Tertiary)
+                        Text(note, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
                     }
                 }
             }
             Icon(
                 Icons.Filled.DragIndicator,
                 null,
-                tint = Outline.copy(alpha = 0.4f),
+                tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
                 modifier = Modifier.size(18.dp)
             )
         }
