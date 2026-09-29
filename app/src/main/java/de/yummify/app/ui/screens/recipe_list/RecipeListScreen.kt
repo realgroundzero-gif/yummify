@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
@@ -31,27 +32,44 @@ fun RecipeListScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 100.dp)
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp)
     ) {
+        // App Title Item
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary
+                ) {
+                    Image(
+                        painter = androidx.compose.ui.res.painterResource(id = de.yummify.app.R.drawable.ic_launcher_foreground),
+                        contentDescription = "Yummify Logo",
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+                Text(
+                    text = "yummify",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
         // Search Bar
         item {
-            Spacer(Modifier.height(8.dp))
             SearchBarRow(
                 query = state.searchQuery,
                 onQueryChange = viewModel::onSearchQueryChanged,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-        }
-
-        // Notion Status Banner
-        item {
-            NotionStatusBanner(
-                recipeCount = state.recipes.size,
-                lastSyncTime = state.lastSyncTime,
-                isSyncing = state.isSyncing,
-                onSyncClick = viewModel::onSyncClicked,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
         }
 
@@ -65,7 +83,8 @@ fun RecipeListScreen(
                 item {
                     CategoryFilterChips(
                         selectedCategory = state.selectedCategory,
-                        recipeCount = state.recipes.size,
+                        categories = state.categories,
+                        totalRecipeCount = state.recipes.size,
                         onCategorySelected = viewModel::onCategorySelected
                     )
                 }
@@ -104,48 +123,6 @@ fun RecipeListScreen(
             }
         }
 
-        // Collection Header
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Deine Rezeptsammlung",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ) {
-                        Text(
-                            text = "${state.filteredRecipes.size} Rezepte",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                        )
-                    }
-                }
-                TextButton(onClick = {}) {
-                    Text(
-                        text = "Sortierung ↕",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
 
         // Recipe list
         if (state.isLoading) {
@@ -175,7 +152,7 @@ fun RecipeListScreen(
                 }
             }
         } else {
-            items(state.filteredRecipes) { recipe ->
+            items(state.filteredRecipes, key = { it.id }) { recipe ->
                 RecipeListCard(
                     recipe = recipe,
                     onCardClick = { onRecipeClick(it.id) },
@@ -194,34 +171,37 @@ private fun SearchBarRow(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
         modifier = modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 Icons.Filled.Search,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(22.dp)
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
             )
+            Spacer(Modifier.width(8.dp))
             TextField(
                 value = query,
                 onValueChange = onQueryChange,
                 placeholder = {
                     Text(
-                        "Rezepte & Zutaten in Notion durchsuchen...",
+                        "Rezept oder Zutaten suchen...",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    disabledContainerColor = androidx.compose.ui.graphics.Color.Transparent,
                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
                     unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                     focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -230,8 +210,24 @@ private fun SearchBarRow(
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
-            IconButton(onClick = {}) {
-                Icon(Icons.Filled.Tune, contentDescription = "Filter", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Filled.Clear,
+                        contentDescription = "Löschen",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            } else {
+                IconButton(onClick = {}, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Filled.Tune,
+                        contentDescription = "Filter",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
     }
