@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,8 +19,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -35,6 +42,7 @@ fun RecipeDetailScreen(
     LaunchedEffect(recipeId) { viewModel.loadRecipe(recipeId) }
     val state by viewModel.uiState.collectAsState()
     val recipe = state.recipe
+    var showPlanDialog by remember { mutableStateOf(false) }
 
     if (recipe == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -43,7 +51,18 @@ fun RecipeDetailScreen(
         return
     }
 
-    val multiplier = viewModel.portionMultiplier()
+    if (showPlanDialog) {
+        PlanRecipeDialog(
+            onDismiss = { showPlanDialog = false },
+            onConfirm = { date, mealType ->
+                viewModel.planRecipeForDate(date, mealType)
+            }
+        )
+    }
+
+    // Derive multiplier from state so Compose tracks it reactively
+    val defaultServings = (recipe.defaultServings).coerceAtLeast(1).toDouble()
+    val multiplier = state.servings.toDouble() / defaultServings
 
     LazyColumn(
         modifier = Modifier
@@ -74,22 +93,25 @@ fun RecipeDetailScreen(
                             )
                         )
                 )
-                // Top bar
+                // Top bar (Back icon removed)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
                         .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
-                    ) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Zurück", tint = MaterialTheme.colorScheme.onSurface)
-                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick = { showPlanDialog = true },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
+                        ) {
+                            Icon(
+                                Icons.Filled.CalendarMonth,
+                                contentDescription = "Datum planen",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         IconButton(
                             onClick = { viewModel.toggleFavorite() },
                             modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
@@ -99,12 +121,6 @@ fun RecipeDetailScreen(
                                 contentDescription = "Favorit",
                                 tint = MaterialTheme.colorScheme.primary
                             )
-                        }
-                        IconButton(
-                            onClick = {},
-                            modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
-                        ) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "Mehr", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -137,7 +153,7 @@ fun RecipeDetailScreen(
             }
         }
 
-        // Quick info badges
+        // Quick info badges (no nutrition - not in Notion DB)
         item {
             Row(
                 modifier = Modifier
@@ -146,73 +162,82 @@ fun RecipeDetailScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 QuickInfoBadge(icon = "⏱", label = "${recipe.cookTimeMinutes} Min.")
-                QuickInfoBadge(icon = "🔥", label = "${recipe.calories} kcal")
-                QuickInfoBadge(icon = "⭐", label = "${recipe.score}")
                 QuickInfoBadge(icon = "👤", label = recipe.difficulty)
                 QuickInfoBadge(icon = "💶", label = recipe.estimatedCost, containerColor = MaterialTheme.colorScheme.secondaryContainer)
             }
         }
 
-        // Notion Metadata Card
+        // Plan Recipe Card
         item {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clickable { showPlanDialog = true },
                 shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.CalendarMonth,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column {
+                            Text(
+                                "Für Datum planen",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (state.plannedDateText.isNotBlank()) {
+                                Text(
+                                    "Geplant für ${state.plannedDateText}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Box(Modifier.size(8.dp).background(MaterialTheme.colorScheme.secondary, CircleShape))
+                            Icon(
+                                if (state.isPlannedSaved) Icons.Filled.Check else Icons.Filled.Add,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(16.dp)
+                            )
                             Text(
-                                "Notion-Datenbank",
+                                if (state.isPlannedSaved) "Geplant!" else "Planen",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Bold
                             )
-                        }
-                        Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
-                            Text(
-                                "Bidirektional",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(
-                            "Datenbank" to "📁 Meine Rezepte",
-                            "Zuletzt gekocht" to "🗓️ ${recipe.lastCookedDate}"
-                        ).forEach { (label, value) ->
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainer
-                            ) {
-                                Column(modifier = Modifier.padding(10.dp)) {
-                                    Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(value, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                                }
-                            }
                         }
                     }
                 }
             }
         }
+
 
         // Servings Counter
         item {
@@ -277,6 +302,71 @@ fun RecipeDetailScreen(
             }
         }
 
+        // Interactive Star Rating
+        item {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Star,
+                            null,
+                            tint = Color(0xFFFBBC04),
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            "Bewertung",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        (1..5).forEach { star ->
+                            IconButton(
+                                onClick = { viewModel.updateRating(star) },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (star <= state.userRating) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                    contentDescription = "$star Sterne",
+                                    tint = if (star <= state.userRating) Color(0xFFFBBC04) else MaterialTheme.colorScheme.outlineVariant,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                        }
+                        if (state.isRatingSaved) {
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                Icons.Filled.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+
         // Ingredients
         item {
             Row(
@@ -336,7 +426,11 @@ fun RecipeDetailScreen(
                         }
                     }
                     Text(
-                        text = "${ingredient.getFormattedAmount(multiplier)} ${ingredient.name}",
+                        text = if (ingredient.amount > 0.0) {
+                            "${ingredient.getFormattedAmount(multiplier)} ${ingredient.name}"
+                        } else {
+                            ingredient.name
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                         textDecoration = if (isChecked) TextDecoration.LineThrough else TextDecoration.None,
@@ -369,44 +463,86 @@ fun RecipeDetailScreen(
         }
 
         itemsIndexed(recipe.instructions) { index, step ->
-            val isActive = index == state.currentStep
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .clickable { viewModel.setCurrentStep(index) },
-                shape = RoundedCornerShape(16.dp),
-                color = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
-                border = if (isActive) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+            if (step.startsWith("#")) {
+                val cleanHeading = step.removePrefix("#").removePrefix("#").removePrefix("#").trim()
+                Text(
+                    text = cleanHeading,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clickable { viewModel.setCurrentStep(index) }
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(
-                                if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "${index + 1}",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Text(
+                    MarkdownText(
                         text = step,
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                        lineHeight = 22.sp
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MarkdownText(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    style: TextStyle = MaterialTheme.typography.bodyMedium
+) {
+    val annotated = remember(text) {
+        parseMarkdownToAnnotatedString(text)
+    }
+    Text(
+        text = annotated,
+        modifier = modifier,
+        color = color,
+        style = style,
+        lineHeight = 22.sp
+    )
+}
+
+private fun parseMarkdownToAnnotatedString(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        var cursor = 0
+        val regex = Regex("""\*\*(.*?)\*\*|\*(.*?)\*|`(.*?)`""")
+        val matches = regex.findAll(text)
+        for (match in matches) {
+            if (match.range.first > cursor) {
+                append(text.substring(cursor, match.range.first))
+            }
+            val bold = match.groupValues[1]
+            val italic = match.groupValues[2]
+            val code = match.groupValues[3]
+            when {
+                bold.isNotEmpty() -> {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(bold)
+                    }
+                }
+                italic.isNotEmpty() -> {
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                        append(italic)
+                    }
+                }
+                code.isNotEmpty() -> {
+                    withStyle(SpanStyle(background = Color(0x22000000), fontWeight = FontWeight.Medium)) {
+                        append(code)
+                    }
+                }
+            }
+            cursor = match.range.last + 1
+        }
+        if (cursor < text.length) {
+            append(text.substring(cursor))
         }
     }
 }
@@ -428,4 +564,101 @@ private fun QuickInfoBadge(
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
         }
     }
+}
+
+@Composable
+private fun PlanRecipeDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (java.time.LocalDate, de.yummify.app.data.model.MealType) -> Unit
+) {
+    var selectedDate by remember { mutableStateOf(java.time.LocalDate.now()) }
+    var selectedMealType by remember { mutableStateOf(de.yummify.app.data.model.MealType.DINNER) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.CalendarMonth, null, tint = MaterialTheme.colorScheme.primary)
+                Text("Rezept planen", style = MaterialTheme.typography.titleLarge)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Wähle Datum & Mahlzeit aus:", style = MaterialTheme.typography.bodyMedium)
+
+                // Date Presets
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val today = java.time.LocalDate.now()
+                    val dates = listOf(
+                        "Heute" to today,
+                        "Morgen" to today.plusDays(1),
+                        "Übermorgen" to today.plusDays(2)
+                    )
+                    dates.forEach { (label, date) ->
+                        FilterChip(
+                            selected = selectedDate == date,
+                            onClick = { selectedDate = date },
+                            label = { Text(label) },
+                            shape = CircleShape
+                        )
+                    }
+                }
+
+                // Custom Date Display
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "📅 ${selectedDate.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, dd.MM.yyyy", java.util.Locale.GERMAN))}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                // Meal Type Selection
+                Text("Mahlzeit:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    de.yummify.app.data.model.MealType.values().forEach { type ->
+                        FilterChip(
+                            selected = selectedMealType == type,
+                            onClick = { selectedMealType = type },
+                            label = { Text(type.displayName) },
+                            shape = CircleShape
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(selectedDate, selectedMealType)
+                    onDismiss()
+                },
+                shape = CircleShape
+            ) {
+                Text("In Essensplan eintragen")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Abbrechen")
+            }
+        }
+    )
 }
