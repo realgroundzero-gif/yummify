@@ -272,24 +272,41 @@ fun RecipeListCard(
             ) {
                 Column {
                     Text(
-                        text = "Zuletzt: ${recipe.lastCookedDate}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
                         text = recipe.title,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = "${recipe.calories} kcal",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Spacer(Modifier.height(4.dp))
+                    // Star rating from Notion
+                    if (recipe.score > 0.0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val filled = recipe.score.toInt().coerceIn(0, 5)
+                            repeat(filled) {
+                                Icon(
+                                    Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFBBC04),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                            repeat(5 - filled) {
+                                Icon(
+                                    Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.outlineVariant,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = String.format("%.1f", recipe.score),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
