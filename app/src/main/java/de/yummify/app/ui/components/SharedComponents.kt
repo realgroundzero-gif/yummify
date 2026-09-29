@@ -135,32 +135,26 @@ fun NotionStatusBanner(
 @Composable
 fun CategoryFilterChips(
     selectedCategory: String,
-    recipeCount: Int,
+    categories: List<String>,
+    totalRecipeCount: Int,
     onCategorySelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val categories = listOf(
-        "all" to "Alle ($recipeCount)",
-        "quick" to "⚡ Schnell",
-        "veggie" to "🌱 Vegetarisch",
-        "protein" to "💪 High Protein",
-        "pasta" to "🍝 Pasta",
-        "onepot" to "🥘 One-Pot",
-        "baking" to "🍰 Backen"
-    )
-
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        categories.forEach { (id, label) ->
-            val selected = selectedCategory == id
+        categories.forEach { categoryName ->
+            val isAll = categoryName.equals("all", ignoreCase = true)
+            val selected = if (isAll) selectedCategory.equals("all", ignoreCase = true) else selectedCategory.equals(categoryName, ignoreCase = true)
+            val displayLabel = if (isAll) "Alle ($totalRecipeCount)" else categoryName
+
             FilterChip(
                 selected = selected,
-                onClick = { onCategorySelected(id) },
+                onClick = { onCategorySelected(if (isAll) "all" else categoryName) },
                 label = {
                     Text(
-                        text = label,
+                        text = displayLabel,
                         style = MaterialTheme.typography.labelLarge
                     )
                 },
