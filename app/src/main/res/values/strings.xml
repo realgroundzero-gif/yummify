@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Yummify</string>
+    <string name="nav_recipes">Rezepte</string>
+    <string name="nav_meal_planner">Wochenplaner</string>
+    <string name="nav_shopping_list">Einkaufsliste</string>
+    <string name="nav_notion_hub">Notion Hub</string>
+</resources>
