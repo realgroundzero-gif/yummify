@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.yummify.app.data.model.Recipe
 import de.yummify.app.data.repository.RecipeRepository
+import de.yummify.app.data.repository.ShoppingListRepository
 import de.yummify.app.data.repository.UserPreferencesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,12 +22,18 @@ data class RecipeDetailUiState(
     val userRating: Int = 0,          // 0 = unrated, 1-5 = star rating
     val isRatingSaved: Boolean = false, // brief feedback after saving
     val isPlannedSaved: Boolean = false,
-    val plannedDateText: String = ""
+    val plannedDateText: String = "",
+    val inventoryMessage: String? = null,
+    val consuming: Boolean = false,
+    val addedShoppingCount: Int? = null // non-null when feedback should be shown
 )
 
 class RecipeDetailViewModel(application: Application) : AndroidViewModel(application) {
     private val prefsRepo = UserPreferencesRepository.getInstance(application)
     private val mealPlanRepo = de.yummify.app.data.repository.MealPlanRepository.getInstance(application)
+    private val shoppingRepo = ShoppingListRepository.getInstance(application)
+    private val inventoryRepo = de.yummify.app.data.repository.InventoryRepository.getInstance(application)
+    val stock = inventoryRepo.items
     private val _uiState = MutableStateFlow(RecipeDetailUiState())
     val uiState: StateFlow<RecipeDetailUiState> = _uiState.asStateFlow()
 
@@ -68,12 +75,11 @@ class RecipeDetailViewModel(application: Application) : AndroidViewModel(applica
 
     fun portionMultiplier(): Double {
         val recipe = _uiState.value.recipe ?: return 1.0
-        return _uiState.value.servings.toDouble() / recipe.defaultServings.toDouble()
+        return _uiState.value.servings.toDouble() / recipe.defaultServings.coerceAtLeast(1).toDouble()
     }
 
     fun updateRating(rating: Int) {
         val pageId = _uiState.value.recipe?.id ?: return
-        // Update UI immediately for responsiveness
         _uiState.value = _uiState.value.copy(userRating = rating, isRatingSaved = false)
         viewModelScope.launch {
             val prefs = prefsRepo.preferences.value
@@ -81,7 +87,6 @@ class RecipeDetailViewModel(application: Application) : AndroidViewModel(applica
             val success = repository.updateRating(pageId, rating)
             if (success) {
                 _uiState.value = _uiState.value.copy(isRatingSaved = true)
-                // Clear the "saved" indicator after 2 seconds
                 kotlinx.coroutines.delay(2000)
                 _uiState.value = _uiState.value.copy(isRatingSaved = false)
             }
@@ -97,8 +102,42 @@ class RecipeDetailViewModel(application: Application) : AndroidViewModel(applica
             plannedDateText = "$formattedDate (${mealType.displayName})"
         )
         viewModelScope.launch {
+            val prefs = prefsRepo.preferences.value
+            val repository = RecipeRepository(prefs.tokenInput, prefs.databaseIdInput)
+            repository.updatePlannedDate(recipe.id, date)
+
             kotlinx.coroutines.delay(3500)
             _uiState.value = _uiState.value.copy(isPlannedSaved = false)
+        }
+    }
+
+    fun consumeIngredients() {
+        if (_uiState.value.consuming) return
+        val recipe = _uiState.value.recipe ?: return
+        val multiplier = portionMultiplier()
+        _uiState.value = _uiState.value.copy(consuming = true)
+        viewModelScope.launch {
+            try {
+                inventoryRepo.consume(recipe.ingredients, multiplier)
+                _uiState.value = _uiState.value.copy(inventoryMessage = "Zutaten für ${_uiState.value.servings} Portionen vom Vorrat abgebucht.")
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e
+            } catch (e: Exception) { _uiState.value = _uiState.value.copy(inventoryMessage = e.message) }
+            finally { _uiState.value = _uiState.value.copy(consuming = false) }
+        }
+    }
+
+    fun addIngredientsToShoppingList() {
+        val recipe = _uiState.value.recipe ?: return
+        val multiplier = portionMultiplier()
+        val missing = recipe.ingredients.mapNotNull { ingredient ->
+            val amount = de.yummify.app.data.model.InventoryMath.missing(ingredient, multiplier, stock.value)
+            if (amount > 0) ingredient.copy(amount = amount) else null
+        }
+        val count = shoppingRepo.addIngredients(recipe.title, missing, 1.0)
+        _uiState.value = _uiState.value.copy(addedShoppingCount = count)
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(3000)
+            _uiState.value = _uiState.value.copy(addedShoppingCount = null)
         }
     }
 }

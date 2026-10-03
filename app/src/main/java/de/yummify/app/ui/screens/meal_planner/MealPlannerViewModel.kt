@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.yummify.app.data.model.MealPlanItem
+import de.yummify.app.data.model.matchesDate
 import de.yummify.app.data.model.MealType
 import de.yummify.app.data.model.Recipe
 import de.yummify.app.data.repository.MealPlanRepository
@@ -21,7 +22,8 @@ import java.util.UUID
 data class DayTab(
     val key: String,         // "Mo", "Di", ...
     val dayOfMonth: Int,
-    val isToday: Boolean
+    val isToday: Boolean,
+    val date: LocalDate
 )
 
 data class MealPlannerUiState(
@@ -89,13 +91,14 @@ class MealPlannerViewModel(application: Application) : AndroidViewModel(applicat
                 DayTab(
                     key = dayNames[offset],
                     dayOfMonth = day.dayOfMonth,
-                    isToday = day == today
+                    isToday = day == today,
+                    date = day
                 )
             }
 
             val currentDayKey = if (_uiState.value.selectedDayKey.isNotEmpty()) _uiState.value.selectedDayKey else dayNames.getOrElse((today.dayOfWeek.value - 1)) { "Mo" }
             val storedMeals = mealPlanRepo.plannedMeals.value
-            val meals = if (storedMeals.isNotEmpty()) storedMeals else if (repository.isNotionConfigured) _uiState.value.meals else repository.getMealPlan()
+            val meals = storedMeals
             val availableRecipes = repository.getAllRecipes()
 
             _uiState.value = _uiState.value.copy(
@@ -112,7 +115,8 @@ class MealPlannerViewModel(application: Application) : AndroidViewModel(applicat
 
     fun selectDay(dayKey: String, allMeals: List<MealPlanItem>? = null) {
         val meals = allMeals ?: _uiState.value.meals
-        val dayMeals = meals.filter { it.dayOfWeek == dayKey }
+        val date = _uiState.value.days.firstOrNull { it.key == dayKey }?.date
+        val dayMeals = meals.filter { date != null && it.matchesDate(date) }
         val totalCal = dayMeals.sumOf { it.calories }
         val totalProt = dayMeals.sumOf { it.proteinGrams }
         val totalCarbs = dayMeals.sumOf { it.proteinGrams * 2 }
@@ -126,23 +130,33 @@ class MealPlannerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun toggleCooked(mealId: String) {
-        val updated = _uiState.value.meals.map {
-            if (it.id == mealId) it.copy(isCooked = !it.isCooked) else it
-        }
-        _uiState.value = _uiState.value.copy(meals = updated)
-        selectDay(_uiState.value.selectedDayKey, updated)
+        mealPlanRepo.toggleCooked(mealId)
     }
 
     fun addRecipeToMeal(recipe: Recipe, mealType: MealType) {
         val selectedDay = _uiState.value.selectedDayKey
         val dayTab = _uiState.value.days.firstOrNull { it.key == selectedDay }
         val today = LocalDate.now()
-        val targetDate = today.withDayOfMonth(dayTab?.dayOfMonth ?: today.dayOfMonth)
+        val targetDate = dayTab?.date ?: today
         mealPlanRepo.addMealPlan(recipe, targetDate, mealType)
+        viewModelScope.launch {
+            val prefs = prefsRepo.preferences.value
+            val repository = RecipeRepository(prefs.tokenInput, prefs.databaseIdInput)
+            repository.updatePlannedDate(recipe.id, targetDate)
+        }
     }
 
     fun removeMeal(mealId: String) {
+        val item = _uiState.value.meals.firstOrNull { it.id == mealId }
         mealPlanRepo.removeMealPlan(mealId)
+        val recipeId = item?.recipeId
+        if (!recipeId.isNullOrEmpty()) {
+            viewModelScope.launch {
+                val prefs = prefsRepo.preferences.value
+                val repository = RecipeRepository(prefs.tokenInput, prefs.databaseIdInput)
+                repository.updatePlannedDate(recipeId, null)
+            }
+        }
     }
 
     fun syncFromNotion() {

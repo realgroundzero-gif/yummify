@@ -4,4 +4,6 @@
     <string name="nav_meal_planner">Wochenplaner</string>
     <string name="nav_shopping_list">Einkaufsliste</string>
     <string name="nav_notion_hub">Notion Hub</string>
+    <string name="widget_name">yummify Wochenplaner Widget</string>
+    <string name="widget_description">Interaktives Material 3 Homescreen-Widget mit Notion-Sync &amp; Tagesplan-Übersicht</string>
 </resources>

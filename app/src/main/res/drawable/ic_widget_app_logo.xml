@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="26dp"
+    android:height="26dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- Circle Background -->
+    <path
+        android:pathData="M256,0 A256,256 0 1,1 255.9,0 Z"
+        android:fillColor="#C85A32"/>
+    <!-- Minimalist Stylized 'y' upper curve -->
+    <path
+        android:pathData="M168,152 C168,236 216,272 256,272 C296,272 344,236 344,152"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="44"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+    <!-- Minimalist Stylized 'y' stem curve -->
+    <path
+        android:pathData="M256,272 L256,312 C256,376 220,396 184,396"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="44"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+</vector>

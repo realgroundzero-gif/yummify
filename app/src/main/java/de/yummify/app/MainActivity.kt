@@ -4,16 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -21,11 +18,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -37,190 +37,181 @@ import de.yummify.app.ui.screens.meal_planner.MealPlannerScreen
 import de.yummify.app.ui.screens.recipe_detail.RecipeDetailScreen
 import de.yummify.app.ui.screens.recipe_list.RecipeListScreen
 import de.yummify.app.ui.screens.settings.SettingsScreen
+import de.yummify.app.ui.screens.inventory.InventoryScreen
 import de.yummify.app.ui.screens.shopping_list.ShoppingListScreen
 import de.yummify.app.ui.theme.YummifyTheme
-import de.yummify.app.ui.theme.*
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector, val iconOutlined: ImageVector) {
     object Recipes : Screen("recipes", "Rezepte", Icons.Filled.MenuBook, Icons.Outlined.MenuBook)
     object Planner : Screen("planner", "Wochenplaner", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth)
     object Shopping : Screen("shopping", "Einkaufsliste", Icons.Filled.ShoppingCart, Icons.Outlined.ShoppingCart)
-    object Settings : Screen("settings", "Notion Hub", Icons.Filled.Hub, Icons.Outlined.Hub)
+    object Inventory : Screen("inventory", "Inventar", Icons.Filled.Inventory2, Icons.Outlined.Inventory2)
+    object Settings : Screen("settings", "Einstellungen", Icons.Filled.Settings, Icons.Outlined.Settings)
 }
 
-val bottomNavItems = listOf(Screen.Recipes, Screen.Planner, Screen.Shopping, Screen.Settings)
+val bottomNavItems = listOf(Screen.Recipes, Screen.Planner, Screen.Shopping, Screen.Inventory, Screen.Settings)
 
 class MainActivity : ComponentActivity() {
+    private val launchRecipeIdState = mutableStateOf<String?>(null)
+    private val launchRouteState = mutableStateOf<String?>(null)
+    private val launchRequestState = mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleIntent(intent)
+
         val prefsRepo = de.yummify.app.data.repository.UserPreferencesRepository.getInstance(applicationContext)
         setContent {
             val userPrefs by prefsRepo.preferences.collectAsState()
+            val launchRecipeId by launchRecipeIdState
+            val launchRoute by launchRouteState
+            val launchRequest by launchRequestState
             YummifyTheme(darkTheme = userPrefs.darkModeEnabled) {
-                YummifyApp()
+                YummifyApp(initialRecipeId = launchRecipeId, initialRoute = launchRoute, launchRequest = launchRequest)
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        de.yummify.app.data.repository.InventoryRepository.getInstance(applicationContext).syncOnResume()
+        de.yummify.app.widget.MealPlannerWidgetProvider.updateAllWidgets(applicationContext)
+    }
+
+    override fun onNewIntent(intent: android.content.Intent?) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: android.content.Intent?) {
+        launchRequestState.intValue++
+        launchRouteState.value = intent?.getStringExtra("route")
+        val recipeId = intent?.getStringExtra("recipeId")
+        launchRecipeIdState.value = recipeId
+        if (!recipeId.isNullOrEmpty()) {
+            launchRecipeIdState.value = recipeId
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun YummifyApp() {
+fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, launchRequest: Int = 0) {
     val navController = rememberNavController()
+    LaunchedEffect(initialRoute, launchRequest) {
+        if (initialRoute != null && bottomNavItems.any { it.route == initialRoute }) navController.navigate(initialRoute) { launchSingleTop = true }
+    }
+
+    LaunchedEffect(initialRecipeId, launchRequest) {
+        if (!initialRecipeId.isNullOrEmpty()) {
+            navController.navigate("recipe_detail/$initialRecipeId")
+        }
+    }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val currentRoute = currentDestination?.route ?: ""
 
     val showBottomBar = bottomNavItems.any { currentRoute == it.route }
+    var isBarsVisible by remember { mutableStateOf(true) }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            if (showBottomBar) {
-                YummifyTopBar(
-                    title = bottomNavItems.firstOrNull { currentRoute == it.route }?.title ?: "yummify"
-                )
+    LaunchedEffect(currentRoute) { isBarsVisible = true }
+    val nestedScrollConnection = remember(currentRoute) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (currentRoute == Screen.Recipes.route) return Offset.Zero
+                if (available.y < -12f && isBarsVisible) {
+                    isBarsVisible = false
+                } else if (available.y > 12f && !isBarsVisible) {
+                    isBarsVisible = true
+                }
+                return Offset.Zero
             }
-        },
-        bottomBar = {
-            AnimatedVisibility(
-                visible = showBottomBar,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-            ) {
-                YummifyBottomBar(
-                    currentRoute = currentRoute,
-                    onNavigate = { screen ->
-                        navController.navigate(screen.route) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                )
-            }
-        }
-    ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Recipes.route,
-            modifier = Modifier.padding(paddingValues),
-            enterTransition = { fadeIn(animationSpec = tween(300)) },
-            exitTransition = { fadeOut(animationSpec = tween(200)) }
-        ) {
-            composable(Screen.Recipes.route) {
-                RecipeListScreen(
-                    onRecipeClick = { recipeId ->
-                        navController.navigate("recipe_detail/$recipeId")
-                    }
-                )
-            }
-            composable(Screen.Planner.route) {
-                MealPlannerScreen(
-                    onRecipeClick = { recipeId ->
-                        navController.navigate("recipe_detail/$recipeId")
-                    }
-                )
-            }
-            composable(Screen.Shopping.route) {
-                ShoppingListScreen()
-            }
-            composable(Screen.Settings.route) {
-                SettingsScreen()
-            }
-            composable(
-                route = "recipe_detail/{recipeId}",
-                arguments = listOf(navArgument("recipeId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val recipeId = backStackEntry.arguments?.getString("recipeId") ?: ""
-                RecipeDetailScreen(
-                    recipeId = recipeId,
-                    onBack = { navController.popBackStack() }
-                )
+
+            override suspend fun onPostFling(consumed: androidx.compose.ui.unit.Velocity, available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                if (currentRoute != Screen.Recipes.route) isBarsVisible = true
+                return super.onPostFling(consumed, available)
             }
         }
     }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun YummifyTopBar(title: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-        shadowElevation = 0.dp
-    ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+    val bottomBarOffsetPx by animateDpAsState(
+        targetValue = if (showBottomBar && isBarsVisible) 0.dp else 100.dp,
+        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        label = "bottomBarAnim"
+    )
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Recipes.route,
+                modifier = Modifier.fillMaxSize(),
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(150)) }
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Logo circle
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(MaterialTheme.colorScheme.primary, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("🍊", modifier = Modifier.padding(4.dp))
-                    }
-                    Column {
-                        Text(
-                            "yummify",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            title,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .background(MaterialTheme.colorScheme.secondary, CircleShape)
-                            )
-                            Text(
-                                "Notion Sync",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                composable(Screen.Recipes.route) {
+                    RecipeListScreen(
+                        onChromeVisibilityChanged = { isBarsVisible = it },
+                        onRecipeClick = { recipeId ->
+                            navController.navigate("recipe_detail/$recipeId")
                         }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .background(MaterialTheme.colorScheme.primary, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Person, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
-                    }
+                    )
+                }
+                composable(Screen.Planner.route) {
+                    MealPlannerScreen(
+                        onRecipeClick = { recipeId ->
+                            navController.navigate("recipe_detail/$recipeId")
+                        }
+                    )
+                }
+                composable(Screen.Shopping.route) {
+                    ShoppingListScreen()
+                }
+                composable(Screen.Inventory.route) {
+                    InventoryScreen(onSettings = { navController.navigate(Screen.Settings.route) })
+                }
+                composable(Screen.Settings.route) {
+                    SettingsScreen()
+                }
+                composable(
+                    route = "recipe_detail/{recipeId}",
+                    arguments = listOf(navArgument("recipeId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val recipeId = backStackEntry.arguments?.getString("recipeId") ?: ""
+                    RecipeDetailScreen(
+                        recipeId = recipeId,
+                        onBack = { navController.popBackStack() }
+                    )
                 }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), thickness = 0.5.dp)
+
+            if (showBottomBar) {
+                // Bottom Bar overlay
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .graphicsLayer { translationY = bottomBarOffsetPx.toPx() }
+                ) {
+                    YummifyBottomBar(
+                        currentRoute = currentRoute,
+                        onNavigate = { screen ->
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                }
+            }
         }
     }
 }

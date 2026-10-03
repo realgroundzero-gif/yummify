@@ -18,5 +18,16 @@ data class MealPlanItem(
     val calories: Int,
     val proteinGrams: Int,
     val cookTimeMinutes: Int,
-    val isCooked: Boolean = false
+    val isCooked: Boolean = false,
+    val plannedDate: String? = null
 )
+
+/** Legacy records lacked a year/month: match them only within the current week. */
+fun MealPlanItem.matchesDate(date: java.time.LocalDate): Boolean {
+    if (!plannedDate.isNullOrBlank()) return plannedDate == date.toString()
+    val today = java.time.LocalDate.now()
+    val monday = today.minusDays((today.dayOfWeek.value - 1).toLong())
+    val dayCodes = listOf("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
+    return !date.isBefore(monday) && !date.isAfter(monday.plusDays(6)) &&
+        dayOfMonth == date.dayOfMonth && dayOfWeek == dayCodes[date.dayOfWeek.value - 1]
+}

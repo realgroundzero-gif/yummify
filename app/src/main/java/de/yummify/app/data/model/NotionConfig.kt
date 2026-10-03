@@ -5,6 +5,7 @@ data class NotionConfig(
     val recipeDatabaseId: String = "",
     val mealPlanDatabaseId: String = "",
     val shoppingListDatabaseId: String = "",
+    val inventoryDatabaseId: String = "",
     val isConfigured: Boolean = false,
     val lastSyncTime: String = "Noch nicht synchronisiert"
 )

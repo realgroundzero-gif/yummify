@@ -11,7 +11,8 @@ data class UserPreferences(
     val remindersEnabled: Boolean = true,
     val autoSyncEnabled: Boolean = true,
     val tokenInput: String = "",
-    val databaseIdInput: String = ""
+    val databaseIdInput: String = "",
+    val inventoryDatabaseIdInput: String = ""
 )
 
 class UserPreferencesRepository(context: Context) {
@@ -23,7 +24,8 @@ class UserPreferencesRepository(context: Context) {
             remindersEnabled = prefs.getBoolean(KEY_REMINDERS, true),
             autoSyncEnabled = prefs.getBoolean(KEY_AUTO_SYNC, true),
             tokenInput = prefs.getString(KEY_TOKEN, "") ?: "",
-            databaseIdInput = prefs.getString(KEY_DATABASE_ID, "") ?: ""
+            databaseIdInput = prefs.getString(KEY_DATABASE_ID, "") ?: "",
+            inventoryDatabaseIdInput = prefs.getString("notion_inventory_db_id", "") ?: ""
         )
     )
     val preferences: StateFlow<UserPreferences> = _preferences.asStateFlow()
@@ -43,14 +45,16 @@ class UserPreferencesRepository(context: Context) {
         _preferences.value = _preferences.value.copy(autoSyncEnabled = enabled)
     }
 
-    fun saveNotionConfig(token: String, databaseId: String) {
+    fun saveNotionConfig(token: String, databaseId: String, inventoryDatabaseId: String = _preferences.value.inventoryDatabaseIdInput) {
         prefs.edit()
             .putString(KEY_TOKEN, token)
             .putString(KEY_DATABASE_ID, databaseId)
+            .putString("notion_inventory_db_id", inventoryDatabaseId)
             .apply()
         _preferences.value = _preferences.value.copy(
             tokenInput = token,
-            databaseIdInput = databaseId
+            databaseIdInput = databaseId,
+            inventoryDatabaseIdInput = inventoryDatabaseId
         )
     }
 

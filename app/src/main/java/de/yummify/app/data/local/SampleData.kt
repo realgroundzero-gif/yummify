@@ -277,7 +277,7 @@ object SampleData {
             calories = 390,
             proteinGrams = 18,
             cookTimeMinutes = 15,
-            isCooked = false
+            isCooked = true
         ),
         MealPlanItem(
             id = "m4",
@@ -297,12 +297,12 @@ object SampleData {
             dayOfWeek = "Di",
             dayOfMonth = 29,
             mealType = MealType.DINNER,
-            recipeId = "2",
-            recipeTitle = "Mediterrane Lachs-Bowl",
-            imageUrl = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80",
-            calories = 620,
-            proteinGrams = 45,
-            cookTimeMinutes = 25,
+            recipeId = "1",
+            recipeTitle = "Cremige Tomaten-Burrata-Pasta",
+            imageUrl = "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&q=80",
+            calories = 560,
+            proteinGrams = 22,
+            cookTimeMinutes = 20,
             isCooked = false
         ),
         MealPlanItem(
@@ -316,6 +316,71 @@ object SampleData {
             calories = 520,
             proteinGrams = 25,
             cookTimeMinutes = 22,
+            isCooked = false
+        ),
+        MealPlanItem(
+            id = "m7",
+            dayOfWeek = "Do",
+            dayOfMonth = 1,
+            mealType = MealType.DINNER,
+            recipeId = "2",
+            recipeTitle = "Mediterrane Lachs-Bowl",
+            imageUrl = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80",
+            calories = 620,
+            proteinGrams = 45,
+            cookTimeMinutes = 25,
+            isCooked = true
+        ),
+        MealPlanItem(
+            id = "m8",
+            dayOfWeek = "Fr",
+            dayOfMonth = 2,
+            mealType = MealType.BREAKFAST,
+            recipeId = "4",
+            recipeTitle = "Smashed Avocado & Egg Toast",
+            imageUrl = "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&q=80",
+            calories = 390,
+            proteinGrams = 18,
+            cookTimeMinutes = 15,
+            isCooked = true
+        ),
+        MealPlanItem(
+            id = "m9",
+            dayOfWeek = "Fr",
+            dayOfMonth = 2,
+            mealType = MealType.DINNER,
+            recipeId = "1",
+            recipeTitle = "Cremige Tomaten-Burrata-Pasta",
+            imageUrl = "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&q=80",
+            calories = 560,
+            proteinGrams = 22,
+            cookTimeMinutes = 20,
+            isCooked = false
+        ),
+        MealPlanItem(
+            id = "m10",
+            dayOfWeek = "Sa",
+            dayOfMonth = 3,
+            mealType = MealType.DINNER,
+            recipeId = "5",
+            recipeTitle = "Orangen-Walnuss-Kuchen",
+            imageUrl = "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&q=80",
+            calories = 380,
+            proteinGrams = 7,
+            cookTimeMinutes = 55,
+            isCooked = false
+        ),
+        MealPlanItem(
+            id = "m11",
+            dayOfWeek = "So",
+            dayOfMonth = 4,
+            mealType = MealType.LUNCH,
+            recipeId = "3",
+            recipeTitle = "Kichererbsen-Curry mit Kokosmilch",
+            imageUrl = "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400&q=80",
+            calories = 480,
+            proteinGrams = 18,
+            cookTimeMinutes = 30,
             isCooked = false
         )
     )

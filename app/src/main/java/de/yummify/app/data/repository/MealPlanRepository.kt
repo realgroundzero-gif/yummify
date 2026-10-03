@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import de.yummify.app.data.model.MealPlanItem
+import de.yummify.app.data.model.matchesDate
 import de.yummify.app.data.model.MealType
 import de.yummify.app.data.model.Recipe
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-class MealPlanRepository private constructor(context: Context) {
+class MealPlanRepository private constructor(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("yummify_meal_plan", Context.MODE_PRIVATE)
     private val gson = Gson()
 
@@ -22,12 +23,17 @@ class MealPlanRepository private constructor(context: Context) {
     val plannedMeals: StateFlow<List<MealPlanItem>> = _plannedMeals.asStateFlow()
 
     private fun loadMeals(): List<MealPlanItem> {
-        val json = prefs.getString(KEY_MEALS, null) ?: return emptyList()
+        val json = prefs.getString(KEY_MEALS, null)
+        if (json.isNullOrEmpty()) {
+            val initial = de.yummify.app.data.local.SampleData.mealPlanItems
+            prefs.edit().putString(KEY_MEALS, gson.toJson(initial)).apply()
+            return initial
+        }
         return try {
             val type = object : TypeToken<List<MealPlanItem>>() {}.type
-            gson.fromJson(json, type) ?: emptyList()
+            gson.fromJson(json, type) ?: de.yummify.app.data.local.SampleData.mealPlanItems
         } catch (e: Exception) {
-            emptyList()
+            de.yummify.app.data.local.SampleData.mealPlanItems
         }
     }
 
@@ -35,6 +41,7 @@ class MealPlanRepository private constructor(context: Context) {
         val json = gson.toJson(list)
         prefs.edit().putString(KEY_MEALS, json).apply()
         _plannedMeals.value = list
+        de.yummify.app.widget.MealPlannerWidgetProvider.sendUpdateNotice(context)
     }
 
     fun addMealPlan(recipe: Recipe, date: LocalDate, mealType: MealType): MealPlanItem {
@@ -52,14 +59,19 @@ class MealPlanRepository private constructor(context: Context) {
             calories = recipe.calories,
             proteinGrams = recipe.proteinGrams,
             cookTimeMinutes = recipe.cookTimeMinutes,
-            isCooked = false
+            isCooked = false,
+            plannedDate = date.toString()
         )
 
         val current = _plannedMeals.value.toMutableList()
-        current.removeAll { it.dayOfWeek == dayOfWeekStr && it.dayOfMonth == date.dayOfMonth && it.mealType == mealType }
+        current.removeAll { it.matchesDate(date) && it.mealType == mealType }
         current.add(newItem)
         saveMeals(current)
         return newItem
+    }
+
+    fun toggleCooked(id: String) {
+        saveMeals(_plannedMeals.value.map { if (it.id == id) it.copy(isCooked = !it.isCooked) else it })
     }
 
     fun removeMealPlan(id: String) {

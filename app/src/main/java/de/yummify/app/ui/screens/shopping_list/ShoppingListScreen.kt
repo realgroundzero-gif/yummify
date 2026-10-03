@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import de.yummify.app.data.model.ShoppingItem
-import de.yummify.app.ui.theme.*
 
 val CategoryEmoji = mapOf(
     "Obst & Gemüse" to "🥦",
@@ -40,18 +39,18 @@ fun ShoppingListScreen(
     viewModel: ShoppingListViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    val syncRotation by rememberInfiniteTransition(label = "sync_rot").animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing)),
-        label = "r"
-    )
+    var confirmTransfer by remember { mutableStateOf(false) }
+    if (confirmTransfer) AlertDialog(onDismissRequest = { confirmTransfer = false }, title = { Text("Einkauf ins Inventar übernehmen?") },
+        text = { Text("Die abgehakten Artikel werden mit ihren Mengen im Vorratsschrank erfasst und aus der Einkaufsliste entfernt. Lagerort und Ablaufdatum kannst du anschließend im Inventar ergänzen.") },
+        confirmButton = { TextButton(onClick = { confirmTransfer = false; viewModel.transferPurchased() }) { Text("Übernehmen") } },
+        dismissButton = { TextButton(onClick = { confirmTransfer = false }) { Text("Abbrechen") } })
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(SurfaceBackground),
-        contentPadding = PaddingValues(bottom = 100.dp)
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp)
     ) {
         // Header
         item {
@@ -70,21 +69,18 @@ fun ShoppingListScreen(
                     Text(
                         "Einkaufsliste",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = OnSurface,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Surface(shape = CircleShape, color = PrimaryFixed) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
                         Text(
                             "${state.openItems} offen",
                             style = MaterialTheme.typography.labelSmall,
-                            color = OnPrimaryFixed,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
-                }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Filled.MoreVert, null, tint = OnSurfaceVariant)
                 }
             }
         }
@@ -103,8 +99,8 @@ fun ShoppingListScreen(
                     onClick = { viewModel.applyFilter("missing") },
                     label = { Text("Nur fehlende (${state.openItems})", style = MaterialTheme.typography.labelMedium) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Primary,
-                        selectedLabelColor = OnPrimary
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = CircleShape
                 )
@@ -123,122 +119,13 @@ fun ShoppingListScreen(
             }
         }
 
-        // Sync banner
-        item {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                shape = RoundedCornerShape(20.dp),
-                color = SurfaceContainerLow
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Secondary.copy(alpha = 0.12f),
-                                modifier = Modifier.size(30.dp)
-                            ) {
-                                Icon(
-                                    Icons.Filled.Sync,
-                                    null,
-                                    tint = Secondary,
-                                    modifier = Modifier
-                                        .padding(6.dp)
-                                        .then(if (state.isSyncing) Modifier.rotate(syncRotation) else Modifier)
-                                )
-                            }
-                            Box(
-                                Modifier
-                                    .size(8.dp)
-                                    .background(Secondary, CircleShape)
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = 2.dp, y = (-2).dp)
-                            )
-                        }
-                        Column {
-                            Text(
-                                "Notion-Sync: Yummify - Einkaufe",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = OnSurface,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "Vor 2 Min. synchronisiert • Bidirektional aktiv",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = OnSurfaceVariant
-                            )
-                        }
-                    }
-                    IconButton(onClick = viewModel::triggerSync) {
-                        Icon(
-                            Icons.Filled.Refresh,
-                            null,
-                            tint = Secondary,
-                            modifier = if (state.isSyncing) Modifier.rotate(syncRotation) else Modifier
-                        )
-                    }
-                }
+        if (state.allItems.any { it.isChecked }) item {
+            Button(onClick = { confirmTransfer = true }, enabled = !state.transferring, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Icon(Icons.Default.Inventory2, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                Text(if (state.transferring) "Übernimmt …" else "Gekaufte Artikel ins Inventar (${state.allItems.count { it.isChecked }})")
             }
         }
-
-        // Preview banner
-        item {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                shape = RoundedCornerShape(24.dp),
-                color = SurfaceContainerHigh
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "WOCHENPLAN ZUTATEN",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Frische Vorräte bereitstellen",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = OnSurface,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Automatisch aggregiert aus ${state.allItems.distinctBy { it.recipeName }.size} Rezepten",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = OnSurfaceVariant
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                    ) {
-                        AsyncImage(
-                            model = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&q=80",
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-            }
-        }
-
+        state.message?.let { message -> item { Text(message, modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium) } }
         // Grouped category sections
         state.groupedItems.forEach { (category, items) ->
             item {
@@ -269,7 +156,7 @@ private fun CollapsibleSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 5.dp),
         shape = RoundedCornerShape(24.dp),
-        color = SurfaceContainerLow
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // Section header
@@ -290,20 +177,20 @@ private fun CollapsibleSection(
                         Text(
                             title,
                             style = MaterialTheme.typography.titleSmall,
-                            color = OnSurface,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             "$openCount von ${items.size} offen",
                             style = MaterialTheme.typography.labelSmall,
-                            color = OnSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 Icon(
                     if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                     null,
-                    tint = OnSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -332,7 +219,7 @@ private fun ShoppingItemRow(
             .fillMaxWidth()
             .clickable { onToggle() },
         shape = RoundedCornerShape(16.dp),
-        color = if (item.isChecked) SurfaceContainer.copy(alpha = 0.5f) else SurfaceContainer
+        color = if (item.isChecked) MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainer
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -343,20 +230,20 @@ private fun ShoppingItemRow(
                 modifier = Modifier
                     .size(24.dp)
                     .background(
-                        if (item.isChecked) Secondary else SurfaceContainerHighest,
+                        if (item.isChecked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceContainerHighest,
                         RoundedCornerShape(7.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 if (item.isChecked) {
-                    Icon(Icons.Filled.Check, null, tint = OnSecondary, modifier = Modifier.size(15.dp))
+                    Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(15.dp))
                 }
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "${item.amountWithUnit} ${item.name}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (item.isChecked) OnSurfaceVariant else OnSurface,
+                    color = if (item.isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Medium,
                     textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
                 )
@@ -365,20 +252,20 @@ private fun ShoppingItemRow(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Icon(Icons.Filled.MenuBook, null, tint = Primary, modifier = Modifier.size(11.dp))
-                        Text(recipe, style = MaterialTheme.typography.labelSmall, color = Primary)
+                        Icon(Icons.Filled.MenuBook, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
+                        Text(recipe, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 item.note?.let { note ->
                     if (item.recipeName == null) {
-                        Text(note, style = MaterialTheme.typography.labelSmall, color = Tertiary)
+                        Text(note, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
                     }
                 }
             }
             Icon(
                 Icons.Filled.DragIndicator,
                 null,
-                tint = Outline.copy(alpha = 0.4f),
+                tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
                 modifier = Modifier.size(18.dp)
             )
         }

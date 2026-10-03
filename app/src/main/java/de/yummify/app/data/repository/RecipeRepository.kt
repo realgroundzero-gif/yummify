@@ -224,6 +224,34 @@ class RecipeRepository(
         }
     }
 
+    suspend fun updatePlannedDate(pageId: String, date: java.time.LocalDate?): Boolean {
+        if (!isNotionConfigured) return false
+        return try {
+            withContext(Dispatchers.IO) {
+                val dateVal = if (date != null) {
+                    """{"start":"$date"}"""
+                } else {
+                    "null"
+                }
+                val body = """{"properties":{"Geplant am":{"date":$dateVal}}}"""
+                val request = Request.Builder()
+                    .url("https://api.notion.com/v1/pages/$pageId")
+                    .addHeader("Authorization", "Bearer ${notionToken.trim()}")
+                    .addHeader("Notion-Version", "2022-06-28")
+                    .addHeader("Content-Type", "application/json")
+                    .patch(body.toRequestBody("application/json".toMediaType()))
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    Log.d("RecipeRepository", "updatePlannedDate status ${response.code} for page $pageId date=$date")
+                    response.isSuccessful
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("RecipeRepository", "Failed to update planned date in Notion for $pageId", e)
+            false
+        }
+    }
+
     suspend fun updateRating(pageId: String, rating: Int): Boolean {
         if (!isNotionConfigured) return false
         return try {
