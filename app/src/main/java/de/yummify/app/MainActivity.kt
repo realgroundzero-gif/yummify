@@ -80,6 +80,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         de.yummify.app.data.repository.InventoryRepository.getInstance(applicationContext).syncOnResume()
         de.yummify.app.widget.MealPlannerWidgetProvider.updateAllWidgets(applicationContext)
+        de.yummify.app.widget.ShoppingListWidgetProvider.updateAllWidgets(applicationContext)
     }
 
     override fun onNewIntent(intent: android.content.Intent?) {

@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
-class ShoppingListRepository private constructor(context: Context) {
+class ShoppingListRepository private constructor(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("yummify_shopping_list", Context.MODE_PRIVATE)
     private val gson = Gson()
 
@@ -35,6 +35,7 @@ class ShoppingListRepository private constructor(context: Context) {
         val json = gson.toJson(list)
         prefs.edit().putString(KEY_ITEMS, json).apply()
         _items.value = list
+        de.yummify.app.widget.ShoppingListWidgetProvider.updateAllWidgets(context)
     }
 
     fun addInventoryNeeds(stock: List<InventoryItem>): Int {

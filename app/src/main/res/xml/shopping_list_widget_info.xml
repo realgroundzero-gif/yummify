@@ -1,0 +1,8 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp" android:minHeight="156dp" android:minResizeHeight="156dp"
+    android:targetCellWidth="4" android:targetCellHeight="2" android:maxResizeWidth="500dp" android:maxResizeHeight="500dp"
+    android:resizeMode="horizontal|vertical" android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_shopping_list" android:previewLayout="@layout/widget_shopping_list"
+    android:description="@string/shopping_widget_description" android:widgetCategory="home_screen"
+    android:configure="de.yummify.app.widget.ShoppingListWidgetConfigActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional" />

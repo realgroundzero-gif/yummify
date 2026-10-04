@@ -22,6 +22,10 @@ Rezepte lassen sich für ein Datum und eine Mahlzeit planen: Frühstück, Mittag
 
 Das Startbildschirm-Widget zeigt Montag bis Sonntag mit Kalenderwoche, Datum und geplanten Gerichten. Der aktuelle Tag ist hervorgehoben; leere Tage zeigen „Noch nichts geplant“. Antippen öffnet den Wochenplan. Das Widget ist ab 4×2 nutzbar, lässt sich vergrößern und bietet eine je Widget gespeicherte Hintergrundtransparenz. Seine Konfiguration zeigt das tatsächliche Layout mit den aktuellen Planungen. Änderungen am Plan, Datum und Zeitzone aktualisieren die Anzeige.
 
+### Einkaufslisten-Widget
+
+Ein zweites Startbildschirm-Widget zeigt die aktuelle Einkaufsliste im dunklen Yummify-Design mit Terrakotta-Akzenten. Der Kopf zählt offene und gesamte Artikel; die vertikal scrollbare Liste zeigt Namen, Mengen und Kategorien. Zutaten für heute geplante, noch nicht gekochte Rezepte stehen oben und erhalten eine „HEUTE“-Markierung. Erledigte Artikel werden nach unten sortiert und durchgestrichen. Antippen des Kreises hakt einen Artikel ab oder öffnet ihn wieder; Antippen der Zeile oder des Kopfes öffnet die Einkaufsliste in der App. Änderungen in App, Einkaufsliste und Wochenplan aktualisieren das Widget. Es unterstützt 4×2 und 4×3 sowie größere Größen; die Hintergrundtransparenz ist je Widget einstellbar. Die Konfiguration zeigt bis zu sieben echte Artikel als Vorschau.
+
 ### Inventar
 
 - Lebensmittel mit Menge, Einheit, Kategorie, Lagerort, Mindestbestand, Mindesthaltbarkeitsdatum (MHD), Barcode, Notizen und Bild verwalten.
@@ -37,7 +41,7 @@ Der Google-Code-Scanner erfasst Barcodes mit der Kamera. Dafür sind Google Play
 
 Beim Anlegen eines Artikels lädt ein Scan automatisch Daten von [Open Food Facts](https://world.openfoodfacts.org). Nach manueller Eingabe kann „Produktdaten laden“ gewählt werden. Die öffentliche API wird mit deutschem Sprachwunsch und einem Yummify-User-Agent aufgerufen; Notion-Zugangsdaten werden dabei nicht übertragen.
 
-Leere Felder werden mit Produktname und Marke, einer passenden vorhandenen Kategorie, Notizen und Produktbild ergänzt. Gescannte Artikel werden standardmäßig als **1 Stück** erfasst, auch ohne Datenbanktreffer. Das Packungsgewicht oder -volumen steht separat als „Packungsinhalt“ in den Notizen. Lagerort und MHD werden manuell ergänzt. Bestand und Gebinde vor dem Speichern prüfen.
+Leere Felder werden mit Produktname und Marke, einer passenden vorhandenen Kategorie, Notizen und Produktbild ergänzt. Gescannte Artikel werden standardmäßig als **1 Stück** erfasst, auch ohne Datenbanktreffer. Automatisch erzeugte Notizen enthalten nur **Packungsinhalt und Marke**. Zutaten, Nährwerte und Produktlink stehen in separaten Feldern. Bereits gespeicherte automatische Notizen werden gekürzt, sobald die entsprechenden Produktfelder vorhanden sind; eigene Ergänzungen bleiben erhalten. Lagerort und MHD werden manuell ergänzt. Bestand und Gebinde vor dem Speichern prüfen.
 
 Nährwerte, Zutaten und Produkt-URL werden zusätzlich in vorhandene Notion-Spalten übernommen. Die Nährwerte beziehen sich auf **100 g beziehungsweise 100 ml**, nicht auf die gesamte Packung oder den Bestand. Vorhandene lokale Barcodes führen zum bestehenden Artikel; doppelte neue Artikel mit demselben Barcode werden verhindert. Unbekannte Produkte und Netzwerkfehler lassen die manuelle Erfassung zu. Erst Speichern übernimmt den Artikel lokal; der Inventarabgleich überträgt ihn nach Notion.
 
@@ -150,4 +154,4 @@ Kotlin 1.9.23, Jetpack Compose mit Material 3, Coroutines und StateFlow, OkHttp 
 
 ## Datenquelle und Lizenzen
 
-Open Food Facts stellt Produktdaten unter [ODbL](https://opendatacommons.org/licenses/odbl/1-0/), einzelne Datenbankinhalte unter der [Database Contents License](https://opendatacommons.org/licenses/dbcl/1-0/) und Produktbilder unter [CC BY-SA](https://creativecommons.org/licenses/by-sa/3.0/) bereit. Die Produktquelle und Lizenzhinweise bleiben in den Artikelnotizen nachvollziehbar. Diese Datenlizenzen gelten für die eingebundenen Produktdaten und Bilder; im Repository ist derzeit keine separate Lizenzdatei für den App-Quellcode enthalten.
+Open Food Facts stellt Produktdaten unter [ODbL](https://opendatacommons.org/licenses/odbl/1-0/), einzelne Datenbankinhalte unter der [Database Contents License](https://opendatacommons.org/licenses/dbcl/1-0/) und Produktbilder unter [CC BY-SA](https://creativecommons.org/licenses/by-sa/3.0/) bereit. Produktquelle und Lizenzhinweise sind in den Produktinformationen der Artikeldetails sichtbar; der Produktlink wird im separaten Notion-Feld `URL` gespeichert. Diese Datenlizenzen gelten für die eingebundenen Produktdaten und Bilder; im Repository ist derzeit keine separate Lizenzdatei für den App-Quellcode enthalten.

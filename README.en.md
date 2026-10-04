@@ -22,6 +22,10 @@ Schedule recipes for a date and meal slot: breakfast, lunch, dinner or snack. Th
 
 The home screen widget shows Monday through Sunday with the calendar week, dates and planned meals. It highlights today and labels empty days as having no planned meals. Tapping it opens the planner. The widget supports a minimum size of 4×2, resizing and a background transparency setting saved separately for each widget. Its configuration displays the actual layout with current plans. Changes to the plan, date and time zone update the display.
 
+### Shopping list widget
+
+A second home screen widget displays the current shopping list in the dark Yummify design with terracotta accents. Its header counts open and total items; the vertically scrolling list shows names, quantities and categories. Ingredients for today’s planned, uncooked recipes appear first with a today badge. Completed items move to the bottom and are crossed out. Tapping the circle checks or reopens an item; tapping the row or header opens the shopping list in the app. Changes in the app, shopping list and meal plan update the widget. It supports 4×2, 4×3 and larger sizes, with background transparency saved per widget. Configuration previews up to seven actual items.
+
 ### Inventory
 
 - Manage food with quantity, unit, category, storage location, minimum stock, best-before date, barcode, notes and image.
@@ -37,7 +41,7 @@ The Google Code Scanner reads barcodes using the camera. It requires Google Play
 
 When adding an item, scanning automatically loads data from [Open Food Facts](https://world.openfoodfacts.org). After manual entry, use the product data lookup button. Requests use the public API with a German language preference and a Yummify User-Agent; Notion credentials are not sent to this service.
 
-Empty fields are filled with the product name and brand, a matching existing category, notes and a product image. Scanned items default to **1 piece** (`Stück`), even if no product is found. Package weight or volume is recorded separately in the notes. Storage location and best-before date are entered manually. Check stock quantity and package unit before saving.
+Empty fields are filled with the product name and brand, a matching existing category, notes and a product image. Scanned items default to **1 piece** (`Stück`), even if no product is found. Automatically generated notes contain only **package contents and brand**. Ingredients, nutrition and the product link are stored in separate fields. Previously saved automatic notes are shortened once the corresponding product fields are available; manual additions are preserved. Storage location and best-before date are entered manually. Check stock quantity and package unit before saving.
 
 Nutrition, ingredients and the product URL are also mapped to existing Notion properties. Nutrition values are **per 100 g or 100 ml**, rather than per package or total stock. Barcodes already stored locally lead to the existing item; duplicate new items with the same barcode are prevented. Unknown products and network errors allow manual entry. Saving first stores the item locally; inventory synchronization then transfers it to Notion.
 
@@ -150,4 +154,4 @@ Kotlin 1.9.23, Jetpack Compose with Material 3, Coroutines and StateFlow, OkHttp
 
 ## Data source and licenses
 
-Open Food Facts provides product data under [ODbL](https://opendatacommons.org/licenses/odbl/1-0/), individual database contents under the [Database Contents License](https://opendatacommons.org/licenses/dbcl/1-0/) and product images under [CC BY-SA](https://creativecommons.org/licenses/by-sa/3.0/). Product sources and license notes remain available in item notes. These data licenses apply to the integrated product data and images; the repository currently contains no separate license file for the app source code.
+Open Food Facts provides product data under [ODbL](https://opendatacommons.org/licenses/odbl/1-0/), individual database contents under the [Database Contents License](https://opendatacommons.org/licenses/dbcl/1-0/) and product images under [CC BY-SA](https://creativecommons.org/licenses/by-sa/3.0/). Product sources and license notes are visible in the item detail product information; the product link is stored in the separate Notion `URL` property. These data licenses apply to the integrated product data and images; the repository currently contains no separate license file for the app source code.

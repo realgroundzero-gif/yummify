@@ -42,6 +42,7 @@ class MealPlanRepository private constructor(private val context: Context) {
         prefs.edit().putString(KEY_MEALS, json).apply()
         _plannedMeals.value = list
         de.yummify.app.widget.MealPlannerWidgetProvider.sendUpdateNotice(context)
+        de.yummify.app.widget.ShoppingListWidgetProvider.updateAllWidgets(context)
     }
 
     fun addMealPlan(recipe: Recipe, date: LocalDate, mealType: MealType): MealPlanItem {

@@ -43,13 +43,10 @@ class OpenFoodFactsApi(
             fun nutrient(key: String): Double? = nutriments?.get(key)?.takeIf { it.isJsonPrimitive }
                 ?.asString?.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
             val ingredients = text("ingredients_text_de") ?: text("ingredients_text")
-            val nutrition = listOf("energy-kcal_100g" to "kcal", "fat_100g" to "g Fett", "carbohydrates_100g" to "g Kohlenhydrate", "proteins_100g" to "g Protein", "salt_100g" to "g Salz")
-                .mapNotNull { (key, label) -> nutriments?.get(key)?.takeIf { it.isJsonPrimitive }?.asString?.let { "$it $label" } }.joinToString(" · ")
             return FoodProduct(barcode, title?.take(200), amount?.first, amount?.second,
                 text("categories"), (tags("categories_hierarchy") + tags("categories_tags")).distinct(),
                 (text("image_front_url") ?: text("image_url"))?.takeIf { it.startsWith("https://") },
-                listOfNotNull(brand?.let { "Marke: $it" }, (text("ingredients_text_de") ?: text("ingredients_text"))?.let { "Zutaten: $it" },
-                    nutrition.takeIf { it.isNotBlank() }?.let { "Nährwerte pro 100 g/ml: $it" }).joinToString("\n"),
+                brand?.let { "Marke: $it" }.orEmpty(),
                 calories = nutrient("energy-kcal_100g"), fat = nutrient("fat_100g"),
                 carbohydrates = nutrient("carbohydrates_100g"), protein = nutrient("proteins_100g"), ingredients = ingredients)
         }
@@ -71,7 +68,8 @@ data class FoodProduct(val barcode: String, val name: String?, val quantity: Dou
     val calories: Double? = null, val fat: Double? = null, val carbohydrates: Double? = null,
     val protein: Double? = null, val ingredients: String? = null) {
     val sourceUrl get() = "https://world.openfoodfacts.org/product/$barcode"
-    fun notes() = (listOfNotNull(quantity?.let { "Packungsinhalt: ${de.yummify.app.data.model.InventoryMath.number(it)} ${unit.orEmpty()}" }, details.takeIf { it.isNotBlank() }).joinToString("\n")).take(1500) + "\nQuelle: Open Food Facts · $sourceUrl\nDaten: ODbL · Bilder: CC BY-SA"
+    fun notes() = listOfNotNull(quantity?.let { "Packungsinhalt: ${de.yummify.app.data.model.InventoryMath.number(it)} ${unit.orEmpty()}" },
+        details.takeIf { it.isNotBlank() }).joinToString("\n").take(1500)
     fun suggestedCategory(options: List<String>): String? {
         val localized = categories.orEmpty().split(',').map { it.trim() }.filter { it.isNotBlank() }
         options.firstOrNull { option -> localized.any { it.equals(option, true) } }?.let { return it }

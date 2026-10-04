@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>yummify Android Widget - Einkaufsliste</title>
+<!-- Tailwind CSS CDN with forms and container queries plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Font: Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              terracotta: '#f08c65',
+              terracottaDark: '#c85a32',
+              surface: '#151311',
+              surfaceDim: '#0e0d0c',
+              surfaceLow: '#1d1b19',
+              surfaceBright: '#3b3936'
+            }
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-layout">
+    body {
+      background-color: #0b0a09;
+      color: #e6e1de;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .homescreen-glow {
+      background: radial-gradient(circle at 85% 75%, rgba(240, 140, 101, 0.08) 0%, rgba(21, 19, 17, 0) 65%);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#0a0908] text-stone-200 antialiased flex flex-col justify-between py-8 px-4 sm:px-8 lg:px-12 selection:bg-[#f08c65]/30">
+<!-- BEGIN: PageHeader -->
+<header class="max-w-6xl mx-auto w-full mb-8 pt-4">
+<div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+<div class="space-y-2">
+<!-- Tag / Pill Indicator -->
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f08c65]/10 border border-[#f08c65]/25 text-[#f08c65] text-xs font-semibold tracking-wider uppercase">
+<svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 10h16M4 14h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Android Glance Widget • 4 × 2 / 4 × 3 Einkaufsliste</span>
+</div>
+<!-- Main Title & Description -->
+<h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white pt-1">
+          yummify Einkaufsliste Widget
+        </h1>
+<p class="text-stone-400 text-sm sm:text-base max-w-2xl font-normal leading-relaxed">
+          Minimalistische, strukturierte Einkaufsliste direkt auf dem Homescreen. Nach Rezepten &amp; Frische gegliedert, ultra-reduziert und ablenkungsfrei.
+        </p>
+</div>
+<!-- Right Header Status Pill -->
+<aside aria-label="Widget Status" class="self-start md:self-auto shrink-0">
+<div class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1d1b19]/90 border border-white/5 text-stone-300 text-xs font-medium shadow-sm">
+<span class="w-2 h-2 rounded-full bg-[#f08c65] animate-pulse"></span>
+<span>Reine Glance-Listenansicht</span>
+</div>
+</aside>
+</div>
+</header>
+<!-- END: PageHeader -->
+<!-- BEGIN: MainHomescreenMockup -->
+<main class="max-w-6xl mx-auto w-full my-auto flex items-center justify-center py-4">
+<!-- Android Desktop / Tablet Container -->
+<section aria-label="Android Homescreen Preview" class="w-full max-w-4xl rounded-[2.5rem] bg-[#151311] border border-white/5 shadow-2xl overflow-hidden relative p-6 sm:p-10 homescreen-glow">
+<!-- Top Status Bar -->
+<header class="flex items-center justify-between text-xs text-stone-400 font-medium px-2 mb-8">
+<div class="flex items-center gap-2">
+<time class="font-semibold text-stone-300" datetime="12:30">12:30</time>
+<span>•</span>
+<span>Dienstag, 14. Mai</span>
+</div>
+<div aria-label="Gerätestatus" class="flex items-center gap-2.5 opacity-80">
+<!-- Notification Dot -->
+<span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+<!-- Wifi Icon -->
+<svg class="w-3.5 h-3.5" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98A16.88 16.88 0 0 0 12 4zm0 2c3.78 0 7.22 1.47 9.8 3.9L12 19.67 2.2 9.9C4.78 7.47 8.22 6 12 6z"></path>
+</svg>
+<span class="text-[11px] font-mono">88%</span>
+<!-- Battery Icon -->
+<svg class="w-4 h-4" fill="currentColor" viewbox="0 0 24 24">
+<path d="M17 5v14c0 .55-.45 1-1 1H8c-.55 0-1-.45-1-1V5c0-.55.45-1 1-1h2V2h4v2h2c.55 0 1 .45 1 1zm-2 1H9v12h6V6z"></path>
+</svg>
+</div>
+</header>
+<!-- Center Widget Frame (4x3 Glance Widget) -->
+<article class="max-w-xl mx-auto rounded-3xl bg-[#1d1b19] border border-white/[0.07] p-5 sm:p-6 shadow-xl relative backdrop-blur-md" data-purpose="glance-widget-card">
+<!-- Widget Header -->
+<div class="flex items-center justify-between pb-4 border-b border-white/[0.06] mb-3">
+<div class="flex items-center gap-2.5">
+<!-- App Icon Avatar -->
+<div class="w-6 h-6 rounded-lg bg-[#f08c65] flex items-center justify-center text-white font-bold text-xs shadow-sm">
+              y
+            </div>
+<!-- Widget App Name & Subtitle -->
+<div class="flex items-baseline gap-2">
+<span class="font-bold text-sm tracking-tight text-white">yummify</span>
+<span class="text-xs text-stone-400 font-medium">Einkaufsliste</span>
+</div>
+</div>
+<!-- Item Counter -->
+<div class="text-[11px] font-mono uppercase tracking-wider text-stone-400 font-semibold">
+            OFFEN 6 <span class="text-stone-600 font-normal">/ 7</span>
+</div>
+</div>
+<!-- Widget Item List -->
+<ul class="space-y-1 text-xs sm:text-[13px]" role="list">
+<!-- Item 1: Checked / Done -->
+<li class="flex items-center justify-between px-3 py-2 rounded-xl text-stone-500 transition-colors">
+<div class="flex items-center gap-3">
+<!-- Checked Icon -->
+<div class="w-4 h-4 rounded-full border border-stone-600 bg-stone-800 flex items-center justify-center">
+<svg class="w-2.5 h-2.5 text-stone-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+</div>
+<span class="line-through font-normal">Quinoa Tricolore (250g)</span>
+</div>
+<span class="text-[10px] uppercase font-mono tracking-wider text-stone-600">Vorrat</span>
+</li>
+<!-- Item 2: Highlighted Today's Recipe Ingredient -->
+<li class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#f08c65]/10 border border-[#f08c65]/35 text-white transition-all shadow-sm">
+<div class="flex items-center gap-3 font-medium">
+<!-- Active Bullet / Check Circle -->
+<span class="w-4 h-4 rounded-full border border-[#f08c65] flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-[#f08c65]"></span>
+</span>
+<span class="tracking-tight text-stone-100 font-semibold">Burrata di Bufala (2 Kugeln)</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#f08c65]/20 text-[#f08c65] border border-[#f08c65]/30">
+              HEUTE
+            </span>
+</li>
+<!-- Item 3: Today's Recipe Sub-ingredient -->
+<li class="flex items-center justify-between px-3 py-2 rounded-xl text-stone-200 hover:bg-white/[0.02]">
+<div class="flex items-center gap-3 font-medium">
+<span class="w-4 h-4 rounded-full border border-stone-600"></span>
+<span>Kirschtomaten (500g)</span>
+</div>
+<span class="text-[10px] uppercase font-mono tracking-wider text-stone-400">Gemüse</span>
+</li>
+<!-- Item 4: Regular Item -->
+<li class="flex items-center justify-between px-3 py-2 rounded-xl text-stone-200 hover:bg-white/[0.02]">
+<div class="flex items-center gap-3 font-medium">
+<span class="w-4 h-4 rounded-full border border-stone-600"></span>
+<span>Frisches Basilikum (1 Bund)</span>
+</div>
+<span class="text-[10px] uppercase font-mono tracking-wider text-stone-400">Kräuter</span>
+</li>
+<!-- Item 5: Regular Item -->
+<li class="flex items-center justify-between px-3 py-2 rounded-xl text-stone-200 hover:bg-white/[0.02]">
+<div class="flex items-center gap-3 font-medium">
+<span class="w-4 h-4 rounded-full border border-stone-600"></span>
+<span>Kichererbsen vorgegart (2 Dosen)</span>
+</div>
+<span class="text-[10px] uppercase font-mono tracking-wider text-stone-400">Vorrat</span>
+</li>
+<!-- Item 6: Regular Item -->
+<li class="flex items-center justify-between px-3 py-2 rounded-xl text-stone-200 hover:bg-white/[0.02]">
+<div class="flex items-center gap-3 font-medium">
+<span class="w-4 h-4 rounded-full border border-stone-600"></span>
+<span>Bio-Lachsfilet (2 Stück)</span>
+</div>
+<span class="text-[10px] uppercase font-mono tracking-wider text-stone-400">Kühlung</span>
+</li>
+<!-- Item 7: Regular Item -->
+<li class="flex items-center justify-between px-3 py-2 rounded-xl text-stone-200 hover:bg-white/[0.02]">
+<div class="flex items-center gap-3 font-medium">
+<span class="w-4 h-4 rounded-full border border-stone-600"></span>
+<span>Hafermilch Barista (1L)</span>
+</div>
+<span class="text-[10px] uppercase font-mono tracking-wider text-stone-400">Kühlregal</span>
+</li>
+</ul>
+</article>
+<!-- Android Bottom Home Indicator Bar -->
+<footer class="mt-8 flex justify-center">
+<div class="w-28 h-1 rounded-full bg-stone-600/60"></div>
+</footer>
+</section>
+</main>
+<!-- END: MainHomescreenMockup -->
+<!-- BEGIN: FeatureCardsFooter -->
+<footer class="max-w-6xl mx-auto w-full mt-8">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Feature Card 1 -->
+<section class="bg-[#1d1b19]/60 border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all" data-purpose="feature-card">
+<h2 class="text-xs font-bold uppercase tracking-wider text-[#f08c65] mb-2">
+          Reine Listenansicht
+        </h2>
+<p class="text-stone-400 text-xs sm:text-[13px] leading-relaxed">
+          Kompaktes, vertikales Zeilenlayout. Alle benötigten Zutaten der Woche und des heutigen Tages auf einen Blick lesbar ohne horizontales Scrollen.
+        </p>
+</section>
+<!-- Feature Card 2 -->
+<section class="bg-[#1d1b19]/60 border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all" data-purpose="feature-card">
+<h2 class="text-xs font-bold uppercase tracking-wider text-[#f08c65] mb-2">
+          Null Ablenkung &amp; Typografie
+        </h2>
+<p class="text-stone-400 text-xs sm:text-[13px] leading-relaxed">
+          Keine überladenen Schaltflächen, Popups oder Werbeelemente. Typografische Klarheit, die sich nahtlos in moderne Android-Homescreens einfügt.
+        </p>
+</section>
+<!-- Feature Card 3 -->
+<section class="bg-[#1d1b19]/60 border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all" data-purpose="feature-card">
+<h2 class="text-xs font-bold uppercase tracking-wider text-[#f08c65] mb-2">
+          Rezept-Bezug im Fokus
+        </h2>
+<p class="text-stone-400 text-xs sm:text-[13px] leading-relaxed">
+          Zutaten für das heutige Gericht heben sich dezent im yummify Terrakotta-Ton ab, damit beim Einkauf sofort klar ist, was priorisiert werden muss.
+        </p>
+</section>
+</div>
+</footer>
+<!-- END: FeatureCardsFooter -->
+</body></html>

@@ -14,16 +14,17 @@ class OpenFoodFactsApiTest {
             block(server, OpenFoodFactsApi(baseUrl = server.url("/").toString().removeSuffix("/")))
         }
     }
-    @Test fun prefersGermanNameAndPreservesLeadingZerosAndAttribution() = withServer { server, api ->
+    @Test fun prefersGermanNameAndPreservesLeadingZerosAndKeepsNotesCompact() = withServer { server, api ->
         server.enqueue(MockResponse().setBody("""{"status":1,"product":{"product_name":"Oats","product_name_de":"Haferflocken","brands":"Alnatura","quantity":"500 g","categories_tags":["en:cereals"],"image_front_url":"https://images.openfoodfacts.org/front.jpg","ingredients_text_de":"Vollkornhafer","nutriments":{"proteins_100g":13}}}"""))
         val p = api.product(" 0012345678901 ")!!
         assertEquals("Alnatura Haferflocken", p.name)
         assertEquals(500.0, p.quantity!!, 0.0)
         assertEquals("g", p.unit)
         assertEquals("Vorrat & Trockenwaren", p.suggestedCategory(listOf("Vorrat & Trockenwaren", "Tiefkühl")))
-        assertTrue(p.notes().contains("Vollkornhafer"))
-        assertTrue(p.notes().contains("13 g Protein"))
-        assertTrue(p.notes().contains(p.sourceUrl))
+        assertEquals("Packungsinhalt: 500 g\nMarke: Alnatura", p.notes())
+        assertEquals("Vollkornhafer", p.ingredients)
+        assertEquals(13.0, p.protein!!, 0.0)
+        assertEquals("https://world.openfoodfacts.org/product/0012345678901", p.sourceUrl)
         val request = server.takeRequest()
         assertTrue(request.path!!.startsWith("/api/v2/product/0012345678901.json?"))
         assertTrue(request.getHeader("User-Agent")!!.contains("Yummify/"))

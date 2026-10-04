@@ -251,8 +251,6 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                                 Spacer(Modifier.width(8.dp)); Text(if (lookupBusy) "Produktdaten werden geladen …" else "Produktdaten laden")
                             }
                             lookupMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                            Text("Produktdaten: Open Food Facts (ODbL), Bilder: CC BY-SA", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            productSource?.let { source -> TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source))) }) { Text("Quelle bei Open Food Facts öffnen") } }
                         }
                     }
                     if (editName) OutlinedTextField(name, { name = it }, label = { Text("Artikelname") }, modifier = Modifier.fillMaxWidth(),
@@ -297,13 +295,17 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh))
                         }
                     }
-                    if (listOf(calories, fat, carbohydrates, protein).any { it != null } || !ingredients.isNullOrBlank()) {
+                    if (listOf(calories, fat, carbohydrates, protein).any { it != null } || !ingredients.isNullOrBlank() || productSource != null) {
                         DetailSection("Produktinformationen", Icons.Default.Info) {
                             Text("Nährwerte pro 100 g / 100 ml", style = MaterialTheme.typography.labelLarge)
                             listOf("Kalorien" to calories, "Fett" to fat, "Kohlenhydrate" to carbohydrates, "Protein" to protein).forEach { (label, value) ->
                                 value?.let { Text("$label: ${InventoryMath.number(it)} ${if (label == "Kalorien") "kcal" else "g"}") }
                             }
                             ingredients?.takeIf { it.isNotBlank() }?.let { Text("Zutaten: $it", style = MaterialTheme.typography.bodyMedium) }
+                            productSource?.let { source ->
+                                TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source))) }) { Text("Quelle bei Open Food Facts öffnen") }
+                                Text("Produktdaten: Open Food Facts (ODbL), Bilder: CC BY-SA", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                     OutlinedTextField(notes, { notes = it }, label = { Text("Notizen") }, modifier = Modifier.fillMaxWidth(), minLines = 3)

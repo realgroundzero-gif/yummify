@@ -6,4 +6,6 @@
     <string name="nav_notion_hub">Notion Hub</string>
     <string name="widget_name">yummify Wochenplaner Widget</string>
     <string name="widget_description">Schlanke Wochenliste von Montag bis Sonntag mit Heute-Markierung</string>
+    <string name="shopping_widget_name">yummify Einkaufsliste Widget</string>
+    <string name="shopping_widget_description">Scrollbare Einkaufsliste mit Mengen, Abhaken und Zutaten für heute</string>
 </resources>

@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken
 import de.yummify.app.data.model.InventoryItem
 import de.yummify.app.data.model.InventoryChoices
 import de.yummify.app.data.model.InventoryMath
+import de.yummify.app.data.model.compactProductNotes
 import de.yummify.app.data.remote.NotionInventoryApi
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -80,7 +81,10 @@ class InventoryRepository internal constructor(context: Context, private val api
     private fun load(id: String): List<InventoryItem> {
         val raw = prefs.getString(key(id), null) ?: return emptyList()
         // Preserve malformed storage instead of silently replacing it with an empty inventory.
-        return gson.fromJson(raw, object : TypeToken<List<InventoryItem>>() {}.type) ?: emptyList()
+        val stored: List<InventoryItem> = gson.fromJson(raw, object : TypeToken<List<InventoryItem>>() {}.type) ?: emptyList()
+        val compact = stored.map { it.compactProductNotes() }
+        if (compact != stored) check(prefs.edit().putString(key(id), gson.toJson(compact)).commit()) { "Produktnotizen konnten nicht gespeichert werden." }
+        return compact
     }
     private fun persist() {
         check(prefs.edit().putString(key(database), gson.toJson(records)).putStringSet("purchases_${database}", purchases).commit()) { "Inventar konnte nicht gespeichert werden." }
@@ -140,9 +144,9 @@ class InventoryRepository internal constructor(context: Context, private val api
                 require(remote.map { it.id }.distinct().size == remote.size) { "Doppelte Artikel-IDs in Notion. Bitte die IDs bereinigen." }
                 // Dirty local entries take precedence. Unchanged remote removals are reflected locally.
                 val dirty = records.filter { it.dirty }
-                records = remote.filter { row -> dirty.none { it.id == row.id || (it.pageId != null && it.pageId == row.pageId) } }.map { row -> row.copy(localCoverPath = records.firstOrNull { it.id == row.id || it.pageId == row.pageId }?.localCoverPath) } + dirty
+                records = remote.filter { row -> dirty.none { it.id == row.id || (it.pageId != null && it.pageId == row.pageId) } }.map { row -> row.copy(localCoverPath = records.firstOrNull { it.id == row.id || it.pageId == row.pageId }?.localCoverPath).compactProductNotes() } + dirty
                 persist()
-                dirty.forEach { pending ->
+                records.filter { it.dirty }.forEach { pending ->
                     val remoteItem = remote.firstOrNull { it.id == pending.id || (pending.pageId != null && it.pageId == pending.pageId) }
                     val item = pending.copy(pageId = pending.pageId ?: remoteItem?.pageId)
                     if (item.deleted) {

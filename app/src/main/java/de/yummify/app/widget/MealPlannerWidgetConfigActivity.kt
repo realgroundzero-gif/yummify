@@ -30,7 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.yummify.app.ui.theme.YummifyTheme
 
-class MealPlannerWidgetConfigActivity : ComponentActivity() {
+open class MealPlannerWidgetConfigActivity : ComponentActivity() {
+    protected open val shoppingWidget = false
 
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
 
@@ -48,12 +49,13 @@ class MealPlannerWidgetConfigActivity : ComponentActivity() {
         }
 
         val prefs = getSharedPreferences("widget_prefs", Context.MODE_PRIVATE)
-        val initialTransparency = prefs.getInt("transparency_$appWidgetId", 100)
+        val initialTransparency = prefs.getInt("${if (shoppingWidget) "shopping_transparency" else "transparency"}_$appWidgetId", 100)
 
         setContent {
             YummifyTheme {
                 WidgetConfigScreen(
                     initialTransparency = initialTransparency,
+                    shoppingWidget = shoppingWidget,
                     onSave = { transparency ->
                         saveWidgetSettings(transparency)
                     },
@@ -75,10 +77,11 @@ class MealPlannerWidgetConfigActivity : ComponentActivity() {
         val appWidgetManager = AppWidgetManager.getInstance(this)
 
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-            prefs.edit().putInt("transparency_$appWidgetId", transparency).apply()
+            prefs.edit().putInt("${if (shoppingWidget) "shopping_transparency" else "transparency"}_$appWidgetId", transparency).apply()
         }
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-            MealPlannerWidgetProvider.updateAppWidget(this, appWidgetManager, appWidgetId)
+            if (shoppingWidget) ShoppingListWidgetProvider.updateAppWidget(this, appWidgetManager, appWidgetId)
+            else MealPlannerWidgetProvider.updateAppWidget(this, appWidgetManager, appWidgetId)
         } else {
             finish()
             return
@@ -94,12 +97,13 @@ class MealPlannerWidgetConfigActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WidgetConfigScreen(initialTransparency: Int, onSave: (Int) -> Unit, onCancel: () -> Unit) {
+fun WidgetConfigScreen(initialTransparency: Int, onSave: (Int) -> Unit, onCancel: () -> Unit, shoppingWidget: Boolean = false) {
     var transparency by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(initialTransparency) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val meals by de.yummify.app.data.repository.MealPlanRepository.getInstance(context).plannedMeals.collectAsState()
+    val shopping by de.yummify.app.data.repository.ShoppingListRepository.getInstance(context).items.collectAsState()
     Scaffold(modifier = Modifier.systemBarsPadding(),
-        topBar = { TopAppBar(title = { Text("Wochenwidget") }) },
+        topBar = { TopAppBar(title = { Text(if (shoppingWidget) "Einkaufslisten-Widget" else "Wochenwidget") }) },
         bottomBar = {
             Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Abbrechen") }
@@ -107,23 +111,26 @@ fun WidgetConfigScreen(initialTransparency: Int, onSave: (Int) -> Unit, onCancel
             }
         }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Text("Aktuelle Woche", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(if (shoppingWidget) "Deine Einkaufsliste" else "Aktuelle Woche", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Color(0xFF36312D)).padding(12.dp)) {
                 androidx.compose.ui.viewinterop.AndroidView(
                     factory = { android.widget.FrameLayout(it) },
-                    modifier = Modifier.fillMaxWidth().height(240.dp),
+                    modifier = Modifier.fillMaxWidth().height(if (shoppingWidget) 360.dp else 240.dp),
                     update = { frame ->
                         frame.removeAllViews()
-                        val preview = MealPlannerWidgetProvider.buildViews(context, AppWidgetManager.INVALID_APPWIDGET_ID,
-                            heightDp = 240, transparencyOverride = transparency, plannedMeals = meals).apply(context, frame)
+                        val views = if (shoppingWidget) ShoppingListWidgetProvider.buildViews(context, AppWidgetManager.INVALID_APPWIDGET_ID,
+                            items = shopping, meals = meals, transparencyOverride = transparency, preview = true)
+                        else MealPlannerWidgetProvider.buildViews(context, AppWidgetManager.INVALID_APPWIDGET_ID,
+                            heightDp = 240, transparencyOverride = transparency, plannedMeals = meals)
+                        val preview = views.apply(context, frame)
                         frame.addView(preview, android.widget.FrameLayout.LayoutParams(-1, -1))
                     })
             }
-            Text("Montag bis Sonntag · Heute dezent hervorgehoben", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(if (shoppingWidget) "Vorschau der ersten sieben Artikel · Zutaten für heutige Gerichte hervorgehoben" else "Montag bis Sonntag · Heute dezent hervorgehoben", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("Hintergrund: $transparency %", style = MaterialTheme.typography.titleMedium)
             Slider(value = transparency.toFloat(), onValueChange = { transparency = it.toInt() }, valueRange = 0f..100f)
             Text("Die Transparenz gilt nur für dieses Widget. Text und Tagesmarkierung bleiben lesbar.", style = MaterialTheme.typography.bodySmall)
-            Text("Die Größe kannst du auf dem Homescreen anpassen. Die kompakte Ansicht zeigt alle sieben Tage; größere Widgets bieten mehr Platz für lange Gerichte.", style = MaterialTheme.typography.bodyMedium)
+            Text(if (shoppingWidget) "Die Größe kannst du auf dem Homescreen anpassen (4×2 oder 4×3). Die Liste lässt sich vertikal scrollen. Tippe auf den Kreis zum Abhaken oder auf einen Artikel, um die Einkaufsliste zu öffnen." else "Die Größe kannst du auf dem Homescreen anpassen. Die kompakte Ansicht zeigt alle sieben Tage; größere Widgets bieten mehr Platz für lange Gerichte.", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
