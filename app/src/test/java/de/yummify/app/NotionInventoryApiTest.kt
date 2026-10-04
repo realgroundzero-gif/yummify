@@ -225,6 +225,36 @@ class NotionInventoryApiTest {
         assertEquals(item.ingredients, loaded.ingredients)
         assertEquals(item.productUrl, loaded.productUrl)
     }
+    @Test fun kcalColumnReceivesBarcodeCaloriesAndRoundTripsWithoutSchemaChanges() {
+        val schema = productSchema().apply { add("kcal", remove("Kalorien")) }
+        val before = schema.deepCopy()
+        respond("""{"data_sources":[{"id":"source"}]}""")
+        respond(gson.toJson(mapOf("properties" to schema)))
+        api.source("11111111-1111-1111-1111-111111111111")
+        assertEquals(2, server.requestCount)
+        server.takeRequest(); server.takeRequest()
+        val product = de.yummify.app.data.remote.OpenFoodFactsApi.decode(gson.fromJson(
+            """{"status":1,"product":{"product_name":"Kartoffel-Schupfnudeln","quantity":"400g","nutriments":{"energy-kcal_100g":166,"energy-kj_100g":701.6,"energy_100g":701.6}}}""",
+            JsonObject::class.java), "4075600113463")!!
+        respond("""{"id":"page"}""")
+        api.save("source", InventoryItem(pageId = "page", name = product.name!!, calories = product.calories))
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        val properties = gson.fromJson(request.body.readUtf8(), JsonObject::class.java).getAsJsonObject("properties")
+        assertFalse(properties.has("Kalorien"))
+        assertEquals(166.0, properties.getAsJsonObject("kcal")["number"].asDouble, 0.0)
+        val mapping = NotionInventoryApi.resolveSchema(schema)
+        val loaded = NotionInventoryApi.decode(JsonObject().apply { addProperty("id", "page"); add("properties", properties) }, mapping)
+        assertEquals(166.0, loaded.calories!!, 0.0)
+        assertEquals(before, schema)
+    }
+    @Test fun calorieAliasUsesCanonicalPriorityAndChecksNumericType() {
+        val schema = productSchema().apply { add("kcal", JsonObject().apply { addProperty("type", "number") }) }
+        assertEquals("Kalorien", NotionInventoryApi.resolveSchema(schema)["Kalorien"]!!.name)
+        schema.remove("Kalorien")
+        schema.getAsJsonObject("kcal").addProperty("type", "rich_text")
+        assertThrows(IllegalArgumentException::class.java) { NotionInventoryApi.resolveSchema(schema) }
+    }
     @Test fun unknownProductDataDoesNotClearNotionColumnsAndNullNumbersStayUnknown() {
         val mapping = NotionInventoryApi.resolveSchema(productSchema())
         val properties = gson.toJsonTree(NotionInventoryApi.properties(InventoryItem(name = "Reis"), mapping)).asJsonObject

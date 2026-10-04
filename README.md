@@ -273,7 +273,7 @@ Die vorhandenen Notion-Spalten werden zusätzlich direkt befüllt und wieder ein
 
 | Notion-Feld | Typ | Open-Food-Facts-Wert |
 |---|---|---|
-| Kalorien | number | energy-kcal_100g (kcal je 100 g/ml) |
+| Kalorien oder kcal | number | energy-kcal_100g (kcal je 100 g/ml; Kalorien hat Vorrang, wenn beide Spalten existieren) |
 | Fett | number | fat_100g (g je 100 g/ml) |
 | Kohlenhydrate | number | carbohydrates_100g (g je 100 g/ml) |
 | Protein | number | proteins_100g (g je 100 g/ml) |

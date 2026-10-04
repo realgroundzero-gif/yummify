@@ -188,12 +188,14 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
             val type = status?.get("type")?.asString
             val statusOptions = status?.get(type)?.takeIf { it.isJsonObject }?.asJsonObject?.getAsJsonArray("options")
                 ?.map { it.asJsonObject["name"].asString }.orEmpty()
-            val productFields = productSchemaTypes.mapNotNull { (name, expected) ->
-                val column = schema.get(name)?.takeIf { it.isJsonObject }?.asJsonObject ?: return@mapNotNull null
+            val productFields = productSchemaTypes.mapNotNull { (key, expected) ->
+                val name = (if (key == "Kalorien") listOf("Kalorien", "kcal") else listOf(key))
+                    .firstOrNull { schema.has(it) } ?: return@mapNotNull null
+                val column = schema.getAsJsonObject(name)
                 val actual = column["type"]?.asString
-                val allowed = if (name == "URL") setOf("url", "rich_text") else setOf(expected)
+                val allowed = if (key == "URL") setOf("url", "rich_text") else setOf(expected)
                 require(actual in allowed) { "Notion-Feld '$name' muss ${allowed.joinToString(" / ")} sein." }
-                name to Field(name, actual!!)
+                key to Field(name, actual!!)
             }.toMap()
             val resolved = fields + productFields
             return if (type in setOf("select", "status", "rich_text")) resolved + ("Status" to Field("Status", type!!, statusOptions)) else resolved
