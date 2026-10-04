@@ -145,7 +145,9 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
     }
     companion object {
         val schemaTypes = linkedMapOf("Name" to "title", "Menge" to "number", "Einheit" to "rich_text", "Kategorie" to "rich_text", "Lagerort" to "rich_text", "Mindestbestand" to "number", "Ablaufdatum" to "date", "Barcode" to "rich_text", "Notizen" to "rich_text", "Artikel-ID" to "rich_text")
-        fun rich(text: String) = if (text.isEmpty()) emptyList() else listOf(mapOf("text" to mapOf("content" to text)))
+        fun rich(text: String) = text.chunked(2000).map { mapOf("text" to mapOf("content" to it)) }
+        // Read/write these columns only when they already exist; never create or alter them.
+        val productSchemaTypes = linkedMapOf("Kalorien" to "number", "Fett" to "number", "Kohlenhydrate" to "number", "Protein" to "number", "Zutaten" to "rich_text", "URL" to "url")
         data class Field(val name: String, val type: String, val options: List<String> = emptyList())
         val legacyMapping = schemaTypes.mapValues { (name, type) -> Field(name, type) }
         val screenshotSchemaTypes = linkedMapOf("Artikel" to "title", "Bestand" to "number",
@@ -186,17 +188,31 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
             val type = status?.get("type")?.asString
             val statusOptions = status?.get(type)?.takeIf { it.isJsonObject }?.asJsonObject?.getAsJsonArray("options")
                 ?.map { it.asJsonObject["name"].asString }.orEmpty()
-            return if (type in setOf("select", "status", "rich_text")) fields + ("Status" to Field("Status", type!!, statusOptions)) else fields
+            val productFields = productSchemaTypes.mapNotNull { (name, expected) ->
+                val column = schema.get(name)?.takeIf { it.isJsonObject }?.asJsonObject ?: return@mapNotNull null
+                val actual = column["type"]?.asString
+                val allowed = if (name == "URL") setOf("url", "rich_text") else setOf(expected)
+                require(actual in allowed) { "Notion-Feld '$name' muss ${allowed.joinToString(" / ")} sein." }
+                name to Field(name, actual!!)
+            }.toMap()
+            val resolved = fields + productFields
+            return if (type in setOf("select", "status", "rich_text")) resolved + ("Status" to Field("Status", type!!, statusOptions)) else resolved
         }
         fun properties(item: InventoryItem, mapping: Map<String, Field> = legacyMapping): Map<String, Any> {
             val texts = mapOf("Name" to item.name, "Einheit" to item.unit, "Kategorie" to item.category,
                 "Lagerort" to item.location, "Barcode" to item.barcode, "Notizen" to item.notes, "Artikel-ID" to item.id,
                 "Status" to if (item.quantity > 0) "Vorhanden" else "Aufgebraucht")
-            return mapping.filter { (key, field) -> key != "Status" || field.type != "status" || texts[key] in field.options }.map { (key, field) ->
-                val text = texts[key].orEmpty()
+            val productValues = mapOf("Kalorien" to item.calories, "Fett" to item.fat, "Kohlenhydrate" to item.carbohydrates,
+                "Protein" to item.protein, "Zutaten" to item.ingredients, "URL" to item.productUrl)
+            return mapping.filter { (key, field) ->
+                (key != "Status" || field.type != "status" || texts[key] in field.options) &&
+                    (key !in productSchemaTypes || productValues[key] != null)
+            }.map { (key, field) ->
+                val text = if (key in productSchemaTypes) productValues[key]?.toString().orEmpty() else texts[key].orEmpty()
                 val value: Any? = when (field.type) {
                     "title", "rich_text" -> rich(text)
-                    "number" -> if (key == "Menge") item.quantity else item.minimum
+                    "number" -> when (key) { "Menge" -> item.quantity; "Mindestbestand" -> item.minimum; else -> productValues[key] }
+                    "url" -> text.takeIf { it.isNotBlank() }
                     "date" -> item.expiry?.let { mapOf("start" to it) }
                     "select", "status" -> text.takeIf { it.isNotBlank() }?.let { mapOf("name" to it) }
                     "multi_select" -> {
@@ -219,6 +235,7 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
                 return when (mapping[key]?.type) {
                     "select" -> obj.get("select")?.takeUnless { it.isJsonNull }?.asJsonObject?.get("name")?.asString.orEmpty()
                     "multi_select" -> options(key).joinToString(", ")
+                    "url" -> obj.get("url")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
                     else -> obj.getAsJsonArray(mapping[key]?.type ?: "rich_text")?.joinToString("") {
                         val rich = it.asJsonObject
                         rich["plain_text"]?.asString ?: rich.getAsJsonObject("text")?.get("content")?.asString.orEmpty()
@@ -226,11 +243,15 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
                 }
             }
             fun number(key: String) = property(key)?.get("number")?.takeUnless { it.isJsonNull }?.asDouble ?: 0.0
+            fun optionalNumber(key: String) = property(key)?.get("number")?.takeUnless { it.isJsonNull }?.asDouble
             val id = page["id"].asString
             return InventoryItem(id = text("Artikel-ID").ifBlank { id }, pageId = id, name = text("Name"), quantity = number("Menge"),
                 unit = text("Einheit"), category = text("Kategorie"), location = text("Lagerort"), categoryOptions = options("Kategorie"),
                 minimum = number("Mindestbestand"), expiry = property("Ablaufdatum")?.get("date")?.takeUnless { it.isJsonNull }?.asJsonObject?.get("start")?.asString?.take(10),
-                barcode = text("Barcode"), notes = text("Notizen"), coverUrl = coverUrl(page), dirty = false)
+                barcode = text("Barcode"), notes = text("Notizen"), coverUrl = coverUrl(page), dirty = false,
+                calories = optionalNumber("Kalorien"), fat = optionalNumber("Fett"), carbohydrates = optionalNumber("Kohlenhydrate"), protein = optionalNumber("Protein"),
+                ingredients = if (mapping.containsKey("Zutaten")) text("Zutaten") else null,
+                productUrl = if (mapping.containsKey("URL")) text("URL") else null)
         }
     }
 }

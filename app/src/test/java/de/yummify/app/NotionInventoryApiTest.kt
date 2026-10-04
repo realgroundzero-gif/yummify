@@ -191,4 +191,69 @@ class NotionInventoryApiTest {
         assertFalse(NotionInventoryApi.properties(InventoryItem(name = "Milch", quantity = 0.0), mapping).containsKey("Status"))
     }
 
+    private fun productSchema() = screenshotSchema().apply {
+        NotionInventoryApi.schemaTypes.filterKeys { it in setOf("Mindestbestand", "Barcode", "Notizen", "Artikel-ID") }.forEach { (name, type) ->
+            add(name, JsonObject().apply { addProperty("type", type) })
+        }
+        NotionInventoryApi.productSchemaTypes.forEach { (name, type) -> add(name, JsonObject().apply { addProperty("type", type) }) }
+    }
+    @Test fun existingProductColumnsAreWrittenAndReadWithoutChangingSchema() {
+        val schema = productSchema()
+        respond("""{"data_sources":[{"id":"source"}]}""")
+        respond(gson.toJson(mapOf("properties" to schema)))
+        assertEquals("source", api.source("11111111-1111-1111-1111-111111111111"))
+        assertEquals(2, server.requestCount)
+        server.takeRequest(); server.takeRequest()
+        val item = InventoryItem(pageId = "page", name = "Pesto", calories = 460.0, fat = 45.5, carbohydrates = 0.0, protein = 5.2,
+            ingredients = "Basilikum, Öl", productUrl = "https://world.openfoodfacts.org/product/4056489202974")
+        respond("""{"id":"page"}""")
+        api.save("source", item)
+        val request = server.takeRequest()
+        assertEquals("/v1/pages/page", request.path)
+        val properties = gson.fromJson(request.body.readUtf8(), JsonObject::class.java).getAsJsonObject("properties")
+        assertEquals(460.0, properties.getAsJsonObject("Kalorien")["number"].asDouble, 0.0)
+        assertEquals(45.5, properties.getAsJsonObject("Fett")["number"].asDouble, 0.0)
+        assertEquals(0.0, properties.getAsJsonObject("Kohlenhydrate")["number"].asDouble, 0.0)
+        assertEquals(5.2, properties.getAsJsonObject("Protein")["number"].asDouble, 0.0)
+        assertEquals(item.productUrl, properties.getAsJsonObject("URL")["url"].asString)
+        val page = JsonObject().apply { addProperty("id", "page"); add("properties", properties) }
+        val loaded = NotionInventoryApi.decode(page, NotionInventoryApi.resolveSchema(schema))
+        assertEquals(item.calories, loaded.calories)
+        assertEquals(item.fat, loaded.fat)
+        assertEquals(item.carbohydrates, loaded.carbohydrates)
+        assertEquals(item.protein, loaded.protein)
+        assertEquals(item.ingredients, loaded.ingredients)
+        assertEquals(item.productUrl, loaded.productUrl)
+    }
+    @Test fun unknownProductDataDoesNotClearNotionColumnsAndNullNumbersStayUnknown() {
+        val mapping = NotionInventoryApi.resolveSchema(productSchema())
+        val properties = gson.toJsonTree(NotionInventoryApi.properties(InventoryItem(name = "Reis"), mapping)).asJsonObject
+        NotionInventoryApi.productSchemaTypes.keys.forEach { assertFalse(properties.has(it)) }
+        properties.add("Kalorien", gson.fromJson("""{"number":null}""", JsonObject::class.java))
+        properties.add("Fett", gson.fromJson("""{"number":0}""", JsonObject::class.java))
+        val loaded = NotionInventoryApi.decode(JsonObject().apply { addProperty("id", "page"); add("properties", properties) }, mapping)
+        assertNull(loaded.calories)
+        assertEquals(0.0, loaded.fat!!, 0.0)
+        assertNull(loaded.protein)
+    }
+    @Test fun productFieldsRemainOptionalAndIncorrectTypesAreReported() {
+        val original = NotionInventoryApi.resolveSchema(screenshotSchema())
+        NotionInventoryApi.productSchemaTypes.keys.forEach { assertFalse(original.containsKey(it)) }
+        val schema = productSchema()
+        schema.getAsJsonObject("Protein").addProperty("type", "formula")
+        assertThrows(IllegalArgumentException::class.java) { NotionInventoryApi.resolveSchema(schema) }
+    }
+    @Test fun longIngredientListAndTextUrlRoundTripWithoutTruncation() {
+        val schema = productSchema().apply { getAsJsonObject("URL").addProperty("type", "rich_text") }
+        val mapping = NotionInventoryApi.resolveSchema(schema)
+        val item = InventoryItem(name = "Müsli", ingredients = "Hafer, ".repeat(600), productUrl = "https://world.openfoodfacts.org/product/12345678")
+        val properties = gson.toJsonTree(NotionInventoryApi.properties(item, mapping)).asJsonObject
+        val chunks = properties.getAsJsonObject("Zutaten").getAsJsonArray("rich_text")
+        assertTrue(chunks.size() > 1)
+        assertTrue(chunks.all { it.asJsonObject.getAsJsonObject("text")["content"].asString.length <= 2000 })
+        val loaded = NotionInventoryApi.decode(JsonObject().apply { addProperty("id", "page"); add("properties", properties) }, mapping)
+        assertEquals(item.ingredients, loaded.ingredients)
+        assertEquals(item.productUrl, loaded.productUrl)
+    }
+
 }

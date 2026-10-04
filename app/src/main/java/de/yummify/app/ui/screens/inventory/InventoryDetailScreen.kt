@@ -76,7 +76,12 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
         if (productCover == observedCover) productCover = item.coverUrl
         observedCover = item.coverUrl
     }
-    var productSource by rememberSaveable(item.id) { mutableStateOf<String?>(null) }
+    var productSource by rememberSaveable(item.id) { mutableStateOf(item.productUrl) }
+    var calories by rememberSaveable(item.id) { mutableStateOf(item.calories) }
+    var fat by rememberSaveable(item.id) { mutableStateOf(item.fat) }
+    var carbohydrates by rememberSaveable(item.id) { mutableStateOf(item.carbohydrates) }
+    var protein by rememberSaveable(item.id) { mutableStateOf(item.protein) }
+    var ingredients by rememberSaveable(item.id) { mutableStateOf(item.ingredients) }
     var lookupMessage by remember(item.id) { mutableStateOf<String?>(null) }
     var lookupBusy by remember(item.id) { mutableStateOf(false) }
     var existingProduct by remember(item.id) { mutableStateOf<InventoryItem?>(null) }
@@ -93,10 +98,14 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
         unit = unit, category = categories.joinToString(", "), categoryOptions = categories.toList(), location = location,
         minimum = minimum.replace(',', '.').toDoubleOrNull() ?: Double.NaN, expiry = expiry,
         barcode = barcode.trim(), notes = notes.trim(), localCoverPath = photo, coverUrl = productCover,
+        calories = calories, fat = fat, carbohydrates = carbohydrates, protein = protein,
+        ingredients = ingredients, productUrl = productSource,
         coverPending = item.coverPending || photo != item.localCoverPath || productCover != item.coverUrl)
     val changed = name != item.name || quantity != item.quantity || unit != item.unit ||
         categories.joinToString(", ") != item.category || location != item.location || minimum != InventoryMath.number(item.minimum) ||
-        expiry != item.expiry || barcode != item.barcode || notes != item.notes || photo != item.localCoverPath || productCover != item.coverUrl
+        expiry != item.expiry || barcode != item.barcode || notes != item.notes || photo != item.localCoverPath || productCover != item.coverUrl ||
+        calories != item.calories || fat != item.fat || carbohydrates != item.carbohydrates || protein != item.protein ||
+        ingredients != item.ingredients || productSource != item.productUrl
     val close = { if (!saving && !photoBusy && !scanBusy && !lookupBusy) { if (changed) discard = true else onDismiss() } }
     fun importPhoto(uri: Uri, originalCameraFile: String? = null) {
         photoBusy = true
@@ -157,6 +166,11 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                         if (categories == originalCategories && categories.isEmpty()) product.suggestedCategory(choices.categories)?.let { categories = arrayListOf(it) }
                         if (notes == originalNotes && notes.isBlank()) notes = product.notes()
                         if (photo == originalPhoto && photo == null && productCover == originalCover && productCover == null) productCover = product.imageUrl
+                        calories = product.calories
+                        fat = product.fat
+                        carbohydrates = product.carbohydrates
+                        protein = product.protein
+                        ingredients = product.ingredients
                         productSource = product.sourceUrl
                         lookupMessage = "Produktdaten geladen. Bitte prüfen und fehlende Angaben ergänzen."
                     }
@@ -281,6 +295,15 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                                 supportingContent = { Text("Nächstes Mindesthaltbarkeitsdatum") }, leadingContent = { Icon(Icons.Default.CalendarMonth, null) },
                                 trailingContent = { if (expiry != null) IconButton(onClick = { expiry = null }) { Icon(Icons.Default.Close, "MHD entfernen") } },
                                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh))
+                        }
+                    }
+                    if (listOf(calories, fat, carbohydrates, protein).any { it != null } || !ingredients.isNullOrBlank()) {
+                        DetailSection("Produktinformationen", Icons.Default.Info) {
+                            Text("Nährwerte pro 100 g / 100 ml", style = MaterialTheme.typography.labelLarge)
+                            listOf("Kalorien" to calories, "Fett" to fat, "Kohlenhydrate" to carbohydrates, "Protein" to protein).forEach { (label, value) ->
+                                value?.let { Text("$label: ${InventoryMath.number(it)} ${if (label == "Kalorien") "kcal" else "g"}") }
+                            }
+                            ingredients?.takeIf { it.isNotBlank() }?.let { Text("Zutaten: $it", style = MaterialTheme.typography.bodyMedium) }
                         }
                     }
                     OutlinedTextField(notes, { notes = it }, label = { Text("Notizen") }, modifier = Modifier.fillMaxWidth(), minLines = 3)

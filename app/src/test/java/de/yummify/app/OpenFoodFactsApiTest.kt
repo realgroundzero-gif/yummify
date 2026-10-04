@@ -63,4 +63,24 @@ class OpenFoodFactsApiTest {
         assertThrows(IllegalArgumentException::class.java) { api.product("123") }
         assertEquals(0, server.requestCount)
     }
+    @Test fun extractsDedicatedNutritionIngredientsAndProductUrl() = withServer { server, api ->
+        server.enqueue(MockResponse().setBody("""{"status":1,"product":{"product_name":"Pesto","ingredients_text_de":"Basilikum, Öl","ingredients_text":"Basil, oil","nutriments":{"energy-kcal_100g":460,"fat_100g":45.5,"carbohydrates_100g":0,"proteins_100g":"5.2"}}}"""))
+        val product = api.product("4056489202974")!!
+        assertEquals(460.0, product.calories!!, 0.0)
+        assertEquals(45.5, product.fat!!, 0.0)
+        assertEquals(0.0, product.carbohydrates!!, 0.0)
+        assertEquals(5.2, product.protein!!, 0.0)
+        assertEquals("Basilikum, Öl", product.ingredients)
+        assertEquals("https://world.openfoodfacts.org/product/4056489202974", product.sourceUrl)
+    }
+    @Test fun missingAndInvalidNutritionIsUnknownAndIngredientsUseLanguageFallback() = withServer { server, api ->
+        server.enqueue(MockResponse().setBody("""{"status":1,"product":{"ingredients_text_de":"","ingredients_text":"Rice","nutriments":{"energy-kcal_100g":null,"fat_100g":"NaN","carbohydrates_100g":-1,"proteins_100g":"unknown"}}}"""))
+        val product = api.product("12345678")!!
+        assertNull(product.calories)
+        assertNull(product.fat)
+        assertNull(product.carbohydrates)
+        assertNull(product.protein)
+        assertEquals("Rice", product.ingredients)
+    }
+
 }

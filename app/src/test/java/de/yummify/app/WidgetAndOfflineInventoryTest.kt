@@ -127,4 +127,21 @@ class WidgetAndOfflineInventoryTest {
         assertTrue(loaded.coverPending)
     }
 
+    @Test fun scannedProductFieldsSurviveOfflineRestartAndStockChanges() = runBlocking {
+        val item = InventoryItem(id = "pesto", name = "Pesto", unit = "Stück", calories = 460.0, fat = 45.5, carbohydrates = 0.0, protein = 5.2,
+            ingredients = "Basilikum, Öl", productUrl = "https://world.openfoodfacts.org/product/4056489202974")
+        InventoryRepository(context).save(item)
+        val restarted = InventoryRepository(context)
+        restarted.adjust(item.id, 1.0)
+        val loaded = InventoryRepository(context).items.value.single()
+        assertEquals(2.0, loaded.quantity, 0.0)
+        assertEquals(item.calories, loaded.calories)
+        assertEquals(item.fat, loaded.fat)
+        assertEquals(item.carbohydrates, loaded.carbohydrates)
+        assertEquals(item.protein, loaded.protein)
+        assertEquals(item.ingredients, loaded.ingredients)
+        assertEquals(item.productUrl, loaded.productUrl)
+        assertNull(loaded.validate())
+    }
+
 }

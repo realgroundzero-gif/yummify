@@ -21,7 +21,14 @@ data class InventoryItem(
     val localCoverPath: String? = null,
     val coverPending: Boolean = false,
     val dirty: Boolean = true,
-    val deleted: Boolean = false
+    val deleted: Boolean = false,
+    // Open Food Facts values per 100 g / 100 ml; null means unknown, not zero.
+    val calories: Double? = null,
+    val fat: Double? = null,
+    val carbohydrates: Double? = null,
+    val protein: Double? = null,
+    val ingredients: String? = null,
+    val productUrl: String? = null
 ) {
     val isLow: Boolean get() = quantity <= minimum
     fun isExpired(today: LocalDate = LocalDate.now()) = expiryDate()?.isBefore(today) == true
@@ -34,6 +41,9 @@ data class InventoryItem(
         !quantity.isFinite() || quantity < 0 -> "Die Menge muss eine Zahl ab 0 sein."
         !minimum.isFinite() || minimum < 0 -> "Der Mindestbestand muss eine Zahl ab 0 sein."
         unit.length > 100 || !validCategoryLength() || location.length > 100 -> "Einheit, Kategorie oder Lagerort ist zu lang."
+        listOf(calories, fat, carbohydrates, protein).any { it != null && (!it.isFinite() || it < 0) } -> "Nährwerte müssen Zahlen ab 0 sein."
+        (ingredients?.length ?: 0) > 20000 -> "Die Zutatenliste ist zu lang."
+        productUrl != null && productUrl.isNotBlank() && !runCatching { java.net.URI(productUrl).let { it.scheme in setOf("https", "http") && !it.host.isNullOrBlank() } }.getOrDefault(false) -> "Ungültige Produkt-URL."
         expiry != null && expiryDate() == null -> "Ablaufdatum als JJJJ-MM-TT eingeben."
         else -> null
     }

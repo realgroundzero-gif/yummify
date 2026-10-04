@@ -269,6 +269,23 @@ positivem Bestand „Vorhanden“. Bei 0 wird „Aufgebraucht“ gesetzt, sofern
 Status-Spalte diese Option unterstützt. Ohne diese Spalte bleibt der numerische
 Bestand maßgeblich; es wird keine neue Status-Spalte angelegt.
 
+Die vorhandenen Notion-Spalten werden zusätzlich direkt befüllt und wieder eingelesen:
+
+| Notion-Feld | Typ | Open-Food-Facts-Wert |
+|---|---|---|
+| Kalorien | number | energy-kcal_100g (kcal je 100 g/ml) |
+| Fett | number | fat_100g (g je 100 g/ml) |
+| Kohlenhydrate | number | carbohydrates_100g (g je 100 g/ml) |
+| Protein | number | proteins_100g (g je 100 g/ml) |
+| Zutaten | rich_text | ingredients_text_de, alternativ ingredients_text |
+| URL | url (auch rich_text unterstützt) | Produktlink bei Open Food Facts |
+
+Die Spalten werden nur verwendet, wenn sie bereits existieren, und nicht neu angelegt
+oder umgewandelt. Fehlende Nährwerte bleiben unbekannt; echte Nullwerte werden als 0
+übertragen. Bei lokalen Artikeln ohne Produktdaten bleiben bestehende Notion-Angaben
+unverändert. Die Angaben bleiben offline und nach Bestandsänderungen gespeichert.
+Lange Zutatenlisten werden ohne Abschneiden in Notion-Textabschnitte aufgeteilt.
+
 Datenquelle: Open Food Facts, Daten unter
 [ODbL](https://opendatacommons.org/licenses/odbl/1-0/), einzelne Inhalte unter
 [Database Contents License](https://opendatacommons.org/licenses/dbcl/1-0/),
