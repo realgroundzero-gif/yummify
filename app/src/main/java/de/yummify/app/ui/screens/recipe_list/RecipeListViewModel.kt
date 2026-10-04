@@ -3,6 +3,10 @@ package de.yummify.app.ui.screens.recipe_list
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import de.yummify.app.data.model.RecipeDraft
+import de.yummify.app.data.remote.NotionRecipeApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import de.yummify.app.data.model.Recipe
 import de.yummify.app.data.repository.RecipeRepository
 import de.yummify.app.data.repository.UserPreferencesRepository
@@ -21,6 +25,8 @@ data class RecipeListUiState(
     val isSyncing: Boolean = false,
     val lastSyncTime: String = "Vor 3 Min.",
     val isLoading: Boolean = false,
+    val isCreating: Boolean = false,
+    val creationError: String? = null,
     val error: String? = null
 )
 
@@ -62,6 +68,29 @@ class RecipeListViewModel(application: Application) : AndroidViewModel(applicati
                 isLoading = false
             )
             applyFilters(_uiState.value.searchQuery, _uiState.value.selectedCategory)
+        }
+    }
+
+    fun beginCreation() { _uiState.value = _uiState.value.copy(creationError = null) }
+
+    fun createRecipe(draft: RecipeDraft, onSuccess: () -> Unit) {
+        if (_uiState.value.isCreating) return
+        _uiState.value = _uiState.value.copy(isCreating = true, creationError = null)
+        viewModelScope.launch {
+            try {
+                val prefs = prefsRepo.preferences.value
+                val id = withContext(Dispatchers.IO) { NotionRecipeApi(prefs.tokenInput).create(prefs.databaseIdInput, draft) }
+                val category = draft.category.ifBlank { "Hauptgericht" }
+                val created = Recipe(id, draft.title, draft.description, draft.imageUrl, 0, 0, 0, 0, 0, category,
+                    listOf(category), score = 0.0, ingredients = draft.ingredients.lines().filter { it.isNotBlank() }.map { RecipeRepository.parseIngredientLine(it) },
+                    instructions = draft.steps, defaultServings = draft.servings, notionPageId = id, notionUrl = "https://www.notion.so/${id.replace("-", "")}")
+                val recipes = listOf(created) + _uiState.value.recipes.filterNot { it.id == id }
+                _uiState.value = _uiState.value.copy(recipes = recipes, categories = extractCategories(recipes), searchQuery = "", selectedCategory = "all")
+                applyFilters("", "all")
+                onSuccess()
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e
+            } catch (e: Exception) { _uiState.value = _uiState.value.copy(creationError = e.message ?: "Das Rezept konnte nicht gespeichert werden.")
+            } finally { _uiState.value = _uiState.value.copy(isCreating = false) }
         }
     }
 

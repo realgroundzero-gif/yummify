@@ -10,6 +10,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
@@ -20,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import de.yummify.app.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -27,147 +31,166 @@ import de.yummify.app.ui.components.*
 fun RecipeListScreen(
     onRecipeClick: (String) -> Unit,
     overviewRequest: Int = 0,
+    bottomBarInset: Dp = 0.dp,
     onChromeVisibilityChanged: (Boolean) -> Unit = {},
     viewModel: RecipeListViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var creating by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val listState = rememberLazyListState()
     LaunchedEffect(overviewRequest) { if (overviewRequest > 0) listState.scrollToItem(0) }
     val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 } }
     LaunchedEffect(atTop) { onChromeVisibilityChanged(atTop) }
-    LazyColumn(
-        state = listState,
-        contentPadding = PaddingValues(bottom = 100.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-    ) {
-        item(key = "header") {
-        Column {
-        Row(
+    Scaffold(
+        modifier = Modifier.fillMaxSize().padding(bottom = bottomBarInset),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        floatingActionButton = {
+            FloatingActionButton(onClick = { viewModel.beginCreation(); creating = true }) { Icon(Icons.Default.Add, "Rezept hinzufügen") }
+        }
+    ) { padding ->
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(bottom = 96.dp),
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary
+            item(key = "header") {
+            Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Image(
-                    painter = androidx.compose.ui.res.painterResource(id = de.yummify.app.R.drawable.ic_launcher_foreground),
-                    contentDescription = "Yummify Logo",
-                    modifier = Modifier.size(36.dp)
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary
+                ) {
+                    Image(
+                        painter = androidx.compose.ui.res.painterResource(id = de.yummify.app.R.drawable.ic_launcher_foreground),
+                        contentDescription = "Yummify Logo",
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+                Text(
+                    text = "yummify",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
                 )
             }
-            Text(
-                text = "yummify",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
+
+            // Search Bar (Fixed at top - retained while scrolling)
+            SearchBarRow(
+                query = state.searchQuery,
+                onQueryChange = viewModel::onSearchQueryChanged,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
-        }
 
-        // Search Bar (Fixed at top - retained while scrolling)
-        SearchBarRow(
-            query = state.searchQuery,
-            onQueryChange = viewModel::onSearchQueryChanged,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-        )
-
-        }
-        }
-        stickyHeader(key = "filters") {
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(vertical = 6.dp)
-        ) {
-            item {
-                CategoryFilterChips(
-                    selectedCategory = state.selectedCategory,
-                    categories = state.categories,
-                    totalRecipeCount = state.recipes.size,
-                    onCategorySelected = viewModel::onCategorySelected
-                )
             }
-        }
-
-        }
-
-            // Hero Recipe Card
-            state.heroRecipe?.let { hero ->
-                item {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "REZEPT DES TAGES",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Notion Empfehlung",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        RecipeHeroCard(
-                            recipe = hero,
-                            onCardClick = { onRecipeClick(it.id) },
-                            onFavoriteToggle = viewModel::onFavoriteToggled
-                        )
-                    }
-                }
             }
-
-            // Recipe list
-            if (state.isLoading) {
+            stickyHeader(key = "filters") {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(vertical = 6.dp)
+            ) {
                 item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            } else if (state.filteredRecipes.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("🔍", style = MaterialTheme.typography.headlineLarge)
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "Keine Rezepte gefunden",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            } else {
-                items(state.filteredRecipes, key = { it.id }) { recipe ->
-                    RecipeListCard(
-                        recipe = recipe,
-                        onCardClick = { onRecipeClick(it.id) },
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 5.dp)
+                    CategoryFilterChips(
+                        selectedCategory = state.selectedCategory,
+                        categories = state.categories,
+                        totalRecipeCount = state.recipes.size,
+                        onCategorySelected = viewModel::onCategorySelected
                     )
                 }
             }
+
+            }
+
+                // Hero Recipe Card
+                state.heroRecipe?.let { hero ->
+                    item {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "REZEPT DES TAGES",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Notion Empfehlung",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            RecipeHeroCard(
+                                recipe = hero,
+                                onCardClick = { onRecipeClick(it.id) },
+                                onFavoriteToggle = viewModel::onFavoriteToggled
+                            )
+                        }
+                    }
+                }
+
+                // Recipe list
+                if (state.isLoading) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                } else if (state.filteredRecipes.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("🔍", style = MaterialTheme.typography.headlineLarge)
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "Keine Rezepte gefunden",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(state.filteredRecipes, key = { it.id }) { recipe ->
+                        RecipeListCard(
+                            recipe = recipe,
+                            onCardClick = { onRecipeClick(it.id) },
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 5.dp)
+                        )
+                    }
+                }
+        }
     }
+    if (creating) RecipeCreateScreen(state.isCreating, state.creationError, onDismiss = { creating = false }, onSave = { draft ->
+        viewModel.createRecipe(draft) {
+            creating = false
+            scope.launch { listState.scrollToItem(0) }
+        }
+    })
+
 }
 
 @Composable

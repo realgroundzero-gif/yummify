@@ -331,6 +331,7 @@ class RecipeRepository(
             // Categories & Cuisine
             val categoryTags = mutableListOf<String>()
             properties["Kategorie"]?.let { prop ->
+                if (prop.type == "rich_text" && prop.richTextText.isNotBlank()) categoryTags.add(prop.richTextText)
                 prop.select?.name?.let { if (it.isNotBlank()) categoryTags.add(it) }
                 prop.multiSelect?.forEach { if (it.name.isNotBlank()) categoryTags.add(it.name) }
             }
@@ -348,7 +349,7 @@ class RecipeRepository(
                 ?: ""
 
             val ingredientList = if (zutatenText.isNotBlank()) {
-                zutatenText.split("\n", ",").mapNotNull { line ->
+                zutatenText.split(Regex("\n|,(?![0-9])")).mapNotNull { line ->
                     val trimmed = line.trim().removePrefix("-").removePrefix("•").removePrefix("*").trim()
                     if (trimmed.isNotBlank()) {
                         parseIngredientLine(trimmed)

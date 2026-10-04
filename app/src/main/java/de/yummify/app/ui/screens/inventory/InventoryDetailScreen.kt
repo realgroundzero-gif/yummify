@@ -151,8 +151,8 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                     else {
                         if (name == originalName && name.isBlank()) product.name?.let { name = it; editName = false }
                         if (unit == originalUnit && unit.isBlank() && quantity == originalQuantity && quantity == item.quantity) {
-                            product.quantity?.let { quantity = it }
-                            product.unit?.let { unit = it }
+                            // Count purchased packages instead of using their weight as stock.
+                            unit = "Stück"
                         }
                         if (categories == originalCategories && categories.isEmpty()) product.suggestedCategory(choices.categories)?.let { categories = arrayListOf(it) }
                         if (notes == originalNotes && notes.isBlank()) notes = product.notes()
@@ -178,7 +178,10 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                     val value = result.rawValue
                     if (value.isNullOrBlank()) error = "Kein lesbarer Barcode erkannt." else barcode = value
                     scanBusy = false
-                    if (!value.isNullOrBlank() && item.name.isBlank()) lookupProduct()
+                    if (!value.isNullOrBlank() && item.name.isBlank()) {
+                        if (unit.isBlank()) unit = "Stück"
+                        lookupProduct()
+                    }
                 }.addOnCanceledListener { scanBusy = false }
                     .addOnFailureListener { failure ->
                         scanBusy = false

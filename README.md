@@ -249,12 +249,14 @@ Barcode eintippen und „Produktdaten laden“ wählen. Verwendet wird die öffe
 API v2 mit deutschem Sprachwunsch und einem Yummify-User-Agent mit Repository-Kontakt.
 Die Verbindung enthält keine Notion-Zugangsdaten.
 
-Leere Felder werden mit deutschem Produktnamen/Marke, Packungsmenge und Einheit,
-einer passenden vorhandenen Kategorie sowie dem Produktbild ergänzt. Zutaten,
+Leere Felder werden mit deutschem Produktnamen/Marke,
+einer passenden vorhandenen Kategorie sowie dem Produktbild ergänzt. Gescannte
+Produkte werden standardmäßig als 1 Stück erfasst, auch wenn kein Produkt gefunden
+wurde; der Bestand zählt die Gebinde. Packungsgewicht oder -volumen erscheint
+als „Packungsinhalt“ in den Notizen. Zutaten,
 verfügbare Nährwerte und Quellenangabe erscheinen in den Notizen. Eigene Eingaben
 bleiben erhalten. Mehrfachpackungen ohne eindeutige Gesamtmenge werden nicht
-erraten. Mengen wie 500 g bedeuten den Inhalt einer Packung; vor dem Speichern
-prüfen und gegebenenfalls anpassen. Lagerort und MHD bleiben manuell.
+erraten. Bestand und Gebinde vor dem Speichern prüfen und gegebenenfalls anpassen. Lagerort und MHD bleiben manuell.
 
 Bereits lokal gespeicherte Barcodes führen zum vorhandenen Artikel, dessen Bestand
 angepasst werden kann. Die Speicherung verhindert doppelte neue Artikel mit
@@ -272,6 +274,23 @@ Datenquelle: Open Food Facts, Daten unter
 [Database Contents License](https://opendatacommons.org/licenses/dbcl/1-0/),
 Produktbilder unter [CC BY-SA](https://creativecommons.org/licenses/by-sa/3.0/).
 Die Produktquelle bleibt über die Notizen auch in Notion nachvollziehbar.
+
+### Neue Rezepte in der App
+
+Der Plus-Button der Rezeptübersicht öffnet ein Formular für Rezeptname,
+Beschreibung, Portionen, Kategorie, Zutaten (eine pro Zeile), Zubereitung
+(ein Schritt pro Zeile) und eine optionale HTTPS-Bildadresse. Speichern legt das
+Rezept mit allen Schritten in einem Request in der verbundenen Notion-Datenbank an.
+Die Integration benötigt Einfügerechte. Das vorhandene Schema wird vorher geprüft:
+Titelfeld, „Portionen“ (number), „Zutaten“ bzw. „Lebensmittel“ (rich_text) und,
+sofern ausgefüllt, „Beschreibung“ (rich_text) und „Kategorie“
+(select/multi_select/rich_text). Bei Fehlern bleiben die Eingaben im Formular;
+bei Erfolg erscheint das Rezept direkt in der Übersicht. Ohne Notion-Verbindung
+muss diese zuerst in den Einstellungen eingerichtet werden.
+
+Die Kategorieüberschriften des Inventars sind kontrastreich hervorgehoben und
+bleiben beim Scrollen oben sichtbar. Die Plus-Buttons in Inventar und Rezepten
+stehen oberhalb der tatsächlich gemessenen Footer-Höhe, auch bei größerer Schrift.
 
 ### Prüfungen
 

@@ -1,5 +1,6 @@
 package de.yummify.app.ui.screens.inventory
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.BasicTextField
@@ -20,7 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.yummify.app.data.model.InventoryItem
@@ -28,9 +31,9 @@ import de.yummify.app.data.model.InventoryMath
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun InventoryScreen(onSettings: () -> Unit, viewModel: InventoryViewModel = viewModel()) {
+fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: Dp = 0.dp, viewModel: InventoryViewModel = viewModel()) {
     val stock by viewModel.items.collectAsState()
     val sync by viewModel.sync.collectAsState()
     val message by viewModel.message.collectAsState()
@@ -55,13 +58,14 @@ fun InventoryScreen(onSettings: () -> Unit, viewModel: InventoryViewModel = view
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); viewModel.message.value = null } }
     Scaffold(
+        modifier = Modifier.fillMaxSize().padding(bottom = bottomBarInset),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbar, Modifier.padding(bottom = 80.dp)) },
-        floatingActionButton = { FloatingActionButton(onClick = { editing = "new:${java.util.UUID.randomUUID()}" }, modifier = Modifier.padding(bottom = 80.dp)) {
+        snackbarHost = { SnackbarHost(snackbar) },
+        floatingActionButton = { FloatingActionButton(onClick = { editing = "new:${java.util.UUID.randomUUID()}" }) {
             Icon(Icons.Default.Add, "Artikel hinzufügen")
         } }
     ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 160.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Surface(Modifier.weight(1f), shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
@@ -139,15 +143,19 @@ fun InventoryScreen(onSettings: () -> Unit, viewModel: InventoryViewModel = view
                 }
             }
             grouped.forEach { (category, categoryItems) ->
-                item(key = "category:$category") {
-                    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                stickyHeader(key = "category:$category") {
+                    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer, tonalElevation = 2.dp) {
                         Row(Modifier.fillMaxWidth().clickable {
                             collapsedCategories = if (category in collapsedCategories) collapsedCategories - category else collapsedCategories + category
                         }.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(Icons.Default.Category, null, tint = MaterialTheme.colorScheme.primary)
-                            Column(Modifier.weight(1f)) {
-                                Text(category, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                Text("${categoryItems.size} Artikel", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(category, modifier = Modifier.weight(1f).semantics { heading() },
+                                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary) {
+                                Text("${categoryItems.size}", Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                             }
                             Icon(if (category in collapsedCategories) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                                 if (category in collapsedCategories) "Kategorie ausklappen" else "Kategorie einklappen")

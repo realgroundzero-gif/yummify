@@ -64,7 +64,7 @@ class OpenFoodFactsApi(
 data class FoodProduct(val barcode: String, val name: String?, val quantity: Double?, val unit: String?,
     val categories: String?, val categoryTags: List<String>, val imageUrl: String?, val details: String) {
     val sourceUrl get() = "https://world.openfoodfacts.org/product/$barcode"
-    fun notes() = details.take(1500) + "\nQuelle: Open Food Facts · $sourceUrl\nDaten: ODbL · Bilder: CC BY-SA"
+    fun notes() = (listOfNotNull(quantity?.let { "Packungsinhalt: ${de.yummify.app.data.model.InventoryMath.number(it)} ${unit.orEmpty()}" }, details.takeIf { it.isNotBlank() }).joinToString("\n")).take(1500) + "\nQuelle: Open Food Facts · $sourceUrl\nDaten: ODbL · Bilder: CC BY-SA"
     fun suggestedCategory(options: List<String>): String? {
         val localized = categories.orEmpty().split(',').map { it.trim() }.filter { it.isNotBlank() }
         options.firstOrNull { option -> localized.any { it.equals(option, true) } }?.let { return it }

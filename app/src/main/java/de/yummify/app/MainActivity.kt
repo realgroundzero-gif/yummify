@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -120,8 +121,10 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
     LaunchedEffect(currentRoute) { isBarsVisible = true }
     var recipeOverviewRequest by remember { mutableIntStateOf(0) }
 
+    val density = LocalDensity.current
+    var bottomBarHeight by remember { mutableStateOf((88 * density.fontScale.coerceAtLeast(1f) + 0.5f).dp) }
     val bottomBarOffsetPx by animateDpAsState(
-        targetValue = if (showBottomBar && (currentRoute != Screen.Recipes.route || isBarsVisible)) 0.dp else (88 * LocalDensity.current.fontScale.coerceAtLeast(1f) + 8).dp,
+        targetValue = if (showBottomBar && (currentRoute != Screen.Recipes.route || isBarsVisible)) 0.dp else bottomBarHeight + 8.dp,
         animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
         label = "bottomBarAnim"
     )
@@ -145,6 +148,7 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
                 composable(Screen.Recipes.route) {
                     RecipeListScreen(
                         overviewRequest = recipeOverviewRequest,
+                        bottomBarInset = (bottomBarHeight - bottomBarOffsetPx).coerceAtLeast(0.dp),
                         onChromeVisibilityChanged = { if (navController.currentDestination?.route == Screen.Recipes.route) isBarsVisible = it },
                         onRecipeClick = { recipeId ->
                             navController.navigate("recipe_detail/$recipeId")
@@ -162,7 +166,7 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
                     ShoppingListScreen()
                 }
                 composable(Screen.Inventory.route) {
-                    InventoryScreen(onSettings = { navController.navigate(Screen.Settings.route) })
+                    InventoryScreen(onSettings = { navController.navigate(Screen.Settings.route) }, bottomBarInset = bottomBarHeight)
                 }
                 composable(Screen.Settings.route) {
                     SettingsScreen()
@@ -184,6 +188,7 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .onSizeChanged { bottomBarHeight = with(density) { it.height.toDp() } }
                         .graphicsLayer { translationY = bottomBarOffsetPx.toPx() }
                 ) {
                     YummifyBottomBar(
