@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import de.yummify.app.data.model.InventoryItem
+import de.yummify.app.data.model.InventoryChoices
 import de.yummify.app.data.model.InventoryMath
 import de.yummify.app.data.remote.NotionInventoryApi
 import kotlinx.coroutines.*
@@ -26,6 +27,27 @@ class InventoryRepository internal constructor(context: Context, private val api
     private var purchases = prefs.getStringSet("purchases_${database}", emptySet()).orEmpty().toSet()
     private val _items = MutableStateFlow(records.filterNot { it.deleted })
     val items = _items.asStateFlow()
+    private fun loadChoices(id: String) = prefs.getString("choices_$id", null)?.let { gson.fromJson(it, InventoryChoices::class.java) } ?: InventoryChoices()
+    private val _choices = MutableStateFlow(loadChoices(database))
+    val choices = _choices.asStateFlow()
+    private fun persistChoices(value: InventoryChoices) {
+        check(prefs.edit().putString("choices_$database", gson.toJson(value)).commit()) { "Auswahl konnte nicht gespeichert werden." }
+        _choices.value = value
+    }
+    suspend fun refreshChoices(itemId: String? = null) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val config = configRepo.preferences.value
+            if (config.tokenInput.isBlank() || database.isBlank()) return@withLock
+            val api = apiFactory(config.tokenInput)
+            persistChoices(api.choices(api.source(database)))
+            val item = records.firstOrNull { it.id == itemId && !it.coverPending && it.pageId != null }
+            if (item != null) {
+                val cover = api.readCover(item.pageId!!)
+                records = records.map { if (it.id == item.id) it.copy(coverUrl = cover) else it }
+                persist()
+            }
+        }
+    }
     private val _syncState = MutableStateFlow(InventorySyncState(pending = records.count { it.dirty }))
     val syncState = _syncState.asStateFlow()
     init {
@@ -36,6 +58,7 @@ class InventoryRepository internal constructor(context: Context, private val api
                         val local = if (database.isBlank() && id.isNotBlank()) records else emptyList()
                         val existing = load(id)
                         database = id
+                        _choices.value = loadChoices(id)
                         purchases = prefs.getStringSet("purchases_${database}", emptySet()).orEmpty().toSet()
                         records = existing + local.filter { item -> existing.none { it.id == item.id } }
                         persist()
@@ -81,7 +104,12 @@ class InventoryRepository internal constructor(context: Context, private val api
     }
     suspend fun save(item: InventoryItem) {
         require(item.validate() == null) { item.validate().orEmpty() }
-        mutate { records = records.filterNot { it.id == item.id } + item.copy(dirty = true) }
+        mutate {
+            require(item.barcode.isBlank() || records.none { !it.deleted && it.id != item.id && it.barcode.trim() == item.barcode.trim() } || records.any { it.id == item.id }) {
+                "Dieser Barcode ist bereits im Inventar. Bitte den vorhandenen Artikel öffnen."
+            }
+            records = records.filterNot { it.id == item.id } + item.copy(dirty = true)
+        }
     }
     suspend fun adjust(id: String, delta: Double) = mutate {
         records = records.map { if (it.id == id) it.copy(quantity = (it.quantity + delta).coerceAtLeast(0.0), dirty = true) else it }
@@ -107,11 +135,12 @@ class InventoryRepository internal constructor(context: Context, private val api
             try {
                 val api = apiFactory(config.tokenInput)
                 val source = api.source(database)
+                persistChoices(api.choices(source))
                 val remote = api.all(source)
                 require(remote.map { it.id }.distinct().size == remote.size) { "Doppelte Artikel-IDs in Notion. Bitte die IDs bereinigen." }
                 // Dirty local entries take precedence. Unchanged remote removals are reflected locally.
                 val dirty = records.filter { it.dirty }
-                records = remote.filter { row -> dirty.none { it.id == row.id || (it.pageId != null && it.pageId == row.pageId) } } + dirty
+                records = remote.filter { row -> dirty.none { it.id == row.id || (it.pageId != null && it.pageId == row.pageId) } }.map { row -> row.copy(localCoverPath = records.firstOrNull { it.id == row.id || it.pageId == row.pageId }?.localCoverPath) } + dirty
                 persist()
                 dirty.forEach { pending ->
                     val remoteItem = remote.firstOrNull { it.id == pending.id || (pending.pageId != null && it.pageId == pending.pageId) }
@@ -121,7 +150,7 @@ class InventoryRepository internal constructor(context: Context, private val api
                         records = records.filterNot { it.id == item.id }
                     } else {
                         val pageId = api.save(source, item)
-                        records = records.map { if (it.id == item.id) item.copy(pageId = pageId, dirty = false) else it }
+                        records = records.map { if (it.id == item.id) item.copy(pageId = pageId, dirty = false, coverPending = false, coverUrl = api.savedCover(pageId) ?: if (item.coverPending && item.localCoverPath != null) null else item.coverUrl) else it }
                     }
                     persist()
                 }

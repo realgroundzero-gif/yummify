@@ -157,7 +157,7 @@ lokal erfasstes Inventar wird bei der ersten Einrichtung übernommen.
 
 Bei gleichzeitigen Änderungen desselben Artikels haben noch nicht synchronisierte
 lokale Änderungen Vorrang. Auf anderen Geräten vorgenommene Änderungen werden
-beim nächsten Abgleich geladen. Der Barcode wird manuell erfasst.
+beim nächsten Abgleich geladen. Der Barcode kann manuell erfasst oder direkt mit der Kamera gescannt werden.
 
 ### Rezepte und Einkaufsliste
 
@@ -177,15 +177,101 @@ lassen sich ohne doppelte offene Einträge auf die Einkaufsliste setzen.
 
 ### Widget und Rezepteübersicht
 
-Das Widget verwendet unterstützte RemoteViews-Elemente, zeigt nur tatsächlich
-geplante Gerichte des Tages und einen leeren Zustand ohne erfundene Vorräte.
-Geplante Gerichte erhalten vollständige Datumsangaben. Alte Datensätze ohne Monat
+Das Widget zeigt die aktuelle Woche von Montag bis Sonntag als ruhige vertikale
+Liste: yummify-Wortmarke, Kalenderwoche, Tageskürzel, Datum und geplante Gerichte.
+Heute erhält eine dezente Terrakotta-Markierung. Ohne Planung steht „Noch nichts
+geplant“ in der betreffenden Zeile. Mehrere Gerichte eines Tages werden in der
+Reihenfolge der Mahlzeiten angezeigt. Es gibt keine Rezeptbilder, Zähler oder
+Aktionsschaltflächen; Antippen öffnet den Wochenplan. Die kompakte Größe ist 4×2,
+bei größeren Widgets erhalten lange Titel mehr Platz. Die Implementierung nutzt
+Android RemoteViews, und die Konfiguration zeigt dasselbe tatsächliche Layout
+mit den aktuellen Planungen statt einer fiktiven Vorschau.
+
+Geplante Gerichte haben vollständige Datumsangaben. Alte Datensätze ohne Monat
 und Jahr werden nur innerhalb der aktuellen Woche zugeordnet. Änderungen am
-Wochenplan aktualisieren das Widget. Die Widget-Einstellungen gelten pro Widget.
+Wochenplan, Datum und Zeitzone aktualisieren das Widget. Hintergrundtransparenz
+wird je Widget gespeichert, ohne die Lesbarkeit der Texte zu verändern.
 
 In der Rezepteübersicht scrollen Titel und Suche aus dem Bild. Filter-Chips bleiben
 oben stehen. Die Navigation wird beim Scrollen ausgeblendet und erscheint am
 Listenanfang wieder.
+
+### Inventarübersicht und Navigation
+
+Die Inventarübersicht beginnt direkt mit einer kompakten Suche ohne Kopfleiste.
+Lagerorte stehen in einem Auswahlmenü, Bestandsfilter in einer horizontalen
+Chip-Leiste. Material-3-Karten heben Mengen und MHD hervor. Synchronisationsdetails
+und Einrichtung sind über den kompakten Status erreichbar. Die untere Navigation
+verwendet kurze, einzeilige Beschriftungen für gleichmäßig ausgerichtete Icons.
+Im Inventar bleibt sie beim Scrollen sichtbar. „Rezepte“ führt zurück zum Anfang
+der Rezepteübersicht, auch wenn zuvor eine gespeicherte Liste gescrollt war.
+
+Die gefilterten Inventarartikel stehen in alphabetisch sortierten, ein- und
+ausklappbaren Kategorieabschnitten mit Artikelanzahl. Artikel ohne Kategorie
+erscheinen unter „Ohne Kategorie“. Innerhalb eines Abschnitts bleibt die Sortierung
+nach MHD und Name erhalten. Zum Löschen einen Artikel nach links oder rechts
+wischen und den Löschdialog bestätigen; Abbrechen erhält den Artikel. Für
+Screenreader steht dieselbe Aktion als „Artikel löschen“ zur Verfügung.
+Die Nährwert-Tagesübersicht am Ende des Planers entfällt.
+
+### Artikeldetails, Kamera und Bilder
+
+Die Artikeldetails öffnen im Vollbild. Der Artikelname erscheint als Überschrift
+und wird erst nach Antippen zum Eingabefeld. Die Menge wird über einen Plus-/Minus-
+Stepper geändert. Die Schrittweite ist auswählbar; Standardwerte sind 1 für Stück
+und Packungen, 50 für g/ml und 0,1 für kg/l. Dezimalwerte werden präzise addiert,
+und die Menge kann nicht negativ werden. Kategorien werden als Chips
+(Mehrfachauswahl) bzw. Dropdown, Lagerort und Einheit als Dropdown angeboten.
+Die Auswahl stammt aus dem Notion-Schema und bleibt für Offline-Nutzung gespeichert;
+bisherige Datenbanken mit Textfeldern behalten freie Eingabe. Das MHD wird mit dem
+Material-Datepicker ausgewählt und lässt sich entfernen.
+
+„Mit Kamera scannen“ öffnet den Google-Code-Scanner. Er benötigt Google
+Play-Dienste; das Scanner-Modul wird bei Bedarf vor dem ersten Scan heruntergeladen.
+Manuelle Barcode-Eingabe bleibt verfügbar. Scannen verändert den Artikel erst
+beim Speichern.
+
+Das Notion-Headerbild wird angezeigt. Beim Öffnen eines Artikels startet weder
+Kamera noch Bildauswahl. Die Bildaktion öffnet zunächst eine explizite Auswahl
+zwischen Galerie und neuer Fotoaufnahme. Über diese Auswahl kann ein neues Foto
+aufgenommen oder ein Bild ausgewählt werden. Bilder werden in privatem App-Speicher
+als JPEG mit korrigierter Ausrichtung und maximal 1600 Pixeln auf der langen Seite
+vorbereitet. Beim nächsten Inventarabgleich lädt die App das Bild über die Notion
+File-Upload-API hoch und setzt es als Seiten-Cover. Offline oder nach einem Fehler
+bleiben Bild und ausstehende Änderung erhalten. Normale Feldänderungen überschreiben
+ein bestehendes Notion-Cover nicht. Ohne Auto-Sync ist ein manueller Abgleich nötig.
+
+### Automatische Produktdaten per Barcode
+
+Beim Anlegen eines Artikels lädt die App nach dem Kamerascan automatisch
+Produktdaten von [Open Food Facts](https://world.openfoodfacts.org). Alternativ
+Barcode eintippen und „Produktdaten laden“ wählen. Verwendet wird die öffentliche
+API v2 mit deutschem Sprachwunsch und einem Yummify-User-Agent mit Repository-Kontakt.
+Die Verbindung enthält keine Notion-Zugangsdaten.
+
+Leere Felder werden mit deutschem Produktnamen/Marke, Packungsmenge und Einheit,
+einer passenden vorhandenen Kategorie sowie dem Produktbild ergänzt. Zutaten,
+verfügbare Nährwerte und Quellenangabe erscheinen in den Notizen. Eigene Eingaben
+bleiben erhalten. Mehrfachpackungen ohne eindeutige Gesamtmenge werden nicht
+erraten. Mengen wie 500 g bedeuten den Inhalt einer Packung; vor dem Speichern
+prüfen und gegebenenfalls anpassen. Lagerort und MHD bleiben manuell.
+
+Bereits lokal gespeicherte Barcodes führen zum vorhandenen Artikel, dessen Bestand
+angepasst werden kann. Die Speicherung verhindert doppelte neue Artikel mit
+demselben Barcode. Unbekannte Produkte, Zeitüberschreitungen und Netzwerkfehler
+lassen die manuelle Erfassung zu. Die Suche verändert weder Open Food Facts noch
+Notion; erst Speichern legt die lokale Änderung an, der übliche Inventarabgleich
+überträgt sie nach Notion. Produktbilder werden als externes HTTPS-Cover gespeichert.
+Eine bestehende Notion-Spalte „Status“ (select, status oder rich_text) erhält bei
+positivem Bestand „Vorhanden“. Bei 0 wird „Aufgebraucht“ gesetzt, sofern eine
+Status-Spalte diese Option unterstützt. Ohne diese Spalte bleibt der numerische
+Bestand maßgeblich; es wird keine neue Status-Spalte angelegt.
+
+Datenquelle: Open Food Facts, Daten unter
+[ODbL](https://opendatacommons.org/licenses/odbl/1-0/), einzelne Inhalte unter
+[Database Contents License](https://opendatacommons.org/licenses/dbcl/1-0/),
+Produktbilder unter [CC BY-SA](https://creativecommons.org/licenses/by-sa/3.0/).
+Die Produktquelle bleibt über die Notizen auch in Notion nachvollziehbar.
 
 ### Prüfungen
 

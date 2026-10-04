@@ -16,6 +16,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
     private val shopping = ShoppingListRepository.getInstance(application)
     val items = repository.items
     val sync = repository.syncState
+    val choices = repository.choices
+    fun refreshChoices(itemId: String? = null) = action { repository.refreshChoices(itemId) }
     val message = MutableStateFlow<String?>(null)
     val saving = MutableStateFlow(false)
     init { repository.syncOnResume() }

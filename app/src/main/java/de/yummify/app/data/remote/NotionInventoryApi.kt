@@ -3,6 +3,10 @@ package de.yummify.app.data.remote
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import de.yummify.app.data.model.InventoryItem
+import de.yummify.app.data.model.InventoryChoices
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
 import de.yummify.app.data.repository.RecipeRepository
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -16,6 +20,11 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
     .retryOnConnectionFailure(false).connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build(),
     private val baseUrl: String = "https://api.notion.com/v1") {
     private val mappings = mutableMapOf<String, Map<String, Field>>()
+    private val choices = mutableMapOf<String, InventoryChoices>()
+    private val savedCovers = mutableMapOf<String, String?>()
+    fun choices(source: String) = choices[source] ?: InventoryChoices()
+    fun readCover(pageId: String) = coverUrl(request("pages/$pageId"))
+    fun savedCover(pageId: String) = savedCovers[pageId]
     private val gson = GsonBuilder().serializeNulls().create()
     private fun request(path: String, method: String = "GET", body: Any? = null): JsonObject {
         val builder = Request.Builder().url("$baseUrl/$path")
@@ -47,6 +56,7 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
             request("data_sources/$source", "PATCH", mapOf("properties" to
                 missing.mapValues { (_, type) -> mapOf(type to emptyMap<String, Any>()) }))
         }
+        choices[source] = decodeChoices(schema, mapping)
         mappings[source] = mapping + missing.mapValues { (name, type) -> Field(name, type) }
         return source
     }
@@ -66,10 +76,42 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
         // Stable client ID recovers a committed create after a lost HTTP response.
         val id = item.pageId ?: all(source, mapOf("property" to "Artikel-ID", "rich_text" to mapOf("equals" to item.id))).firstOrNull()?.pageId
         val properties = properties(item, mappings[source] ?: legacyMapping)
-        val response = if (id != null) request("pages/$id", "PATCH", mapOf("properties" to properties))
-        else request("pages", "POST", mapOf("parent" to mapOf("type" to "data_source_id", "data_source_id" to source), "properties" to properties))
-        return response["id"].asString
+        val payload = mutableMapOf<String, Any>("properties" to properties)
+        if (item.coverPending) {
+            if (item.localCoverPath != null) {
+                val uploadId = uploadCover(File(item.localCoverPath))
+                payload["cover"] = mapOf("type" to "file_upload", "file_upload" to mapOf("id" to uploadId))
+            } else {
+                val url = requireNotNull(item.coverUrl) { "Bilddatei oder Produktbild fehlt." }
+                require(url.startsWith("https://")) { "Produktbild muss HTTPS verwenden." }
+                payload["cover"] = mapOf("type" to "external", "external" to mapOf("url" to url))
+            }
+        }
+        val response = if (id != null) request("pages/$id", "PATCH", payload)
+        else {
+            payload["parent"] = mapOf("type" to "data_source_id", "data_source_id" to source)
+            request("pages", "POST", payload)
+        }
+        val pageId = response["id"].asString
+        savedCovers[pageId] = coverUrl(response)
+        return pageId
     }
+    private fun uploadCover(file: File): String {
+        require(file.isFile && file.length() in 1..(5L * 1024 * 1024)) { "Bilddatei fehlt oder überschreitet 5 MB." }
+        val upload = request("file_uploads", "POST", mapOf("mode" to "single_part", "filename" to file.name, "content_type" to "image/jpeg"))
+        val uploadId = upload["id"].asString
+        val body = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("file", file.name, file.asRequestBody("image/jpeg".toMediaType())).build()
+        val req = Request.Builder().url("$baseUrl/file_uploads/$uploadId/send")
+            .header("Authorization", "Bearer ${token.trim()}").header("Notion-Version", "2025-09-03").post(body).build()
+        client.newCall(req).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("Notion-Bildupload fehlgeschlagen (${response.code}).")
+            val result = gson.fromJson(response.body?.string(), JsonObject::class.java)
+            require(result?.get("status")?.asString == "uploaded") { "Notion hat den Bildupload noch nicht bestätigt." }
+        }
+        return uploadId
+    }
+
     fun delete(source: String, item: InventoryItem) {
         val pageId = item.pageId ?: all(source, mapOf("property" to "Artikel-ID", "rich_text" to mapOf("equals" to item.id))).firstOrNull()?.pageId
         pageId?.let { request("pages/$it", "PATCH", mapOf("in_trash" to true)) }
@@ -104,15 +146,31 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
     companion object {
         val schemaTypes = linkedMapOf("Name" to "title", "Menge" to "number", "Einheit" to "rich_text", "Kategorie" to "rich_text", "Lagerort" to "rich_text", "Mindestbestand" to "number", "Ablaufdatum" to "date", "Barcode" to "rich_text", "Notizen" to "rich_text", "Artikel-ID" to "rich_text")
         fun rich(text: String) = if (text.isEmpty()) emptyList() else listOf(mapOf("text" to mapOf("content" to text)))
-        data class Field(val name: String, val type: String)
+        data class Field(val name: String, val type: String, val options: List<String> = emptyList())
         val legacyMapping = schemaTypes.mapValues { (name, type) -> Field(name, type) }
         val screenshotSchemaTypes = linkedMapOf("Artikel" to "title", "Bestand" to "number",
             "nächstes MHD" to "date", "Kategorie" to "multi_select", "Einheit" to "select", "Lagerort" to "select")
+        fun coverUrl(page: JsonObject): String? {
+            val cover = page.get("cover")?.takeUnless { it.isJsonNull }?.asJsonObject ?: return null
+            val type = cover.get("type")?.asString ?: return null
+            return cover.getAsJsonObject(type)?.get("url")?.takeUnless { it.isJsonNull }?.asString
+        }
+        fun decodeChoices(schema: JsonObject, mapping: Map<String, Field>): InventoryChoices {
+            fun options(key: String): List<String> {
+                val field = mapping[key] ?: return emptyList()
+                return schema.getAsJsonObject(field.name)?.getAsJsonObject(field.type)?.getAsJsonArray("options")
+                    ?.map { it.asJsonObject["name"].asString }.orEmpty()
+            }
+            return InventoryChoices(categories = options("Kategorie"), locations = options("Lagerort"), units = options("Einheit"),
+                categoryMultiSelect = mapping["Kategorie"]?.type == "multi_select",
+                categoryType = mapping["Kategorie"]?.type ?: "rich_text", locationType = mapping["Lagerort"]?.type ?: "rich_text",
+                unitType = mapping["Einheit"]?.type ?: "rich_text")
+        }
         fun resolveSchema(schema: JsonObject): Map<String, Field> {
             val aliases = mapOf("Name" to listOf("Artikel", "Name"), "Menge" to listOf("Bestand", "Menge"),
                 "Ablaufdatum" to listOf("nächstes MHD", "Ablaufdatum"))
             val optional = setOf("Mindestbestand", "Barcode", "Notizen", "Artikel-ID")
-            return schemaTypes.mapNotNull { (key, expected) ->
+            val fields = schemaTypes.mapNotNull { (key, expected) ->
                 val name = (aliases[key] ?: listOf(key)).firstOrNull { schema.has(it) }
                 if (name == null) {
                     require(key in optional) { "Notion-Feld '${aliases[key]?.first() ?: key}' fehlt." }
@@ -124,17 +182,23 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
                     key to Field(name, type!!)
                 }
             }.toMap()
+            val status = schema.get("Status")?.takeIf { it.isJsonObject }?.asJsonObject
+            val type = status?.get("type")?.asString
+            val statusOptions = status?.get(type)?.takeIf { it.isJsonObject }?.asJsonObject?.getAsJsonArray("options")
+                ?.map { it.asJsonObject["name"].asString }.orEmpty()
+            return if (type in setOf("select", "status", "rich_text")) fields + ("Status" to Field("Status", type!!, statusOptions)) else fields
         }
         fun properties(item: InventoryItem, mapping: Map<String, Field> = legacyMapping): Map<String, Any> {
             val texts = mapOf("Name" to item.name, "Einheit" to item.unit, "Kategorie" to item.category,
-                "Lagerort" to item.location, "Barcode" to item.barcode, "Notizen" to item.notes, "Artikel-ID" to item.id)
-            return mapping.map { (key, field) ->
+                "Lagerort" to item.location, "Barcode" to item.barcode, "Notizen" to item.notes, "Artikel-ID" to item.id,
+                "Status" to if (item.quantity > 0) "Vorhanden" else "Aufgebraucht")
+            return mapping.filter { (key, field) -> key != "Status" || field.type != "status" || texts[key] in field.options }.map { (key, field) ->
                 val text = texts[key].orEmpty()
                 val value: Any? = when (field.type) {
                     "title", "rich_text" -> rich(text)
                     "number" -> if (key == "Menge") item.quantity else item.minimum
                     "date" -> item.expiry?.let { mapOf("start" to it) }
-                    "select" -> text.takeIf { it.isNotBlank() }?.let { mapOf("name" to it) }
+                    "select", "status" -> text.takeIf { it.isNotBlank() }?.let { mapOf("name" to it) }
                     "multi_select" -> {
                         val names = if (key == "Kategorie" && item.categoryOptions.isNotEmpty() &&
                             item.category == item.categoryOptions.joinToString(", ")) item.categoryOptions
@@ -166,7 +230,7 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
             return InventoryItem(id = text("Artikel-ID").ifBlank { id }, pageId = id, name = text("Name"), quantity = number("Menge"),
                 unit = text("Einheit"), category = text("Kategorie"), location = text("Lagerort"), categoryOptions = options("Kategorie"),
                 minimum = number("Mindestbestand"), expiry = property("Ablaufdatum")?.get("date")?.takeUnless { it.isJsonNull }?.asJsonObject?.get("start")?.asString?.take(10),
-                barcode = text("Barcode"), notes = text("Notizen"), dirty = false)
+                barcode = text("Barcode"), notes = text("Notizen"), coverUrl = coverUrl(page), dirty = false)
         }
     }
 }

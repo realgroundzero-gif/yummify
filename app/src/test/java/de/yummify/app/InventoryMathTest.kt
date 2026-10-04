@@ -53,4 +53,19 @@ class InventoryMathTest {
         assertFalse(item.matchesDate(LocalDate.of(2026, 11, 3)))
         assertFalse(item.matchesDate(LocalDate.of(2027, 10, 3)))
     }
+    @Test fun categoryLengthAppliesToEachSelectedOption() {
+        val choices = listOf("a".repeat(70), "b".repeat(70))
+        assertNull(InventoryItem(name = "Mais", category = choices.joinToString(", "), categoryOptions = choices).validate())
+        assertNotNull(InventoryItem(name = "Mais", category = "a".repeat(101)).validate())
+    }
+
+    @Test fun quantityStepperIsPreciseAndNeverGoesNegative() {
+        assertEquals(0.3, InventoryMath.stepQuantity(0.2, 0.1), 0.0)
+        assertEquals(0.0, InventoryMath.stepQuantity(0.1, -0.25), 0.0)
+        assertEquals(0.1, InventoryMath.quantityStep("kg"), 0.0)
+        assertEquals(50.0, InventoryMath.quantityStep("g"), 0.0)
+        assertEquals(1.0, InventoryMath.quantityStep("Dose(n)"), 0.0)
+        assertThrows(IllegalArgumentException::class.java) { InventoryMath.stepQuantity(Double.NaN, 1.0) }
+    }
+
 }

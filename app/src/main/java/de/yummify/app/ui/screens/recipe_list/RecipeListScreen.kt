@@ -26,12 +26,14 @@ import de.yummify.app.ui.components.*
 @Composable
 fun RecipeListScreen(
     onRecipeClick: (String) -> Unit,
+    overviewRequest: Int = 0,
     onChromeVisibilityChanged: (Boolean) -> Unit = {},
     viewModel: RecipeListViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
 
     val listState = rememberLazyListState()
+    LaunchedEffect(overviewRequest) { if (overviewRequest > 0) listState.scrollToItem(0) }
     val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 } }
     LaunchedEffect(atTop) { onChromeVisibilityChanged(atTop) }
     LazyColumn(

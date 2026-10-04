@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -25,6 +26,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -116,33 +118,16 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
     var isBarsVisible by remember { mutableStateOf(true) }
 
     LaunchedEffect(currentRoute) { isBarsVisible = true }
-    val nestedScrollConnection = remember(currentRoute) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (currentRoute == Screen.Recipes.route) return Offset.Zero
-                if (available.y < -12f && isBarsVisible) {
-                    isBarsVisible = false
-                } else if (available.y > 12f && !isBarsVisible) {
-                    isBarsVisible = true
-                }
-                return Offset.Zero
-            }
-
-            override suspend fun onPostFling(consumed: androidx.compose.ui.unit.Velocity, available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
-                if (currentRoute != Screen.Recipes.route) isBarsVisible = true
-                return super.onPostFling(consumed, available)
-            }
-        }
-    }
+    var recipeOverviewRequest by remember { mutableIntStateOf(0) }
 
     val bottomBarOffsetPx by animateDpAsState(
-        targetValue = if (showBottomBar && isBarsVisible) 0.dp else 100.dp,
+        targetValue = if (showBottomBar && (currentRoute != Screen.Recipes.route || isBarsVisible)) 0.dp else (88 * LocalDensity.current.fontScale.coerceAtLeast(1f) + 8).dp,
         animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
         label = "bottomBarAnim"
     )
 
     Scaffold(
-        modifier = Modifier.nestedScroll(nestedScrollConnection),
+        modifier = Modifier,
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Box(
@@ -159,7 +144,8 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
             ) {
                 composable(Screen.Recipes.route) {
                     RecipeListScreen(
-                        onChromeVisibilityChanged = { isBarsVisible = it },
+                        overviewRequest = recipeOverviewRequest,
+                        onChromeVisibilityChanged = { if (navController.currentDestination?.route == Screen.Recipes.route) isBarsVisible = it },
                         onRecipeClick = { recipeId ->
                             navController.navigate("recipe_detail/$recipeId")
                         }
@@ -203,7 +189,13 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
                     YummifyBottomBar(
                         currentRoute = currentRoute,
                         onNavigate = { screen ->
-                            navController.navigate(screen.route) {
+                            isBarsVisible = true
+                            if (screen == Screen.Recipes) {
+                                recipeOverviewRequest++
+                                if (!navController.popBackStack(Screen.Recipes.route, false)) {
+                                    navController.navigate(Screen.Recipes.route) { launchSingleTop = true }
+                                }
+                            } else navController.navigate(screen.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
@@ -230,7 +222,8 @@ fun YummifyBottomBar(
             NavigationBar(
                 containerColor = androidx.compose.ui.graphics.Color.Transparent,
                 contentColor = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.navigationBarsPadding()
+                modifier = Modifier.height((88 * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp),
+                windowInsets = WindowInsets(0, 0, 0, 0)
             ) {
                 bottomNavItems.forEach { screen ->
                     val selected = currentRoute == screen.route
@@ -246,7 +239,14 @@ fun YummifyBottomBar(
                         },
                         label = {
                             Text(
-                                screen.title,
+                                when (screen) {
+                                    Screen.Planner -> "Plan"
+                                    Screen.Shopping -> "Einkauf"
+                                    Screen.Settings -> "Optionen"
+                                    else -> screen.title
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                             )

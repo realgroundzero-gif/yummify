@@ -1,576 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_container"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/widget_background"
-    android:orientation="vertical"
-    android:paddingLeft="12dp"
-    android:paddingTop="12dp"
-    android:paddingRight="12dp"
-    android:paddingBottom="12dp">
-
-    <!-- Header Row: Logo, Title & KW Badge (No gear icon) -->
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingBottom="6dp">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentLeft="true"
-            android:layout_centerVertical="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:src="@drawable/ic_widget_app_logo" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="6dp"
-                android:text="yummify"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container" android:layout_width="match_parent" android:layout_height="match_parent">
+    <ImageView android:id="@+id/widget_background_image" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:src="@drawable/widget_background" android:scaleType="fitXY" android:importantForAccessibility="no" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="26dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView android:layout_width="22dp" android:layout_height="22dp" android:background="@drawable/widget_wordmark_background"
+                android:gravity="center" android:includeFontPadding="false" android:text="y" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="7dp" android:text="yummify"
+                android:textColor="#F7F1EE" android:textSize="13sp" android:textStyle="bold" android:includeFontPadding="false" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="8dp" android:text="Wochenplan"
+                android:textColor="#A69D97" android:textSize="10sp" android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end" />
+            <TextView android:id="@+id/widget_kw_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KW"
+                android:textColor="#B9AFA9" android:textSize="10sp" android:textStyle="bold" android:includeFontPadding="false" />
         </LinearLayout>
-
-        <ImageView
-            android:id="@+id/widget_settings"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_alignParentRight="true"
-            android:contentDescription="Widget-Einstellungen"
-            android:padding="5dp"
-            android:src="@drawable/ic_widget_settings" />
-        <TextView
-            android:id="@+id/widget_kw_text"
-            android:layout_toLeftOf="@id/widget_settings"
-            android:layout_marginRight="8dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:background="@drawable/widget_kw_badge"
-            android:paddingLeft="8dp"
-            android:paddingTop="3dp"
-            android:paddingRight="8dp"
-            android:paddingBottom="3dp"
-            android:text="KW 40"
-            android:textColor="#FF9364"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-    </RelativeLayout>
-
-    <!-- Divider -->
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#262220" />
-
-    <!-- Weekly Strip Section Header -->
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="6dp"
-        android:paddingBottom="4dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentLeft="true"
-            android:text="WOCHENÜBERSICHT"
-            android:textColor="#A09690"
-            android:textSize="9sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_planned_count_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentRight="true"
-            android:text="7 geplante Gerichte"
-            android:textColor="#FF9364"
-            android:textSize="9sp" />
-    </RelativeLayout>
-
-    <!-- 7 Day Grid Row -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingTop="2dp"
-        android:paddingBottom="4dp"
-        android:weightSum="7">
-
-        <!-- Day Mo -->
-        <LinearLayout
-            android:id="@+id/day_mo_container"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="1dp"
-            android:layout_marginRight="1dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_day_inactive"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                android:id="@+id/day_mo_name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Mo"
-                android:textColor="#C5BBB5"
-                android:textSize="9sp" />
-
-            <TextView
-                android:id="@+id/day_mo_num"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="28"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:id="@+id/day_mo_dot"
-                android:layout_width="5dp"
-                android:layout_height="5dp"
-                android:layout_marginTop="2dp"
-                android:src="@drawable/widget_dot_green" />
+        <TextView android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="4dp" android:layout_marginBottom="4dp" android:background="#1AFFFFFF" />
+        <LinearLayout android:id="@+id/day_mo_container" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="8dp" android:layout_marginVertical="1dp">
+            <TextView android:id="@+id/day_mo_name" android:layout_width="23dp" android:layout_height="wrap_content" android:text="Mo"
+                android:textSize="10sp" android:textColor="#A69D97" android:textStyle="bold" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_mo_num" android:layout_width="20dp" android:layout_height="wrap_content" android:text="–"
+                android:textSize="11sp" android:textColor="#DDD3CD" android:textStyle="bold" android:includeFontPadding="false" />
+            <ImageView android:id="@+id/day_mo_dot" android:layout_width="4dp" android:layout_height="4dp" android:layout_marginEnd="8dp" android:src="@drawable/widget_dot_muted" android:importantForAccessibility="no" />
+            <TextView android:id="@+id/day_mo_meal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="Noch nichts geplant" android:textSize="11sp" android:textColor="#DDD3CD" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_mo_today" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
+                android:text="Heute" android:textSize="8sp" android:textStyle="bold" android:textColor="#F08C65" android:visibility="gone" android:includeFontPadding="false" />
         </LinearLayout>
-
-        <!-- Day Di -->
-        <LinearLayout
-            android:id="@+id/day_di_container"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="1dp"
-            android:layout_marginRight="1dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_day_inactive"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                android:id="@+id/day_di_name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Di"
-                android:textColor="#C5BBB5"
-                android:textSize="9sp" />
-
-            <TextView
-                android:id="@+id/day_di_num"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="29"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:id="@+id/day_di_dot"
-                android:layout_width="5dp"
-                android:layout_height="5dp"
-                android:layout_marginTop="2dp"
-                android:src="@drawable/widget_dot_green" />
+        <LinearLayout android:id="@+id/day_di_container" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="8dp" android:layout_marginVertical="1dp">
+            <TextView android:id="@+id/day_di_name" android:layout_width="23dp" android:layout_height="wrap_content" android:text="Di"
+                android:textSize="10sp" android:textColor="#A69D97" android:textStyle="bold" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_di_num" android:layout_width="20dp" android:layout_height="wrap_content" android:text="–"
+                android:textSize="11sp" android:textColor="#DDD3CD" android:textStyle="bold" android:includeFontPadding="false" />
+            <ImageView android:id="@+id/day_di_dot" android:layout_width="4dp" android:layout_height="4dp" android:layout_marginEnd="8dp" android:src="@drawable/widget_dot_muted" android:importantForAccessibility="no" />
+            <TextView android:id="@+id/day_di_meal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="Noch nichts geplant" android:textSize="11sp" android:textColor="#DDD3CD" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_di_today" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
+                android:text="Heute" android:textSize="8sp" android:textStyle="bold" android:textColor="#F08C65" android:visibility="gone" android:includeFontPadding="false" />
         </LinearLayout>
-
-        <!-- Day Mi -->
-        <LinearLayout
-            android:id="@+id/day_mi_container"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="1dp"
-            android:layout_marginRight="1dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_day_inactive"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                android:id="@+id/day_mi_name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Mi"
-                android:textColor="#C5BBB5"
-                android:textSize="9sp" />
-
-            <TextView
-                android:id="@+id/day_mi_num"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="30"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:id="@+id/day_mi_dot"
-                android:layout_width="5dp"
-                android:layout_height="5dp"
-                android:layout_marginTop="2dp"
-                android:src="@drawable/widget_dot_green" />
+        <LinearLayout android:id="@+id/day_mi_container" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="8dp" android:layout_marginVertical="1dp">
+            <TextView android:id="@+id/day_mi_name" android:layout_width="23dp" android:layout_height="wrap_content" android:text="Mi"
+                android:textSize="10sp" android:textColor="#A69D97" android:textStyle="bold" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_mi_num" android:layout_width="20dp" android:layout_height="wrap_content" android:text="–"
+                android:textSize="11sp" android:textColor="#DDD3CD" android:textStyle="bold" android:includeFontPadding="false" />
+            <ImageView android:id="@+id/day_mi_dot" android:layout_width="4dp" android:layout_height="4dp" android:layout_marginEnd="8dp" android:src="@drawable/widget_dot_muted" android:importantForAccessibility="no" />
+            <TextView android:id="@+id/day_mi_meal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="Noch nichts geplant" android:textSize="11sp" android:textColor="#DDD3CD" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_mi_today" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
+                android:text="Heute" android:textSize="8sp" android:textStyle="bold" android:textColor="#F08C65" android:visibility="gone" android:includeFontPadding="false" />
         </LinearLayout>
-
-        <!-- Day Do -->
-        <LinearLayout
-            android:id="@+id/day_do_container"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="1dp"
-            android:layout_marginRight="1dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_day_inactive"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                android:id="@+id/day_do_name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Do"
-                android:textColor="#C5BBB5"
-                android:textSize="9sp" />
-
-            <TextView
-                android:id="@+id/day_do_num"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="1"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:id="@+id/day_do_dot"
-                android:layout_width="5dp"
-                android:layout_height="5dp"
-                android:layout_marginTop="2dp"
-                android:src="@drawable/widget_dot_green" />
+        <LinearLayout android:id="@+id/day_do_container" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="8dp" android:layout_marginVertical="1dp">
+            <TextView android:id="@+id/day_do_name" android:layout_width="23dp" android:layout_height="wrap_content" android:text="Do"
+                android:textSize="10sp" android:textColor="#A69D97" android:textStyle="bold" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_do_num" android:layout_width="20dp" android:layout_height="wrap_content" android:text="–"
+                android:textSize="11sp" android:textColor="#DDD3CD" android:textStyle="bold" android:includeFontPadding="false" />
+            <ImageView android:id="@+id/day_do_dot" android:layout_width="4dp" android:layout_height="4dp" android:layout_marginEnd="8dp" android:src="@drawable/widget_dot_muted" android:importantForAccessibility="no" />
+            <TextView android:id="@+id/day_do_meal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="Noch nichts geplant" android:textSize="11sp" android:textColor="#DDD3CD" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_do_today" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
+                android:text="Heute" android:textSize="8sp" android:textStyle="bold" android:textColor="#F08C65" android:visibility="gone" android:includeFontPadding="false" />
         </LinearLayout>
-
-        <!-- Day Fr (Active Today) -->
-        <LinearLayout
-            android:id="@+id/day_fr_container"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="1dp"
-            android:layout_marginRight="1dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_day_active"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                android:id="@+id/day_fr_name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Fr"
-                android:textColor="#FFFFFF"
-                android:textSize="9sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/day_fr_num"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="2"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:id="@+id/day_fr_dot"
-                android:layout_width="5dp"
-                android:layout_height="5dp"
-                android:layout_marginTop="2dp"
-                android:src="@drawable/widget_dot_white" />
+        <LinearLayout android:id="@+id/day_fr_container" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="8dp" android:layout_marginVertical="1dp">
+            <TextView android:id="@+id/day_fr_name" android:layout_width="23dp" android:layout_height="wrap_content" android:text="Fr"
+                android:textSize="10sp" android:textColor="#A69D97" android:textStyle="bold" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_fr_num" android:layout_width="20dp" android:layout_height="wrap_content" android:text="–"
+                android:textSize="11sp" android:textColor="#DDD3CD" android:textStyle="bold" android:includeFontPadding="false" />
+            <ImageView android:id="@+id/day_fr_dot" android:layout_width="4dp" android:layout_height="4dp" android:layout_marginEnd="8dp" android:src="@drawable/widget_dot_muted" android:importantForAccessibility="no" />
+            <TextView android:id="@+id/day_fr_meal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="Noch nichts geplant" android:textSize="11sp" android:textColor="#DDD3CD" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_fr_today" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
+                android:text="Heute" android:textSize="8sp" android:textStyle="bold" android:textColor="#F08C65" android:visibility="gone" android:includeFontPadding="false" />
         </LinearLayout>
-
-        <!-- Day Sa -->
-        <LinearLayout
-            android:id="@+id/day_sa_container"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="1dp"
-            android:layout_marginRight="1dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_day_inactive"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                android:id="@+id/day_sa_name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Sa"
-                android:textColor="#C5BBB5"
-                android:textSize="9sp" />
-
-            <TextView
-                android:id="@+id/day_sa_num"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="3"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:id="@+id/day_sa_dot"
-                android:layout_width="5dp"
-                android:layout_height="5dp"
-                android:layout_marginTop="2dp"
-                android:src="@drawable/widget_dot_green" />
+        <LinearLayout android:id="@+id/day_sa_container" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="8dp" android:layout_marginVertical="1dp">
+            <TextView android:id="@+id/day_sa_name" android:layout_width="23dp" android:layout_height="wrap_content" android:text="Sa"
+                android:textSize="10sp" android:textColor="#A69D97" android:textStyle="bold" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_sa_num" android:layout_width="20dp" android:layout_height="wrap_content" android:text="–"
+                android:textSize="11sp" android:textColor="#DDD3CD" android:textStyle="bold" android:includeFontPadding="false" />
+            <ImageView android:id="@+id/day_sa_dot" android:layout_width="4dp" android:layout_height="4dp" android:layout_marginEnd="8dp" android:src="@drawable/widget_dot_muted" android:importantForAccessibility="no" />
+            <TextView android:id="@+id/day_sa_meal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="Noch nichts geplant" android:textSize="11sp" android:textColor="#DDD3CD" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_sa_today" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
+                android:text="Heute" android:textSize="8sp" android:textStyle="bold" android:textColor="#F08C65" android:visibility="gone" android:includeFontPadding="false" />
         </LinearLayout>
-
-        <!-- Day So -->
-        <LinearLayout
-            android:id="@+id/day_so_container"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="1dp"
-            android:layout_marginRight="1dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_day_inactive"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                android:id="@+id/day_so_name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="So"
-                android:textColor="#C5BBB5"
-                android:textSize="9sp" />
-
-            <TextView
-                android:id="@+id/day_so_num"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="4"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:id="@+id/day_so_dot"
-                android:layout_width="5dp"
-                android:layout_height="5dp"
-                android:layout_marginTop="2dp"
-                android:src="@drawable/widget_dot_muted" />
+        <LinearLayout android:id="@+id/day_so_container" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="8dp" android:layout_marginVertical="1dp">
+            <TextView android:id="@+id/day_so_name" android:layout_width="23dp" android:layout_height="wrap_content" android:text="So"
+                android:textSize="10sp" android:textColor="#A69D97" android:textStyle="bold" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_so_num" android:layout_width="20dp" android:layout_height="wrap_content" android:text="–"
+                android:textSize="11sp" android:textColor="#DDD3CD" android:textStyle="bold" android:includeFontPadding="false" />
+            <ImageView android:id="@+id/day_so_dot" android:layout_width="4dp" android:layout_height="4dp" android:layout_marginEnd="8dp" android:src="@drawable/widget_dot_muted" android:importantForAccessibility="no" />
+            <TextView android:id="@+id/day_so_meal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="Noch nichts geplant" android:textSize="11sp" android:textColor="#DDD3CD" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+            <TextView android:id="@+id/day_so_today" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp"
+                android:text="Heute" android:textSize="8sp" android:textStyle="bold" android:textColor="#F08C65" android:visibility="gone" android:includeFontPadding="false" />
         </LinearLayout>
     </LinearLayout>
-
-    <!-- Featured Day Subheader -->
-    <TextView
-        android:id="@+id/widget_today_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="3dp"
-        android:text="• Heute geplant • Freitag"
-        android:textColor="#FF9364"
-        android:textSize="10sp"
-        android:textStyle="bold" />
-
-    <!-- Hero Meal Card -->
-    <RelativeLayout
-        android:id="@+id/widget_hero_card"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/widget_hero_card_bg"
-        android:paddingLeft="10dp"
-        android:paddingTop="8dp"
-        android:paddingRight="10dp"
-        android:paddingBottom="8dp">
-
-        <!-- Recipe Image Thumbnail + Rating Badge -->
-        <RelativeLayout
-            android:id="@+id/hero_img_container"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_alignParentLeft="true"
-            android:layout_centerVertical="true"
-            android:background="@drawable/widget_recipe_img_bg">
-
-            <ImageView
-                android:id="@+id/hero_recipe_image"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="center"
-                android:src="@drawable/ic_widget_recipe_thumb" />
-
-            <TextView
-                android:id="@+id/hero_rating"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentRight="true"
-                android:layout_alignParentBottom="true"
-                android:layout_marginRight="1dp"
-                android:layout_marginBottom="1dp"
-                android:background="#D9000000"
-                android:paddingLeft="3dp"
-                android:paddingTop="1dp"
-                android:paddingRight="3dp"
-                android:paddingBottom="1dp"
-                android:text="★ 4.9"
-                android:textColor="#FBBF24"
-                android:textSize="8sp"
-                android:textStyle="bold" />
-        </RelativeLayout>
-
-        <!-- Right Action Button: Kochen -->
-        <TextView
-            android:id="@+id/btn_kochen"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentRight="true"
-            android:layout_centerVertical="true"
-            android:layout_marginLeft="6dp"
-            android:background="@drawable/widget_button_kochen"
-            android:paddingLeft="10dp"
-            android:paddingTop="6dp"
-            android:paddingRight="10dp"
-            android:paddingBottom="6dp"
-            android:text="▷ Kochen"
-            android:textColor="#FFFFFF"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-
-        <!-- Center Text Details -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:layout_marginLeft="8dp"
-            android:layout_toLeftOf="@id/btn_kochen"
-            android:layout_toRightOf="@id/hero_img_container"
-            android:orientation="vertical">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/hero_meal_type"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/widget_meal_tag_bg"
-                    android:paddingLeft="5dp"
-                    android:paddingTop="1dp"
-                    android:paddingRight="5dp"
-                    android:paddingBottom="1dp"
-                    android:text="ABENDESSEN"
-                    android:textColor="#FF9364"
-                    android:textSize="8sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/hero_cook_time"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginLeft="4dp"
-                    android:text="⏱ 20 Min."
-                    android:textColor="#A09690"
-                    android:textSize="9sp" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/hero_recipe_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="Cremige Tomaten-Burrata-Pasta"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/hero_ingredients_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="✓ Alle Zutaten vorrätig"
-                android:textColor="#34D399"
-                android:textSize="9sp" />
-        </LinearLayout>
-
-    </RelativeLayout>
-
-    <!-- Secondary Meal Card -->
-    <RelativeLayout
-        android:id="@+id/widget_secondary_card"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:background="@drawable/widget_secondary_card_bg"
-        android:paddingLeft="8dp"
-        android:paddingTop="6dp"
-        android:paddingRight="8dp"
-        android:paddingBottom="6dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_toLeftOf="@id/secondary_status"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/secondary_meal_type"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="FRÜHSTÜCK"
-                android:textColor="#A09690"
-                android:textSize="8sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/secondary_recipe_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="6dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="Smashed Avocado &amp; Egg Toast"
-                android:textColor="#F5EFEA"
-                android:textSize="10sp" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/secondary_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentRight="true"
-            android:layout_centerVertical="true"
-            android:text="✓ Erledigt"
-            android:textColor="#34D399"
-            android:textSize="9sp"
-            android:textStyle="bold" />
-    </RelativeLayout>
-
-</LinearLayout>
+</FrameLayout>

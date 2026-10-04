@@ -11,16 +11,20 @@ import android.view.View
 import android.widget.RemoteViews
 import de.yummify.app.MainActivity
 import de.yummify.app.R
+import de.yummify.app.data.model.MealPlanItem
 import de.yummify.app.data.model.matchesDate
 import de.yummify.app.data.repository.MealPlanRepository
 import java.time.LocalDate
-import java.time.format.TextStyle
 import java.time.temporal.IsoFields
-import java.util.Locale
 
+/** A quiet seven-day overview; configuration remains available through the launcher. */
 class MealPlannerWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         ids.forEach { updateAppWidget(context, manager, it) }
+    }
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action in setOf(Intent.ACTION_DATE_CHANGED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED)) updateAllWidgets(context)
     }
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: android.os.Bundle) {
         updateAppWidget(context, manager, id)
@@ -40,71 +44,51 @@ class MealPlannerWidgetProvider : AppWidgetProvider() {
         fun updateAppWidget(context: Context, manager: AppWidgetManager, id: Int) {
             manager.updateAppWidget(id, buildViews(context, id))
         }
-        internal fun buildViews(context: Context, id: Int): RemoteViews {
+        internal fun buildViews(context: Context, id: Int, today: LocalDate = LocalDate.now(),
+                                heightDp: Int? = null, transparencyOverride: Int? = null,
+                                plannedMeals: List<MealPlanItem>? = null): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_meal_planner)
-            val transparency = context.getSharedPreferences("widget_prefs", Context.MODE_PRIVATE)
-                .getInt("transparency_$id", 100).coerceIn(0, 100)
-            if (transparency == 100) views.setInt(R.id.widget_container, "setBackgroundResource", R.drawable.widget_background)
-            else views.setInt(R.id.widget_container, "setBackgroundColor", Color.argb(255 * transparency / 100, 23, 20, 18))
-            val today = LocalDate.now()
+            val transparency = (transparencyOverride ?: context.getSharedPreferences("widget_prefs", Context.MODE_PRIVATE)
+                .getInt("transparency_$id", 100)).coerceIn(0, 100)
+            // Fade only the rounded background, keeping text and the Today highlight readable.
+            views.setInt(R.id.widget_background_image, "setImageAlpha", 255 * transparency / 100)
+            val height = heightDp ?: AppWidgetManager.getInstance(context).getAppWidgetOptions(id)
+                .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180)
+            val compact = height < 220
             val monday = today.minusDays((today.dayOfWeek.value - 1).toLong())
-            val meals = MealPlanRepository.getInstance(context).plannedMeals.value
-            val weekMeals = meals.filter { meal -> (0..6).any { meal.matchesDate(monday.plusDays(it.toLong())) } }
+            val meals = plannedMeals ?: MealPlanRepository.getInstance(context).plannedMeals.value
             views.setTextViewText(R.id.widget_kw_text, "KW ${today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)}")
-            views.setTextViewText(R.id.widget_planned_count_text, "${weekMeals.size} geplante Gerichte")
             val containers = intArrayOf(R.id.day_mo_container, R.id.day_di_container, R.id.day_mi_container, R.id.day_do_container, R.id.day_fr_container, R.id.day_sa_container, R.id.day_so_container)
             val names = intArrayOf(R.id.day_mo_name, R.id.day_di_name, R.id.day_mi_name, R.id.day_do_name, R.id.day_fr_name, R.id.day_sa_name, R.id.day_so_name)
             val numbers = intArrayOf(R.id.day_mo_num, R.id.day_di_num, R.id.day_mi_num, R.id.day_do_num, R.id.day_fr_num, R.id.day_sa_num, R.id.day_so_num)
             val dots = intArrayOf(R.id.day_mo_dot, R.id.day_di_dot, R.id.day_mi_dot, R.id.day_do_dot, R.id.day_fr_dot, R.id.day_sa_dot, R.id.day_so_dot)
+            val titles = intArrayOf(R.id.day_mo_meal, R.id.day_di_meal, R.id.day_mi_meal, R.id.day_do_meal, R.id.day_fr_meal, R.id.day_sa_meal, R.id.day_so_meal)
+            val badges = intArrayOf(R.id.day_mo_today, R.id.day_di_today, R.id.day_mi_today, R.id.day_do_today, R.id.day_fr_today, R.id.day_sa_today, R.id.day_so_today)
             val dayCodes = listOf("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
             for (i in 0..6) {
                 val date = monday.plusDays(i.toLong())
-                val dayMeals = weekMeals.filter { it.matchesDate(date) }
+                val dayMeals = meals.filter { it.matchesDate(date) }.sortedBy { it.mealType.ordinal }
+                val label = dayMeals.joinToString(" · ") { it.recipeTitle }.ifBlank { "Noch nichts geplant" }
+                val isToday = date == today
                 views.setTextViewText(names[i], dayCodes[i])
                 views.setTextViewText(numbers[i], date.dayOfMonth.toString())
-                views.setInt(containers[i], "setBackgroundResource", if (date == today) R.drawable.widget_day_active else R.drawable.widget_day_inactive)
-                views.setImageViewResource(dots[i], when {
-                    date == today -> R.drawable.widget_dot_white
-                    dayMeals.isEmpty() -> R.drawable.widget_dot_muted
-                    dayMeals.any { !it.isCooked } -> R.drawable.widget_dot_green
-                    else -> R.drawable.widget_dot_amber
-                })
+                views.setTextViewText(titles[i], label)
+                views.setInt(titles[i], "setMaxLines", if (height >= 280) 2 else 1)
+                views.setTextViewTextSize(titles[i], android.util.TypedValue.COMPLEX_UNIT_SP, if (compact) 10f else 12f)
+                views.setTextColor(titles[i], Color.parseColor(if (isToday) "#FFFFFF" else if (dayMeals.isEmpty()) "#A69D97" else "#DDD3CD"))
+                views.setTextColor(names[i], Color.parseColor(if (isToday) "#F08C65" else "#A69D97"))
+                views.setInt(containers[i], "setBackgroundResource", if (isToday) R.drawable.widget_day_active else 0)
+                views.setImageViewResource(dots[i], if (isToday) R.drawable.widget_dot_terracotta else R.drawable.widget_dot_muted)
+                views.setViewVisibility(badges[i], if (isToday) View.VISIBLE else View.GONE)
+                views.setContentDescription(containers[i], "${dayCodes[i]}, $date${if (isToday) ", heute" else ""}: $label")
             }
-            views.setTextViewText(R.id.widget_today_label, "Heute • ${today.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.GERMAN)}")
-            val todayMeals = weekMeals.filter { it.matchesDate(today) }.sortedBy { it.mealType.ordinal }
-            val hero = todayMeals.firstOrNull { !it.isCooked } ?: todayMeals.firstOrNull()
-            val secondary = todayMeals.firstOrNull { it.id != hero?.id }
-            views.setTextViewText(R.id.hero_recipe_title, hero?.recipeTitle ?: "Heute noch kein Gericht geplant")
-            views.setTextViewText(R.id.hero_meal_type, hero?.mealType?.displayName?.uppercase() ?: "WOCHENPLAN")
-            views.setTextViewText(R.id.hero_cook_time, hero?.let { "${it.cookTimeMinutes} Min." } ?: "")
-            views.setViewVisibility(R.id.hero_rating, View.GONE)
-            views.setTextViewText(R.id.hero_ingredients_status, when {
-                hero == null -> "Tippen, um ein Gericht zu planen"
-                hero.isCooked -> "✓ Gekocht"
-                else -> "Geplant"
-            })
-            views.setTextViewText(R.id.btn_kochen, if (hero?.recipeId != null) "▷ Rezept" else "+ Planen")
-            views.setViewVisibility(R.id.widget_secondary_card, if (secondary == null) View.GONE else View.VISIBLE)
-            secondary?.let {
-                views.setTextViewText(R.id.secondary_recipe_title, it.recipeTitle)
-                views.setTextViewText(R.id.secondary_meal_type, it.mealType.displayName.uppercase())
-                views.setTextViewText(R.id.secondary_status, if (it.isCooked) "✓ Gekocht" else "Geplant")
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("route", "planner")
+                data = android.net.Uri.parse("yummify://widget/$id/week")
             }
-            fun open(request: Int, recipeId: String? = null, config: Boolean = false): PendingIntent {
-                val intent = Intent(context, if (config) MealPlannerWidgetConfigActivity::class.java else MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
-                    if (recipeId != null) putExtra("recipeId", recipeId)
-                    else putExtra("route", "planner")
-                    data = android.net.Uri.parse("yummify://widget/$id/$request")
-                }
-                return PendingIntent.getActivity(context, request, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-            }
-            views.setOnClickPendingIntent(R.id.widget_container, open(0))
-            views.setOnClickPendingIntent(R.id.btn_kochen, open(1, hero?.recipeId))
-            views.setOnClickPendingIntent(R.id.widget_hero_card, open(1, hero?.recipeId))
-            if (secondary != null) views.setOnClickPendingIntent(R.id.widget_secondary_card, open(2, secondary.recipeId))
-            views.setOnClickPendingIntent(R.id.widget_settings, open(3, config = true))
+            views.setOnClickPendingIntent(R.id.widget_container, PendingIntent.getActivity(context, id, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             return views
         }
     }

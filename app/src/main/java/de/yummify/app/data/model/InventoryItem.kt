@@ -17,6 +17,9 @@ data class InventoryItem(
     val expiry: String? = null,
     val barcode: String = "",
     val notes: String = "",
+    val coverUrl: String? = null,
+    val localCoverPath: String? = null,
+    val coverPending: Boolean = false,
     val dirty: Boolean = true,
     val deleted: Boolean = false
 ) {
@@ -24,18 +27,32 @@ data class InventoryItem(
     fun isExpired(today: LocalDate = LocalDate.now()) = expiryDate()?.isBefore(today) == true
     fun expiresSoon(today: LocalDate = LocalDate.now()): Boolean = expiryDate()?.let { !it.isBefore(today) && !it.isAfter(today.plusDays(7)) } ?: false
     fun expiryDate(): LocalDate? = expiry?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    private fun validCategoryLength() = (if (categoryOptions.isNotEmpty() && category == categoryOptions.joinToString(", ")) categoryOptions else listOf(category)).all { it.length <= 100 }
     fun validate(): String? = when {
         name.isBlank() -> "Bitte einen Namen eingeben."
         name.length > 200 || notes.length > 2000 || barcode.length > 200 -> "Name, Barcode oder Notiz ist zu lang."
         !quantity.isFinite() || quantity < 0 -> "Die Menge muss eine Zahl ab 0 sein."
         !minimum.isFinite() || minimum < 0 -> "Der Mindestbestand muss eine Zahl ab 0 sein."
-        unit.length > 100 || category.length > 100 || location.length > 100 -> "Einheit, Kategorie oder Lagerort ist zu lang."
+        unit.length > 100 || !validCategoryLength() || location.length > 100 -> "Einheit, Kategorie oder Lagerort ist zu lang."
         expiry != null && expiryDate() == null -> "Ablaufdatum als JJJJ-MM-TT eingeben."
         else -> null
     }
 }
 
 object InventoryMath {
+    fun quantityStep(unit: String): Double = when (unit.trim().lowercase(Locale.GERMAN)) {
+        "g", "ml" -> 50.0
+        "kg", "l" -> 0.1
+        else -> 1.0
+    }
+    fun stepQuantity(quantity: Double, delta: Double): Double {
+        require(quantity.isFinite() && quantity >= 0 && delta.isFinite()) { "Ungültige Menge." }
+        val result = java.math.BigDecimal.valueOf(quantity).add(java.math.BigDecimal.valueOf(delta))
+            .max(java.math.BigDecimal.ZERO).toDouble()
+        require(result.isFinite()) { "Die Menge ist zu groß." }
+        return result
+    }
+
     fun number(value: Double): String = java.text.DecimalFormat("0.###").format(value)
     fun normalizedName(value: String) = value.trim().lowercase(Locale.GERMAN).replace(Regex("\\s+"), " ")
     private fun unit(value: String): Pair<String, Double> = when (value.trim().lowercase(Locale.GERMAN).removeSuffix(".")) {
@@ -77,3 +94,14 @@ object InventoryMath {
         return (ingredient.amount * multiplier - available).coerceAtLeast(0.0)
     }
 }
+
+/** Persisted schema options, including values that are not used by any item yet. */
+data class InventoryChoices(
+    val categories: List<String> = emptyList(),
+    val locations: List<String> = emptyList(),
+    val units: List<String> = emptyList(),
+    val categoryMultiSelect: Boolean = false,
+    val categoryType: String = "rich_text",
+    val locationType: String = "rich_text",
+    val unitType: String = "rich_text"
+)

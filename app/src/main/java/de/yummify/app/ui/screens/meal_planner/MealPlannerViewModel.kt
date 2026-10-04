@@ -35,12 +35,6 @@ data class MealPlannerUiState(
     val meals: List<MealPlanItem> = emptyList(),
     val dayMeals: List<MealPlanItem> = emptyList(),
     val availableRecipes: List<Recipe> = emptyList(),
-    val totalCalories: Int = 0,
-    val targetCalories: Int = 2100,
-    val totalProtein: Int = 0,
-    val targetProtein: Int = 130,
-    val totalCarbs: Int = 0,
-    val targetCarbs: Int = 220,
     val isSyncing: Boolean = false
 )
 
@@ -117,15 +111,9 @@ class MealPlannerViewModel(application: Application) : AndroidViewModel(applicat
         val meals = allMeals ?: _uiState.value.meals
         val date = _uiState.value.days.firstOrNull { it.key == dayKey }?.date
         val dayMeals = meals.filter { date != null && it.matchesDate(date) }
-        val totalCal = dayMeals.sumOf { it.calories }
-        val totalProt = dayMeals.sumOf { it.proteinGrams }
-        val totalCarbs = dayMeals.sumOf { it.proteinGrams * 2 }
         _uiState.value = _uiState.value.copy(
             selectedDayKey = dayKey,
-            dayMeals = dayMeals,
-            totalCalories = totalCal,
-            totalProtein = totalProt,
-            totalCarbs = totalCarbs.coerceAtMost(220)
+            dayMeals = dayMeals
         )
     }
 

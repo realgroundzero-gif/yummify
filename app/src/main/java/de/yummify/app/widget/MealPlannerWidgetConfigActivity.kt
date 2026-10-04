@@ -94,271 +94,36 @@ class MealPlannerWidgetConfigActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WidgetConfigScreen(
-    initialTransparency: Int,
-    onSave: (Int) -> Unit,
-    onCancel: () -> Unit
-) {
-    var transparency by remember { mutableStateOf(initialTransparency) }
-
-    val presetValues = listOf(
-        100 to "Deckend (100%)",
-        80 to "Leicht Transparent (80%)",
-        50 to "Halbtransparent (50%)",
-        20 to "Glasmorphism (20%)",
-        0 to "Vollständig Transparent (0%)"
-    )
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Widget Anpassen", fontWeight = FontWeight.Bold)
-                        Text(
-                            "yummify Wochenplaner Widget",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        },
+fun WidgetConfigScreen(initialTransparency: Int, onSave: (Int) -> Unit, onCancel: () -> Unit) {
+    var transparency by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(initialTransparency) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val meals by de.yummify.app.data.repository.MealPlanRepository.getInstance(context).plannedMeals.collectAsState()
+    Scaffold(modifier = Modifier.systemBarsPadding(),
+        topBar = { TopAppBar(title = { Text("Wochenwidget") }) },
         bottomBar = {
-            Surface(
-                tonalElevation = 6.dp,
-                shadowElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onCancel,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Abbrechen")
-                    }
-
-                    Button(
-                        onClick = { onSave(transparency) },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFC85A32)
-                        )
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Speichern")
-                    }
-                }
+            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Abbrechen") }
+                Button(onClick = { onSave(transparency) }, modifier = Modifier.weight(1f)) { Text("Speichern") }
             }
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // Live Preview Card
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "LIVE VORSCHAU",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFC85A32),
-                        letterSpacing = 1.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Simulated Wallpaper Background
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(
-                                androidx.compose.ui.graphics.Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFF2C3E50),
-                                        Color(0xFF4CA1AF),
-                                        Color(0xFFC85A32)
-                                    )
-                                )
-                            )
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val alpha = transparency / 100f
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color(0xFF171412).copy(alpha = alpha))
-                                .border(1.dp, Color(0xFF36302C).copy(alpha = alpha.coerceAtLeast(0.3f)), RoundedCornerShape(20.dp))
-                                .padding(12.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(20.dp)
-                                                .clip(RoundedCornerShape(10.dp))
-                                                .background(Color(0xFFC85A32)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text("y", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                        }
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("yummify", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    }
-
-                                    Surface(
-                                        color = Color(0xFFC85A32),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Text("KW 40", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    listOf("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So").forEachIndexed { index, day ->
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(horizontal = 2.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(if (index == 4) Color(0xFFC85A32) else Color(0xFF211E1C))
-                                                .padding(vertical = 4.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(day, color = Color.White, fontSize = 9.sp)
-                                        }
-                                    }
-                                }
-
-                                Surface(
-                                    color = Color(0xFF2A221F),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Column {
-                                            Text("FREITAG • ABENDESSEN", color = Color(0xFFFF9364), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                                            Text("Cremige Tomaten-Burrata-Pasta", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                        }
-
-                                        Surface(
-                                            color = Color(0xFFC85A32),
-                                            shape = RoundedCornerShape(8.dp)
-                                        ) {
-                                            Text("▷ Kochen", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Text("Aktuelle Woche", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Color(0xFF36312D)).padding(12.dp)) {
+                androidx.compose.ui.viewinterop.AndroidView(
+                    factory = { android.widget.FrameLayout(it) },
+                    modifier = Modifier.fillMaxWidth().height(240.dp),
+                    update = { frame ->
+                        frame.removeAllViews()
+                        val preview = MealPlannerWidgetProvider.buildViews(context, AppWidgetManager.INVALID_APPWIDGET_ID,
+                            heightDp = 240, transparencyOverride = transparency, plannedMeals = meals).apply(context, frame)
+                        frame.addView(preview, android.widget.FrameLayout.LayoutParams(-1, -1))
+                    })
             }
-
-            // Transparency Control Card
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Palette, contentDescription = null, tint = Color(0xFFC85A32))
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text("Hintergrund-Transparenz", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text("Stelle die Transparenz des Widgets ein", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("Transparenz", fontSize = 14.sp)
-                            Text("$transparency%", fontWeight = FontWeight.Bold, color = Color(0xFFC85A32))
-                        }
-
-                        Slider(
-                            value = transparency.toFloat(),
-                            onValueChange = { transparency = it.toInt() },
-                            valueRange = 0f..100f,
-                            steps = 19,
-                            colors = SliderDefaults.colors(
-                                thumbColor = Color(0xFFC85A32),
-                                activeTrackColor = Color(0xFFC85A32)
-                            )
-                        )
-                    }
-
-                    HorizontalDivider()
-
-                    Text("Schnellauswahl", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-
-                    presetValues.forEach { (value, label) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { transparency = value }
-                                .padding(vertical = 8.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(label, fontSize = 14.sp)
-                            RadioButton(
-                                selected = transparency == value,
-                                onClick = { transparency = value },
-                                colors = RadioButtonDefaults.colors(selectedColor = Color(0xFFC85A32))
-                            )
-                        }
-                    }
-                }
-            }
+            Text("Montag bis Sonntag · Heute dezent hervorgehoben", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Hintergrund: $transparency %", style = MaterialTheme.typography.titleMedium)
+            Slider(value = transparency.toFloat(), onValueChange = { transparency = it.toInt() }, valueRange = 0f..100f)
+            Text("Die Transparenz gilt nur für dieses Widget. Text und Tagesmarkierung bleiben lesbar.", style = MaterialTheme.typography.bodySmall)
+            Text("Die Größe kannst du auf dem Homescreen anpassen. Die kompakte Ansicht zeigt alle sieben Tage; größere Widgets bieten mehr Platz für lange Gerichte.", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

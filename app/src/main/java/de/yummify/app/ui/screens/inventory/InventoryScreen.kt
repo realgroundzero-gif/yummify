@@ -1,12 +1,15 @@
 package de.yummify.app.ui.screens.inventory
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -14,8 +17,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.yummify.app.data.model.InventoryItem
@@ -30,64 +35,99 @@ fun InventoryScreen(onSettings: () -> Unit, viewModel: InventoryViewModel = view
     val sync by viewModel.sync.collectAsState()
     val message by viewModel.message.collectAsState()
     val saving by viewModel.saving.collectAsState()
+    val choices by viewModel.choices.collectAsState()
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf(StockFilter.ALL) }
     var location by rememberSaveable { mutableStateOf("Alle Lagerorte") }
-    var editing by remember { mutableStateOf<InventoryItem?>(null) }
+    var editing by rememberSaveable { mutableStateOf<String?>(null) }
+    val newItem = remember(editing) { InventoryItem(id = editing?.removePrefix("new:") ?: java.util.UUID.randomUUID().toString()) }
     var deleting by remember { mutableStateOf<InventoryItem?>(null) }
+    var showSyncDetails by remember { mutableStateOf(false) }
+    var showLocations by remember { mutableStateOf(false) }
     val today = LocalDate.now()
     val visible = stock.filter { item ->
         (location == "Alle Lagerorte" || item.location == location) &&
         (query.isBlank() || listOf(item.name, item.category, item.location, item.barcode, item.notes).any { it.contains(query, ignoreCase = true) }) &&
         when (filter) { StockFilter.ALL -> true; StockFilter.LOW -> item.isLow; StockFilter.SOON -> item.expiresSoon(today); StockFilter.EXPIRED -> item.isExpired(today) }
     }.sortedWith(compareBy<InventoryItem> { it.expiry ?: "9999-12-31" }.thenBy { it.name.lowercase() })
+    val grouped = visible.groupBy { it.category.trim().ifBlank { "Ohne Kategorie" } }.toSortedMap()
+    var collapsedCategories by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); viewModel.message.value = null } }
     Scaffold(
-        modifier = Modifier.statusBarsPadding(),
-        snackbarHost = { SnackbarHost(snackbar, Modifier.padding(bottom = 96.dp)) },
-        floatingActionButton = { FloatingActionButton(onClick = { editing = InventoryItem() }, modifier = Modifier.padding(bottom = 96.dp)) {
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbar, Modifier.padding(bottom = 80.dp)) },
+        floatingActionButton = { FloatingActionButton(onClick = { editing = "new:${java.util.UUID.randomUUID()}" }, modifier = Modifier.padding(bottom = 80.dp)) {
             Icon(Icons.Default.Add, "Artikel hinzufügen")
         } }
     ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 190.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 160.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(Modifier.weight(1f), shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                        BasicTextField(
+                            value = query, onValueChange = { query = it }, singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            decorationBox = { input ->
+                                Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(10.dp))
+                                    Box(Modifier.weight(1f)) {
+                                        if (query.isEmpty()) Text("Vorrat durchsuchen", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                                        input()
+                                    }
+                                    if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Default.Close, "Suche löschen", Modifier.size(20.dp)) }
+                                    else Spacer(Modifier.width(12.dp))
+                                }
+                            }
+                        )
+                    }
+                    FilledTonalIconButton(onClick = viewModel::sync, enabled = !sync.busy) {
+                        if (sync.busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Icon(Icons.Default.Sync, "Inventar synchronisieren")
+                    }
+                }
+            }
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Mein Inventar", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                        Text("${stock.size} Artikel · ${stock.count { it.isLow }} nachkaufen", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    IconButton(onClick = viewModel::sync, enabled = !sync.busy) {
-                        if (sync.busy) CircularProgressIndicator(Modifier.size(24.dp)) else Icon(Icons.Default.Sync, "Inventar synchronisieren")
-                    }
-                }
-            }
-            item {
-                Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.large) {
-                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                        Text(sync.message, style = MaterialTheme.typography.bodySmall)
-                        if (sync.pending > 0) Text("${sync.pending} Änderungen warten auf Notion", style = MaterialTheme.typography.labelMedium)
-                        if (!sync.configured) TextButton(onClick = onSettings) { Text("Notion-Inventar einrichten") }
+                    Text("${visible.size} Artikel", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(12.dp))
+                    Row(Modifier.weight(1f).clickable { showSyncDetails = true }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                        Icon(if (sync.pending > 0) Icons.Default.CloudUpload else if (sync.configured) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                            null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (sync.pending > 0) "${sync.pending} ausstehend" else if (sync.configured) "Notion · Status" else "Lokal · Einrichten",
+                            style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-            }
-            item {
-                OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), label = { Text("Artikel, Kategorie oder Barcode suchen") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
-            }
-            item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(StockFilter.values().toList()) { choice -> FilterChip(selected = filter == choice, onClick = { filter = choice }, label = { Text(choice.title) }) }
-                }
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(listOf("Alle Lagerorte") + stock.map { it.location }.distinct().sorted()) { place ->
-                        FilterChip(selected = location == place, onClick = { location = place }, label = { Text(place) })
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    item {
+                        Box {
+                            AssistChip(onClick = { showLocations = true }, label = { Text(if (location == "Alle Lagerorte") "Lagerort" else location) },
+                                leadingIcon = { Icon(Icons.Default.Place, null, Modifier.size(16.dp)) },
+                                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(16.dp)) })
+                            DropdownMenu(expanded = showLocations, onDismissRequest = { showLocations = false }) {
+                                (listOf("Alle Lagerorte") + stock.map { it.location }.filter { it.isNotBlank() }.distinct().sorted()).forEach { place ->
+                                    DropdownMenuItem(text = { Text(place) }, onClick = { location = place; showLocations = false },
+                                        trailingIcon = { if (location == place) Icon(Icons.Default.Check, null) })
+                                }
+                            }
+                        }
+                    }
+                    items(StockFilter.values().toList()) { choice ->
+                        FilterChip(selected = filter == choice, onClick = { filter = choice }, label = { Text(choice.title) },
+                            leadingIcon = if (filter == choice) { { Icon(Icons.Default.Check, null, Modifier.size(16.dp)) } } else null)
                     }
                 }
             }
             if (stock.any { it.isLow }) item {
-                OutlinedButton(onClick = { viewModel.toShopping(stock.filter { it.isLow }) }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.ShoppingCart, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Mindestbestände nachkaufen")
+                TextButton(onClick = { viewModel.toShopping(stock.filter { it.isLow }) }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                    Icon(Icons.Default.AddShoppingCart, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                    Text("${stock.count { it.isLow }} Artikel nachkaufen")
                 }
             }
             if (visible.isEmpty()) item {
@@ -98,78 +138,98 @@ fun InventoryScreen(onSettings: () -> Unit, viewModel: InventoryViewModel = view
                     Text(if (stock.isEmpty()) "Erfasse Lebensmittel mit Menge, Lagerort und Ablaufdatum." else "Passe Suche oder Filter an.", style = MaterialTheme.typography.bodyMedium)
                 }
             }
-            items(visible, key = { it.id }) { item ->
-                Card(onClick = { editing = item }, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+            grouped.forEach { (category, categoryItems) ->
+                item(key = "category:$category") {
+                    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                        Row(Modifier.fillMaxWidth().clickable {
+                            collapsedCategories = if (category in collapsedCategories) collapsedCategories - category else collapsedCategories + category
+                        }.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Default.Category, null, tint = MaterialTheme.colorScheme.primary)
                             Column(Modifier.weight(1f)) {
-                                Text(item.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text("${item.category} · ${item.location}", style = MaterialTheme.typography.bodySmall)
+                                Text(category, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text("${categoryItems.size} Artikel", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Text("${InventoryMath.number(item.quantity)} ${item.unit}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                            Icon(if (category in collapsedCategories) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                if (category in collapsedCategories) "Kategorie ausklappen" else "Kategorie einklappen")
                         }
-                        item.expiryDate()?.let { date ->
-                            Text("${if (item.isExpired(today)) "Abgelaufen" else "Haltbar bis"}: ${date.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))}",
-                                color = if (item.isExpired(today)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        if (item.isLow) Text("Mindestbestand: ${InventoryMath.number(item.minimum)} ${item.unit} · Nachkaufen", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
-                        if (item.dirty && sync.configured) Text("Wartet auf Synchronisation", style = MaterialTheme.typography.labelSmall)
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { viewModel.adjust(item.id, -1.0) }, enabled = item.quantity > 0) { Icon(Icons.Default.Remove, "1 ${item.unit} verbrauchen") }
-                                Text("1 ${item.unit}", style = MaterialTheme.typography.labelMedium)
-                                IconButton(onClick = { viewModel.adjust(item.id, 1.0) }) { Icon(Icons.Default.Add, "1 ${item.unit} hinzufügen") }
+                    }
+                }
+                if (category !in collapsedCategories) items(categoryItems, key = { "article:${it.id}" }) { item ->
+                    val dismissState = rememberSwipeToDismissBoxState(confirmValueChange = { value ->
+                        if (value != SwipeToDismissBoxValue.Settled) deleting = item
+                        // Keep the row in place until deletion is explicitly confirmed.
+                        false
+                    })
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        modifier = Modifier.semantics {
+                            customActions = listOf(CustomAccessibilityAction("Artikel löschen") { deleting = item; true })
+                        },
+                        backgroundContent = {
+                            Surface(Modifier.fillMaxSize(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.errorContainer) {
+                                Box(Modifier.padding(horizontal = 20.dp), contentAlignment = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd) {
+                                    Text("Löschen", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.SemiBold)
+                                }
                             }
-                            IconButton(onClick = { viewModel.toShopping(listOf(item)) }) { Icon(Icons.Default.AddShoppingCart, "Artikel zur Einkaufsliste") }
-                            IconButton(onClick = { deleting = item }) { Icon(Icons.Default.DeleteOutline, "Artikel löschen") }
+                        }
+                    ) {
+                        OutlinedCard(onClick = { editing = item.id }, modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(item.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                        val details = listOf(item.category, item.location).filter { it.isNotBlank() }.joinToString(" · ")
+                                        if (details.isNotEmpty()) Text(details, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                    Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.secondaryContainer) {
+                                        Text("${InventoryMath.number(item.quantity)} ${item.unit}".trim(), Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    }
+                                }
+                                item.expiryDate()?.let { date ->
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        val color = if (item.isExpired(today)) MaterialTheme.colorScheme.error else if (item.expiresSoon(today)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        Icon(if (item.isExpired(today)) Icons.Default.WarningAmber else Icons.Default.Event, null, Modifier.size(16.dp), tint = color)
+                                        Text("${if (item.isExpired(today)) "Abgelaufen" else "MHD"} · ${date.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))}",
+                                            style = MaterialTheme.typography.labelMedium, color = color)
+                                    }
+                                }
+                                if (item.isLow) Text("Nachkaufen · Mindestbestand ${InventoryMath.number(item.minimum)} ${item.unit}",
+                                    color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { viewModel.adjust(item.id, -1.0) }, enabled = item.quantity > 0) { Icon(Icons.Default.Remove, "1 ${item.unit} verbrauchen", Modifier.size(20.dp)) }
+                                    Text("1 ${item.unit}".trim(), style = MaterialTheme.typography.labelMedium)
+                                    IconButton(onClick = { viewModel.adjust(item.id, 1.0) }) { Icon(Icons.Default.Add, "1 ${item.unit} hinzufügen", Modifier.size(20.dp)) }
+                                    Spacer(Modifier.weight(1f))
+                                    if (item.dirty && sync.configured) Icon(Icons.Default.CloudUpload, "Wartet auf Synchronisation", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    IconButton(onClick = { viewModel.toShopping(listOf(item)) }) { Icon(Icons.Default.AddShoppingCart, "Artikel zur Einkaufsliste", Modifier.size(20.dp)) }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
-    editing?.let { item -> InventoryEditor(item, saving, onDismiss = { if (!saving) editing = null }, onSave = { viewModel.save(it) { editing = null } }) }
+    if (showSyncDetails) AlertDialog(onDismissRequest = { showSyncDetails = false },
+        title = { Text("Inventar-Synchronisation") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(sync.message)
+            if (sync.pending > 0) Text("${sync.pending} Änderungen warten auf Notion.")
+        } },
+        confirmButton = { TextButton(onClick = { showSyncDetails = false; if (sync.configured) viewModel.sync() else onSettings() }, enabled = !sync.busy) {
+            Text(if (sync.configured) "Synchronisieren" else "Einrichten")
+        } }, dismissButton = { TextButton(onClick = { showSyncDetails = false }) { Text("Schließen") } })
+    LaunchedEffect(editing) { if (editing != null) viewModel.refreshChoices(editing) }
+    editing?.let { id ->
+        val item = if (id.startsWith("new:")) newItem else stock.firstOrNull { it.id == id }
+        item?.let { current ->
+            val snapshot = remember(id) { current }
+            InventoryDetailScreen(snapshot.copy(coverUrl = current.coverUrl), choices, saving, onDismiss = { if (!saving) editing = null }, onSave = { value -> viewModel.save(value) { editing = null } }, saveError = message, stock = stock, onOpenExisting = { editing = it }) }
+    }
     deleting?.let { item -> AlertDialog(onDismissRequest = { deleting = null }, title = { Text("Artikel löschen?") },
         text = { Text("„${item.name}“ wird aus deinem Inventar und beim nächsten Abgleich aus Notion entfernt.") },
         confirmButton = { TextButton(onClick = { viewModel.remove(item.id); deleting = null }) { Text("Löschen") } },
         dismissButton = { TextButton(onClick = { deleting = null }) { Text("Abbrechen") } }) }
-}
-
-@Composable
-private fun InventoryEditor(item: InventoryItem, saving: Boolean, onDismiss: () -> Unit, onSave: (InventoryItem) -> Unit) {
-    var name by rememberSaveable(item.id) { mutableStateOf(item.name) }
-    var quantity by rememberSaveable(item.id) { mutableStateOf(InventoryMath.number(item.quantity)) }
-    var unit by rememberSaveable(item.id) { mutableStateOf(item.unit) }
-    var category by rememberSaveable(item.id) { mutableStateOf(item.category) }
-    var location by rememberSaveable(item.id) { mutableStateOf(item.location) }
-    var minimum by rememberSaveable(item.id) { mutableStateOf(InventoryMath.number(item.minimum)) }
-    var expiry by rememberSaveable(item.id) { mutableStateOf(item.expiry.orEmpty()) }
-    var barcode by rememberSaveable(item.id) { mutableStateOf(item.barcode) }
-    var notes by rememberSaveable(item.id) { mutableStateOf(item.notes) }
-    var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (item.name.isBlank()) "Artikel erfassen" else "Artikel bearbeiten") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(quantity, { quantity = it }, Modifier.weight(1f), label = { Text("Menge") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                    OutlinedTextField(unit, { unit = it }, Modifier.weight(1f), label = { Text("Einheit") }, singleLine = true)
-                }
-                Text("z. B. g, kg, ml, l, Stk, EL oder TL", style = MaterialTheme.typography.labelSmall)
-                OutlinedTextField(category, { category = it }, label = { Text("Kategorie") }, singleLine = true)
-                OutlinedTextField(location, { location = it }, label = { Text("Lagerort") }, singleLine = true)
-                OutlinedTextField(minimum, { minimum = it }, label = { Text("Mindestbestand ($unit)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                OutlinedTextField(expiry, { expiry = it }, label = { Text("Ablaufdatum (optional)") }, placeholder = { Text("JJJJ-MM-TT") }, singleLine = true)
-                OutlinedTextField(barcode, { barcode = it }, label = { Text("Barcode (optional)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                OutlinedTextField(notes, { notes = it }, label = { Text("Notizen") }, minLines = 2)
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            }
-        }, confirmButton = { TextButton(enabled = !saving, onClick = {
-            val edited = item.copy(name = name.trim(), quantity = quantity.replace(',', '.').toDoubleOrNull() ?: Double.NaN,
-                unit = unit.trim(), category = category.trim(), location = location.trim(), minimum = minimum.replace(',', '.').toDoubleOrNull() ?: Double.NaN,
-                expiry = expiry.trim().ifBlank { null }, barcode = barcode.trim(), notes = notes.trim())
-            error = edited.validate()
-            if (error == null) onSave(edited)
-        }) { Text(if (saving) "Speichert …" else "Speichern") } },
-        dismissButton = { TextButton(enabled = !saving, onClick = onDismiss) { Text("Abbrechen") } })
 }

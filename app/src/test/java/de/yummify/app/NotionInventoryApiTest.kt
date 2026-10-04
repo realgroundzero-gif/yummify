@@ -120,4 +120,75 @@ class NotionInventoryApiTest {
         assertThrows(IllegalArgumentException::class.java) { NotionInventoryApi.resolveSchema(schema) }
     }
 
+    @Test fun readsExternalAndUploadedHeaderImages() {
+        val external = gson.fromJson("""{"cover":{"type":"external","external":{"url":"https://example.com/header.jpg"}}}""", JsonObject::class.java)
+        val hosted = gson.fromJson("""{"cover":{"type":"file","file":{"url":"https://example.com/notion.jpg"}}}""", JsonObject::class.java)
+        assertEquals("https://example.com/header.jpg", NotionInventoryApi.coverUrl(external))
+        assertEquals("https://example.com/notion.jpg", NotionInventoryApi.coverUrl(hosted))
+        assertNull(NotionInventoryApi.coverUrl(JsonObject()))
+    }
+    @Test fun schemaChoicesIncludeUnusedOptionsAndPreserveMultiSelect() {
+        val schema = screenshotSchema()
+        schema.getAsJsonObject("Kategorie").add("multi_select", gson.toJsonTree(mapOf("options" to listOf(mapOf("name" to "Konserven"), mapOf("name" to "Noch unbenutzt")))))
+        schema.getAsJsonObject("Lagerort").add("select", gson.toJsonTree(mapOf("options" to listOf(mapOf("name" to "Keller")))))
+        val choices = NotionInventoryApi.decodeChoices(schema, NotionInventoryApi.resolveSchema(schema))
+        assertEquals(listOf("Konserven", "Noch unbenutzt"), choices.categories)
+        assertEquals(listOf("Keller"), choices.locations)
+        assertTrue(choices.categoryMultiSelect)
+    }
+    @Test fun uploadsLocalPhotoAsPageCoverAndKeepsPropertyMapping() {
+        val file = java.io.File.createTempFile("inventory", ".jpg").apply { writeBytes(byteArrayOf(1, 2, 3, 4)) }
+        try {
+            respond("""{"id":"upload"}""")
+            respond("""{"status":"uploaded"}""")
+            respond("""{"id":"page","cover":{"type":"file","file":{"url":"https://example.com/cover.jpg"}}}""")
+            assertEquals("page", api.save("source", InventoryItem(pageId = "page", name = "Milch", localCoverPath = file.absolutePath, coverPending = true)))
+            val create = server.takeRequest()
+            assertEquals("/v1/file_uploads", create.path)
+            assertTrue(create.body.readUtf8().contains("image/jpeg"))
+            val send = server.takeRequest()
+            assertEquals("/v1/file_uploads/upload/send", send.path)
+            assertTrue(send.getHeader("Content-Type")!!.startsWith("multipart/form-data"))
+            assertTrue(send.body.readUtf8().contains("name=\"file\""))
+            val patch = gson.fromJson(server.takeRequest().body.readUtf8(), JsonObject::class.java)
+            assertEquals("upload", patch.getAsJsonObject("cover").getAsJsonObject("file_upload")["id"].asString)
+            assertTrue(patch.getAsJsonObject("properties").has("Name"))
+            assertEquals("https://example.com/cover.jpg", api.savedCover("page"))
+        } finally { file.delete() }
+    }
+    @Test fun failedPhotoUploadDoesNotPatchPageOrDiscardPendingImage() {
+        val file = java.io.File.createTempFile("inventory", ".jpg").apply { writeText("photo") }
+        try {
+            respond("""{"id":"upload"}"""); respond("{}", 500)
+            val item = InventoryItem(pageId = "page", name = "Milch", localCoverPath = file.absolutePath, coverPending = true)
+            assertThrows(java.io.IOException::class.java) { api.save("source", item) }
+            assertEquals(2, server.requestCount)
+            assertTrue(item.coverPending); assertTrue(file.exists())
+        } finally { file.delete() }
+    }
+    @Test fun editingFieldsWithoutPhotoChangeLeavesNotionCoverUntouched() {
+        respond("""{"id":"page"}""")
+        api.save("source", InventoryItem(pageId = "page", name = "Milch", coverUrl = "https://example.com/cover.jpg"))
+        val body = gson.fromJson(server.takeRequest().body.readUtf8(), JsonObject::class.java)
+        assertFalse(body.has("cover"))
+    }
+
+    @Test fun savesProductImageAsExternalCoverWithoutUpload() {
+        respond("""{"id":"product"}""")
+        api.save("source", InventoryItem(pageId = "product", name = "Milch", coverUrl = "https://images.openfoodfacts.org/product.jpg", coverPending = true))
+        val request = server.takeRequest()
+        val payload = gson.fromJson(request.body.readUtf8(), JsonObject::class.java)
+        assertEquals("external", payload.getAsJsonObject("cover")["type"].asString)
+        assertEquals("https://images.openfoodfacts.org/product.jpg", payload.getAsJsonObject("cover").getAsJsonObject("external")["url"].asString)
+        assertEquals(1, server.requestCount)
+    }
+    @Test fun writesStockStatusOnlyWhenSupportedByExistingSchema() {
+        val schema = screenshotSchema()
+        schema.add("Status", gson.fromJson("""{"type":"status","status":{"options":[{"name":"Vorhanden"}]}}""", JsonObject::class.java))
+        val mapping = NotionInventoryApi.resolveSchema(schema)
+        val stock = NotionInventoryApi.properties(InventoryItem(name = "Milch", quantity = 1.0), mapping)
+        assertTrue(gson.toJson(stock["Status"]).contains("Vorhanden"))
+        assertFalse(NotionInventoryApi.properties(InventoryItem(name = "Milch", quantity = 0.0), mapping).containsKey("Status"))
+    }
+
 }
