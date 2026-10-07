@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -267,7 +268,7 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                         OutlinedTextField(minimum, { minimum = it }, label = { Text("Mindestbestand") }, supportingText = { Text("Ab dieser Menge erinnert dich Yummify ans Nachkaufen.") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), singleLine = true)
                     }
-                    DetailSection("Einordnung", Icons.Default.Label) {
+                    DetailSection("Einordnung", Icons.AutoMirrored.Filled.Label) {
                         if (choices.categoryMultiSelect) {
                             Text("Kategorie", style = MaterialTheme.typography.labelLarge)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -401,7 +402,7 @@ private fun ChoiceField(label: String, value: String, options: List<String>, fre
         var expanded by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }, modifier = modifier) {
             OutlinedTextField(value, {}, readOnly = true, label = { Text(label) }, placeholder = { Text("Auswählen") }, singleLine = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) }, modifier = Modifier.menuAnchor().fillMaxWidth())
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) }, modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth())
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 DropdownMenuItem(text = { Text("Keine Auswahl") }, onClick = { onChange(""); expanded = false })
                 (options + listOf(value).filter { it.isNotBlank() }).distinct().forEach { choice ->

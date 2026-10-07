@@ -10,7 +10,7 @@ Android-App (Kotlin, Jetpack Compose, Material 3) für Rezepte, Wochenplan, Eink
 ./gradlew assemblePreview   # Test-APK „Yummify Preview“, läuft neben der normalen App
 ```
 
-Voraussetzungen: JDK 17+, Android SDK 34 (`local.properties` mit `sdk.dir=…` oder `ANDROID_HOME`). Release-Signierung über `yummify.*`-Einträge in `local.properties` (siehe README), nie Passwörter einchecken.
+Voraussetzungen: JDK 17+, Android SDK 36 (`local.properties` mit `sdk.dir=…` oder `ANDROID_HOME`). Release-Signierung über `yummify.*`-Einträge in `local.properties` (siehe README), nie Passwörter einchecken.
 
 ## Struktur
 

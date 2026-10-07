@@ -12,6 +12,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -45,7 +47,7 @@ import de.yummify.app.ui.screens.shopping_list.ShoppingListScreen
 import de.yummify.app.ui.theme.YummifyTheme
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector, val iconOutlined: ImageVector) {
-    object Recipes : Screen("recipes", "Rezepte", Icons.Filled.MenuBook, Icons.Outlined.MenuBook)
+    object Recipes : Screen("recipes", "Rezepte", Icons.AutoMirrored.Filled.MenuBook, Icons.AutoMirrored.Outlined.MenuBook)
     object Planner : Screen("planner", "Wochenplaner", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth)
     object Shopping : Screen("shopping", "Einkaufsliste", Icons.Filled.ShoppingCart, Icons.Outlined.ShoppingCart)
     object Inventory : Screen("inventory", "Inventar", Icons.Filled.Inventory2, Icons.Outlined.Inventory2)
@@ -84,7 +86,7 @@ class MainActivity : ComponentActivity() {
         de.yummify.app.widget.ShoppingListWidgetProvider.updateAllWidgets(applicationContext)
     }
 
-    override fun onNewIntent(intent: android.content.Intent?) {
+    override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
     }

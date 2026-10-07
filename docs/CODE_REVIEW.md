@@ -31,8 +31,8 @@ Stand Version 1.2.0. Erledigte Befunde sind jeweils durch Unit-Tests abgesichert
 | 23 Duplikate in der Einkaufsliste | ✅ Zusammenführen bei gleichem Namen und umrechenbarer Einheit; Änderungen unter einem Lock |
 | 24 Zutaten-Parser | ✅ Gemischte und Unicode-Brüche, Spannen, Zeilen vor Kommas |
 | 25 Code-Struktur | 🔶 Toter Code entfernt (Beispiel-Wochenplan/-Einkaufsliste, ungenutzte Status-Komponenten); lange Zeilen bestehen teilweise weiter |
-| 26 Build-Versionen | ⏳ Nächster Schritt |
-| 27 CI | ⏳ Nächster Schritt |
+| 26 Build-Versionen | ✅ AGP 8.13.2, Gradle 8.14.3, Kotlin 2.2.21 mit Compose-Compiler-Plugin, Compose BOM 2025.12.01, compileSdk/targetSdk 36, alle Abhängigkeiten im Versionskatalog, `proguard-rules.pro` angelegt. AGP 9 bewusst noch nicht (größere Migration) |
+| 27 CI | ✅ GitHub Actions: Tests, Lint, Preview-APK als Download-Artefakt |
 | 28 Lokale Bilder | ✅ Ersetzte und gelöschte Fotos werden entfernt |
 | 29 Strings in Ressourcen | ⏳ Offen, erst bei Bedarf einer zweiten Sprache |
 

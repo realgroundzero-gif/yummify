@@ -139,9 +139,9 @@ Inventory is separated by database. Initially local inventory is adopted when co
 
 ## Develop, build and install
 
-Current app version: **1.2.0**, Android **8.0+ (API 26)**; compile/target SDK **34**.
+Current app version: **1.2.0**, Android **8.0+ (API 26)**; compile/target SDK **36** (Android 16).
 
-You need JDK 17, Android SDK 34 and the Android build tools. Android Studio can be used for development. Configure the SDK path through `local.properties` (`sdk.dir=…`) or `ANDROID_HOME`.
+You need JDK 17 or newer, Android SDK 36 and the Android build tools. Android Studio can be used for development. Configure the SDK path through `local.properties` (`sdk.dir=…`) or `ANDROID_HOME`.
 
 ```bash
 # Build the debug APK
@@ -174,9 +174,13 @@ yummify.keyPassword=…
 
 `yummify.storeFile` is relative to the `app/` folder and defaults to `release.jks`. Without these values the release APK is unsigned. APKs, Gradle caches, SDK paths and signing keys are not tracked in Git.
 
+### Automated checks (GitHub Actions)
+
+Every push to `main` or a `claude/…` branch and every pull request runs unit tests, Android Lint and the preview build (`.github/workflows/android.yml`). The resulting `app-preview.apk` is available for 14 days under **Actions → Android → Artifacts → `yummify-preview-apk`** (unzip, then open the APK on the device).
+
 ### Technology and source code
 
-Kotlin 1.9.23, Jetpack Compose with Material 3, Coroutines and StateFlow, OkHttp 4.12, Gson, Coil, SharedPreferences, Google Code Scanner and Android RemoteViews. Tests use JUnit, MockWebServer and Robolectric.
+Kotlin 2.2 with the Compose compiler plugin, Android Gradle Plugin 8.13, Gradle 8.14, Jetpack Compose (BOM 2025.12) with Material 3, Coroutines and StateFlow, OkHttp 4.12, Gson, Coil, SharedPreferences, Google Code Scanner and Android RemoteViews. Tests use JUnit, MockWebServer and Robolectric.
 
 - [App entry point and navigation](app/src/main/java/de/yummify/app/MainActivity.kt)
 - [Models, local storage, APIs and repositories](app/src/main/java/de/yummify/app/data)

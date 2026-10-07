@@ -139,9 +139,9 @@ Das Inventar ist nach Datenbank getrennt. Ein zunächst lokal erfasstes Inventar
 
 ## Entwickeln, bauen und installieren
 
-Aktueller App-Stand: **1.2.0**, Android **8.0+ (API 26)**; Compile-/Target-SDK **34**.
+Aktueller App-Stand: **1.2.0**, Android **8.0+ (API 26)**; Compile-/Target-SDK **36** (Android 16).
 
-Benötigt werden JDK 17, Android SDK 34 und die Android-Build-Werkzeuge. Android Studio kann für die Entwicklung verwendet werden. Den SDK-Pfad über `local.properties` (`sdk.dir=…`) oder `ANDROID_HOME` konfigurieren.
+Benötigt werden JDK 17 oder neuer, Android SDK 36 und die Android-Build-Werkzeuge. Android Studio kann für die Entwicklung verwendet werden. Den SDK-Pfad über `local.properties` (`sdk.dir=…`) oder `ANDROID_HOME` konfigurieren.
 
 ```bash
 # Debug-APK bauen
@@ -174,9 +174,13 @@ yummify.keyPassword=…
 
 `yummify.storeFile` ist relativ zum Ordner `app/`; Standard ist `release.jks`. Ohne diese Angaben entsteht eine unsignierte Release-APK. APKs, Gradle-Caches, SDK-Pfade und Signierschlüssel werden nicht versioniert.
 
+### Automatische Prüfung (GitHub Actions)
+
+Bei jedem Push auf `main` oder einen `claude/…`-Branch und bei jedem Pull Request laufen Unit-Tests, Android Lint und der Preview-Build (`.github/workflows/android.yml`). Die fertige `app-preview.apk` liegt anschließend 14 Tage lang im Lauf unter **Actions → Android → Artifacts → `yummify-preview-apk`** zum Herunterladen bereit (ZIP entpacken, APK auf dem Gerät öffnen).
+
 ### Technik und Quellcode
 
-Kotlin 1.9.23, Jetpack Compose mit Material 3, Coroutines und StateFlow, OkHttp 4.12, Gson, Coil, SharedPreferences, Google-Code-Scanner und Android RemoteViews. Tests verwenden JUnit, MockWebServer und Robolectric.
+Kotlin 2.2 mit Compose-Compiler-Plugin, Android Gradle Plugin 8.13, Gradle 8.14, Jetpack Compose (BOM 2025.12) mit Material 3, Coroutines und StateFlow, OkHttp 4.12, Gson, Coil, SharedPreferences, Google-Code-Scanner und Android RemoteViews. Tests verwenden JUnit, MockWebServer und Robolectric.
 
 - [App-Einstieg und Navigation](app/src/main/java/de/yummify/app/MainActivity.kt)
 - [Datenmodelle, lokale Speicherung, APIs und Repositories](app/src/main/java/de/yummify/app/data)

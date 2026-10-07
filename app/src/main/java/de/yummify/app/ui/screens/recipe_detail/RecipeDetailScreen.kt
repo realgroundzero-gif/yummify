@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.StarBorder
@@ -49,7 +50,7 @@ fun RecipeDetailScreen(
     if (recipe == null) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding(), contentAlignment = Alignment.Center) {
             IconButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "Zurück")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zurück")
             }
             val error = state.loadError
             if (error == null) CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)

@@ -1,8 +1,10 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 }
 
 // Signing secrets stay outside Git: local.properties or environment variables.
@@ -16,12 +18,12 @@ val releaseSigningAvailable = releaseKeystore.isFile && secret("yummify.storePas
 
 android {
     namespace = "de.yummify.app"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "de.yummify.app"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 3
         versionName = "1.2.0"
 
@@ -66,15 +68,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.11"
     }
     testOptions { unitTests.isIncludeAndroidResources = true }
     packaging {
@@ -82,6 +78,10 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+kotlin {
+    compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
 }
 
 dependencies {
@@ -102,8 +102,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.gson)
-    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
-    testImplementation("org.robolectric:robolectric:4.14.1")
+    implementation(libs.play.services.code.scanner)
+    testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.robolectric)
 }
