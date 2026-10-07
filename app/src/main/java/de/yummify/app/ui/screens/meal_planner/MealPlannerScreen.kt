@@ -33,7 +33,11 @@ fun MealPlannerScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var selectedMealTypeForAdd by remember { mutableStateOf<MealType?>(null) }
+    val message by viewModel.message.collectAsState()
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it, withDismissAction = true); viewModel.message.value = null } }
 
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -177,6 +181,8 @@ fun MealPlannerScreen(
             )
         }
     }
+    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 100.dp, start = 16.dp, end = 16.dp))
+    }
 
     // Recipe selection bottom sheet / dialog
     selectedMealTypeForAdd?.let { mealType ->
@@ -248,11 +254,7 @@ private fun RecipeSelectionBottomSheet(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            AsyncImage(
-                                model = recipe.imageUrl,
-                                contentDescription = recipe.title,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
+                            de.yummify.app.ui.components.RecipeImage(url = recipe.imageUrl, contentDescription = recipe.title, modifier = Modifier
                                     .size(54.dp)
                                     .clip(RoundedCornerShape(12.dp))
                             )
@@ -263,8 +265,10 @@ private fun RecipeSelectionBottomSheet(
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Text(
-                                    "${recipe.calories} kcal • ${recipe.cookTimeMinutes} Min.",
+                                val details = listOfNotNull(recipe.calories?.let { "$it kcal" }, recipe.cookTimeMinutes?.let { "$it Min." })
+                                    .ifEmpty { recipe.tags.take(2) }.joinToString(" • ")
+                                if (details.isNotEmpty()) Text(
+                                    details,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -488,11 +492,7 @@ private fun MealCardContent(
                     .clickable { onCardClick() },
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                AsyncImage(
-                    model = meal.imageUrl,
-                    contentDescription = meal.recipeTitle,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
+                de.yummify.app.ui.components.RecipeImage(url = meal.imageUrl, contentDescription = meal.recipeTitle, modifier = Modifier
                         .size(80.dp)
                         .clip(RoundedCornerShape(16.dp))
                 )
@@ -509,13 +509,17 @@ private fun MealCardContent(
                         fontWeight = FontWeight.SemiBold
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Icon(Icons.Filled.LocalFireDepartment, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp))
-                            Text("${meal.calories} kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        meal.calories?.let { calories ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Icon(Icons.Filled.LocalFireDepartment, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp))
+                                Text("$calories kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Icon(Icons.Filled.Schedule, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp))
-                            Text("${meal.cookTimeMinutes} Min.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        meal.cookTimeMinutes?.let { minutes ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Icon(Icons.Filled.Schedule, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp))
+                                Text("$minutes Min.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }

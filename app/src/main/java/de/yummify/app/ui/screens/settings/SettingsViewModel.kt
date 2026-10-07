@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.yummify.app.data.model.NotionConfig
+import de.yummify.app.data.remote.NotionRecipeReader
 import de.yummify.app.data.repository.RecipeRepository
 import de.yummify.app.data.repository.UserPreferencesRepository
 import kotlinx.coroutines.Dispatchers
@@ -25,34 +26,46 @@ data class SettingsUiState(
     val connectionResult: String? = null,
     val isSaving: Boolean = false,
     val darkModeEnabled: Boolean = false,
-    val remindersEnabled: Boolean = true,
     val autoSyncEnabled: Boolean = true
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val prefsRepo = UserPreferencesRepository.getInstance(application)
+    private val recipeRepo = RecipeRepository.getInstance(application)
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
+            var first = true
+            var saved = prefsRepo.preferences.value
             prefsRepo.preferences.collect { prefs ->
-                _uiState.value = _uiState.value.copy(
+                // Only replace text fields when the stored values change, so toggling a switch keeps unsaved input.
+                val inputsChanged = first || prefs.tokenInput != saved.tokenInput || prefs.databaseIdInput != saved.databaseIdInput ||
+                    prefs.inventoryDatabaseIdInput != saved.inventoryDatabaseIdInput
+                first = false
+                saved = prefs
+                val current = _uiState.value
+                _uiState.value = current.copy(
                     darkModeEnabled = prefs.darkModeEnabled,
-                    remindersEnabled = prefs.remindersEnabled,
                     autoSyncEnabled = prefs.autoSyncEnabled,
-                    tokenInput = prefs.tokenInput,
-                    databaseIdInput = prefs.databaseIdInput,
-                    inventoryDatabaseIdInput = prefs.inventoryDatabaseIdInput,
-                    config = NotionConfig(
+                    tokenInput = if (inputsChanged) prefs.tokenInput else current.tokenInput,
+                    databaseIdInput = if (inputsChanged) prefs.databaseIdInput else current.databaseIdInput,
+                    inventoryDatabaseIdInput = if (inputsChanged) prefs.inventoryDatabaseIdInput else current.inventoryDatabaseIdInput,
+                    config = current.config.copy(
                         integrationToken = prefs.tokenInput,
                         recipeDatabaseId = prefs.databaseIdInput,
                         inventoryDatabaseId = prefs.inventoryDatabaseIdInput,
-                        isConfigured = prefs.tokenInput.isNotBlank(),
-                        lastSyncTime = if (prefs.tokenInput.isNotBlank()) "Aktiv" else "Nicht konfiguriert"
+                        isConfigured = prefs.tokenInput.isNotBlank()
                     )
                 )
+            }
+        }
+        viewModelScope.launch {
+            recipeRepo.state.collect { state ->
+                val time = state.lastSync?.let { "%02d.%02d., %02d:%02d Uhr".format(it.dayOfMonth, it.monthValue, it.hour, it.minute) }
+                _uiState.value = _uiState.value.copy(config = _uiState.value.config.copy(lastSyncTime = time ?: "Noch nicht synchronisiert"))
             }
         }
     }
@@ -106,38 +119,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun syncNotion() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSyncing = true, connectionResult = null)
-            val token = _uiState.value.tokenInput.trim()
-            val formattedDbId = RecipeRepository.formatNotionId(_uiState.value.databaseIdInput)
-
-            if (token.isBlank() || formattedDbId.isBlank()) {
-                _uiState.value = _uiState.value.copy(
-                    isSyncing = false,
-                    connectionResult = "❌ Notion Token oder DB-ID nicht konfiguriert."
-                )
-                return@launch
-            }
-
-            val repo = RecipeRepository(token, formattedDbId)
-            val now = java.text.SimpleDateFormat("HH:mm 'Uhr'", java.util.Locale.GERMANY).format(java.util.Date())
-
-            try {
-                val recipes = repo.getAllRecipes()
-                val statusMsg = if (recipes.isNotEmpty()) {
-                    "✅ ${recipes.size} Rezept(e) erfolgreich aus Notion geladen."
-                } else {
-                    "⚠️ Verbindung OK, aber keine Rezepte in der Datenbank gefunden.\nPrüfe ob deine Notion-Integration Zugriff auf die Datenbank hat."
+            val error = recipeRepo.refresh()
+            val count = recipeRepo.state.value.recipes.size
+            _uiState.value = _uiState.value.copy(
+                isSyncing = false,
+                connectionResult = when {
+                    error != null -> "❌ Synchronisation fehlgeschlagen: $error"
+                    count > 0 -> "✅ $count Rezept(e) aus Notion geladen."
+                    else -> "⚠️ Verbindung OK, aber keine Rezepte in der Datenbank gefunden."
                 }
-                _uiState.value = _uiState.value.copy(
-                    isSyncing = false,
-                    connectionResult = statusMsg,
-                    config = _uiState.value.config.copy(lastSyncTime = "Heute, $now")
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isSyncing = false,
-                    connectionResult = "❌ Synchronisation fehlgeschlagen: ${e.message}"
-                )
-            }
+            )
         }
     }
 
@@ -146,20 +137,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             _uiState.value = _uiState.value.copy(isTestingConnection = true, connectionResult = null)
             val token = _uiState.value.tokenInput.trim()
             val formattedDbId = RecipeRepository.formatNotionId(_uiState.value.databaseIdInput)
-            val repo = RecipeRepository(token, formattedDbId)
-            val isSuccess = if (token.isNotBlank() && formattedDbId.isNotBlank()) {
-                withContext(Dispatchers.IO) {
-                    repo.testNotionConnection(token, formattedDbId)
-                }
-            } else false
-
-            val result = if (isSuccess) {
+            val result = if (token.isBlank() || formattedDbId.isBlank()) "❌ Token oder Datenbank-ID fehlt."
+            else try {
+                withContext(Dispatchers.IO) { NotionRecipeReader(token, formattedDbId).testConnection() }
                 "✅ Verbindung erfolgreich! Notion DB erreichbar."
-            } else if (token.isNotBlank() && formattedDbId.isNotBlank()) {
-                "❌ Verbindung zu Notion fehlgeschlagen. Token oder DB-ID prüfen."
-            } else {
-                "❌ Token oder Datenbank-ID fehlt."
-            }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e
+            } catch (e: Exception) { "❌ ${e.message ?: "Verbindung zu Notion fehlgeschlagen."}" }
             _uiState.value = _uiState.value.copy(
                 databaseIdInput = formattedDbId,
                 isTestingConnection = false,
@@ -184,10 +167,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleDarkMode(enabled: Boolean) {
         prefsRepo.setDarkModeEnabled(enabled)
-    }
-
-    fun toggleReminders(enabled: Boolean) {
-        prefsRepo.setRemindersEnabled(enabled)
     }
 
     fun toggleAutoSync(enabled: Boolean) {

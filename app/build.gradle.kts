@@ -1,7 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
 }
+
+// Signing secrets stay outside Git: local.properties or environment variables.
+val localProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use(::load)
+}
+fun secret(key: String): String? = localProperties.getProperty(key)
+    ?: System.getenv(key.uppercase().replace('.', '_'))
+val releaseKeystore = file(secret("yummify.storeFile") ?: "release.jks")
+val releaseSigningAvailable = releaseKeystore.isFile && secret("yummify.storePassword") != null
 
 android {
     namespace = "de.yummify.app"
@@ -11,8 +22,8 @@ android {
         applicationId = "de.yummify.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -21,18 +32,30 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = file("release.jks")
-            storePassword = "yummify123"
-            keyAlias = "yummify"
-            keyPassword = "yummify123"
+        if (releaseSigningAvailable) create("release") {
+            storeFile = releaseKeystore
+            storePassword = secret("yummify.storePassword")
+            keyAlias = secret("yummify.keyAlias") ?: "yummify"
+            keyPassword = secret("yummify.keyPassword") ?: secret("yummify.storePassword")
         }
     }
 
     buildTypes {
+        debug {
+            manifestPlaceholders["appLabel"] = "Yummify"
+        }
+        // Installs next to the regular app, so test builds never replace its data or signature.
+        create("preview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            manifestPlaceholders["appLabel"] = "Yummify Preview"
+            matchingFallbacks += listOf("debug")
+        }
         release {
+            manifestPlaceholders["appLabel"] = "Yummify"
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            if (releaseSigningAvailable) signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -48,6 +71,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.11"

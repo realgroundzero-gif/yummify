@@ -49,6 +49,13 @@ data class InventoryItem(
     }
 }
 
+/** Gson ignores Kotlin defaults: entries stored by older versions may hold null in fields added later. */
+@Suppress("SENSELESS_COMPARISON", "USELESS_ELVIS")
+fun InventoryItem.normalized(): InventoryItem = copy(
+    id = id ?: java.util.UUID.randomUUID().toString(), name = name ?: "", unit = unit ?: "", category = category ?: "",
+    categoryOptions = categoryOptions ?: emptyList(), location = location ?: "", barcode = barcode ?: "", notes = notes ?: ""
+)
+
 object InventoryMath {
     fun quantityStep(unit: String): Double = when (unit.trim().lowercase(Locale.GERMAN)) {
         "g", "ml" -> 50.0

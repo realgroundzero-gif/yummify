@@ -397,23 +397,9 @@ fun SettingsScreen(
                     )
                 }
                 SettingsRow(
-                    icon = Icons.Filled.Notifications,
-                    title = "Mahlzeiten-Erinnerungen",
-                    subtitle = if (state.remindersEnabled) "Kochzeiten & Pläne benachrichtigen" else "Erinnerungen stummgeschaltet"
-                ) {
-                    Switch(
-                        checked = state.remindersEnabled,
-                        onCheckedChange = viewModel::toggleReminders,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-                }
-                SettingsRow(
                     icon = Icons.Filled.Sync,
                     title = "Auto-Sync",
-                    subtitle = if (state.autoSyncEnabled) "Alle 15 Minuten synchronisieren" else "Manuelle Synchronisation"
+                    subtitle = if (state.autoSyncEnabled) "Inventar beim Öffnen und nach Änderungen abgleichen" else "Manuelle Synchronisation"
                 ) {
                     Switch(
                         checked = state.autoSyncEnabled,

@@ -1,5 +1,45 @@
 # Yummify – Code-Review und Übergabe
 
+## Umsetzungsstand
+
+Stand Version 1.2.0. Erledigte Befunde sind jeweils durch Unit-Tests abgesichert (87 Tests, alle grün; `lintDebug` ohne Fehler).
+
+| Befund | Status |
+|---|---|
+| 1 Token im Logcat | ✅ Gemeinsamer `NotionHttp`-Client: Logging nur in Debug/Preview, nur Header, `Authorization` geschwärzt |
+| 2 Signier-Passwort im Repo | ✅ Aus `local.properties` oder Umgebungsvariablen. **Offen für dich:** Das alte Passwort steht weiter in der Git-Historie; vor einer Play-Store-Veröffentlichung neuen Schlüssel erzeugen |
+| 3 Token im Backup | ✅ `yummify_user_prefs.xml` von Cloud-Backup und Geräteübertragung ausgeschlossen |
+| 4 Absturzschleife bei kaputtem Speicher | ✅ Rohdaten werden gesichert, App startet leer mit Hinweis (gilt auch für Wochenplan und Einkaufsliste) |
+| 5 Gson und neue Felder | ✅ `normalized()` beim Laden von Inventar und Rezept-Cache |
+| 6 Beispieldaten | ✅ Neue Nutzer starten leer; alte Demo-Einträge (`m1`–`m11`, `s1`–`s14`) werden einmalig entfernt |
+| 7 „Ei“-Kategorie | ✅ Regeltabelle mit Ganzwort- und Wortende-Regeln |
+| 8 DatePicker-Zeitzone | ✅ UTC wie im Inventar |
+| 9 Notion-Link | ✅ Letzte 32 Hex-Zeichen, auch mit Titel im Link |
+| 10 Ständiges Neuladen | ✅ `RecipeRepository` ist ein Singleton mit `StateFlow`, lädt nur bei geänderter Verbindung, Cache auf dem Gerät |
+| 11 Fehler wie „keine Rezepte“ | ✅ Fehlerzeile mit „Erneut versuchen“, Detailansicht mit Fehler, Zurück und Wiederholen; Teil-Listen werden nicht mehr still zurückgegeben |
+| 12 Platzhalterwerte | ✅ Felder nullable, nur aus vorhandenen Notion-Spalten; alte Platzhalter im Wochenplan werden entfernt |
+| 13 Portionen aus beliebiger Zahl | ✅ Nur `Portionen`/`Portion` |
+| 14 Nur 100 Blöcke | ✅ Block-Pagination (verschachtelte Blöcke weiterhin nicht) |
+| 15 Favoriten | ✅ Lokal gespeichert, Filter „Nur Favoriten“, Lesezeichen in Liste und Detail |
+| 16 Funktionen ohne Wirkung | ✅ Filter-Knopf ist jetzt der Favoriten-Filter; Erinnerungs-Schalter und Einkaufs-Sync-Attrappe entfernt; „Zuletzt synchronisiert“ ist echt |
+| 17 Notion-Rückschreiben | ✅ Fehler werden gemeldet, Bewertung wird zurückgesetzt; `Geplant am` = nächstes geplantes Datum, wird beim Entfernen der letzten Planung geleert. Dabei gefunden: Leeren des Datums hat vorher nie funktioniert (Gson ließ `null` weg) |
+| 18 Sync blockiert Eingaben | ✅ Netzwerk außerhalb des Mutex, Änderungen während des Uploads bleiben „ausstehend“; 429-Retry mit `Retry-After` |
+| 19 Widget-Tipp | ⏳ Auf echtem Gerät mit Android 14 prüfen (Tipp auf eine Zeile im Einkaufslisten-Widget muss die App öffnen) |
+| 20 Rotation | ✅ Intent nur beim ersten Start auswerten |
+| 21 Zwei API-Versionen | ✅ Alles auf `2025-09-03` über `NotionRecipeReader` |
+| 22 JSON per String | ✅ Gson-Maps |
+| 23 Duplikate in der Einkaufsliste | ✅ Zusammenführen bei gleichem Namen und umrechenbarer Einheit; Änderungen unter einem Lock |
+| 24 Zutaten-Parser | ✅ Gemischte und Unicode-Brüche, Spannen, Zeilen vor Kommas |
+| 25 Code-Struktur | 🔶 Toter Code entfernt (Beispiel-Wochenplan/-Einkaufsliste, ungenutzte Status-Komponenten); lange Zeilen bestehen teilweise weiter |
+| 26 Build-Versionen | ⏳ Nächster Schritt |
+| 27 CI | ⏳ Nächster Schritt |
+| 28 Lokale Bilder | ✅ Ersetzte und gelöschte Fotos werden entfernt |
+| 29 Strings in Ressourcen | ⏳ Offen, erst bei Bedarf einer zweiten Sprache |
+
+Neu: Build-Typ `preview` (`de.yummify.app.preview`, „Yummify Preview“) für Test-APKs, die neben der normalen App laufen.
+
+---
+
 Stand: 07.10.2026, Commit `026e2b1` (Version 1.1.0, versionCode 2). Gelesen wurde der gesamte Quellcode (≈ 8 400 Zeilen Kotlin/XML in `app/src`), die Build-Konfiguration und die Tests. Build und Tests konnten in dieser Umgebung nicht laufen, weil das Android SDK nicht installiert werden konnte (`dl.google.com` ist im Netzwerk blockiert). Alle Befunde stammen deshalb aus dem Lesen des Codes. Jeder Befund nennt Datei und Zeile.
 
 ## 1. Überblick

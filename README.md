@@ -8,17 +8,22 @@ Yummify ist eine Android-App für Rezepte, Wochenplanung, Einkaufsliste und Lebe
 
 ### Rezepte
 
-- Rezepte aus Notion laden, einschließlich aller Ergebnisse über Datenbank-Pagination, Seiten-Cover, Kategorien, Küche und Tags.
+- Rezepte aus Notion laden, einschließlich aller Ergebnisse über Datenbank-Pagination, Seiten-Cover, Kategorien, Küche und Tags. Die Rezepte werden einmal pro Verbindung geladen und von allen Bereichen gemeinsam genutzt; ein erneuter Abruf erfolgt über „Erneut versuchen“ oder die Synchronisation in den Einstellungen.
+- Der zuletzt geladene Stand wird auf dem Gerät gespeichert. Ohne Netz zeigt die App diese Rezepte mit einem Offline-Hinweis; Ladefehler werden mit Ursache und „Erneut versuchen“ angezeigt, statt als leere Liste.
 - Nach Titel, Beschreibung und Zutaten suchen; Kategorien aus den vorhandenen Rezepten filtern. Filter bleiben beim Scrollen sichtbar.
-- Zutatenmengen durch Ändern der Portionen skalieren. Der Parser unterstützt unter anderem Dezimalzahlen, Brüche und übliche Einheiten.
-- Zubereitung aus Notion-Seiteninhalten anzeigen, mit Unterstützung für Überschriften, Listen, Zitate, Hinweise und Textformatierung.
-- Favoriten verwalten und Bewertungen von einem bis fünf Sternen nach Notion zurückschreiben.
+- Zutatenmengen durch Ändern der Portionen skalieren. Der Parser versteht Dezimalzahlen („1,5 kg“), Brüche („1/2 TL“, „1 1/2 EL“, „½ Bund“), Spannen („2–3 Zehen“, es zählt der größere Wert) und übliche Einheiten. Stehen Zutaten in Notion zeilenweise, bleiben Zusätze wie „1 Zwiebel, gewürfelt“ zusammen.
+- Zubereitung aus Notion-Seiteninhalten anzeigen, mit Unterstützung für Überschriften, Listen, Zitate, Hinweise und Textformatierung. Auch lange Seiten mit mehr als 100 Blöcken werden vollständig geladen.
+- Zeit, Kalorien, Schwierigkeit und Kosten erscheinen nur, wenn die passenden Notion-Spalten gepflegt sind (siehe Tabelle unten). Fehlt ein Cover, zeigt die App ein neutrales Platzhalterbild.
+- Favoriten über das Lesezeichen merken. Sie werden auf dem Gerät gespeichert (nicht in Notion) und lassen sich über das Lesezeichen in der Suchleiste als Filter „Nur Favoriten“ anzeigen.
+- Bewertungen von einem bis fünf Sternen nach Notion zurückschreiben. Schlägt das Speichern fehl, wird die vorherige Bewertung wiederhergestellt und der Grund angezeigt.
 - Über den Plus-Button neue Rezepte direkt in Notion erstellen: Name, Beschreibung, Portionen, Kategorie, Zutaten, Zubereitungsschritte und optionales HTTPS-Cover. Das Formular prüft Eingaben und Datenbankschema; bei Fehlern bleibt der Entwurf erhalten.
 - Ohne eingerichtete Notion-Verbindung stehen Beispielrezepte zur Verfügung. Das ist kein vollständiger Offline-Abgleich der Rezeptdatenbank.
 
 ### Wochenplan und Widget
 
-Rezepte lassen sich für ein Datum und eine Mahlzeit planen: Frühstück, Mittagessen, Abendessen oder Snack. Der Wochenplan wird lokal gespeichert und unterstützt den Wechsel zwischen Wochen sowie das Markieren gekochter Gerichte. Bei verbundenen Notion-Rezepten wird das geplante Datum in das Datumsfeld `Geplant am` zurückgeschrieben, sofern es vorhanden und beschreibbar ist. Eine Nährwert-Tagesübersicht am Ende des Planers wird nicht angezeigt.
+Rezepte lassen sich für ein Datum und eine Mahlzeit planen: Frühstück, Mittagessen, Abendessen oder Snack. Der Wochenplan wird lokal gespeichert und unterstützt den Wechsel zwischen Wochen sowie das Markieren gekochter Gerichte. Ein neuer Wochenplan startet leer; Beispiel-Einträge früherer Versionen werden beim ersten Start entfernt.
+
+Bei verbundenen Notion-Rezepten wird das geplante Datum in das Datumsfeld `Geplant am` zurückgeschrieben, sofern die Spalte existiert. Da Notion pro Rezept nur ein Datum kennt, steht dort das nächste geplante Datum ab heute (sonst das letzte vergangene). Wird die letzte Planung eines Rezepts entfernt, wird das Feld geleert. Kann Notion nicht erreicht werden, bleibt der lokale Plan gespeichert und die App meldet, dass das Notion-Datum nicht aktualisiert wurde. Eine Nährwert-Tagesübersicht am Ende des Planers wird nicht angezeigt.
 
 Das Startbildschirm-Widget zeigt Montag bis Sonntag mit Kalenderwoche, Datum und geplanten Gerichten. Der aktuelle Tag ist hervorgehoben; leere Tage zeigen „Noch nichts geplant“. Antippen öffnet den Wochenplan. Das Widget ist ab 4×2 nutzbar, lässt sich vergrößern und bietet eine je Widget gespeicherte Hintergrundtransparenz. Seine Konfiguration zeigt das tatsächliche Layout mit den aktuellen Planungen. Änderungen am Plan, Datum und Zeitzone aktualisieren die Anzeige.
 
@@ -51,7 +56,7 @@ Vorhandene Notion-Cover werden in den Artikeldetails angezeigt. Die Bildaktion b
 
 ### Vorrat, Kochen und Einkaufsliste
 
-Rezeptzutaten zeigen den verfügbaren Vorrat. Fehlende Zutaten lassen sich unter Berücksichtigung der gewählten Portionen und kompatiblen Einheiten (g/kg, ml/l, Stück) zur Einkaufsliste hinzufügen. Abgelaufene Vorräte zählen nicht als verfügbar. Der Abgleich verwendet identische Namen ohne Unterschiede in Groß-/Kleinschreibung und Leerzeichen; unterschiedliche Produktbezeichnungen werden nicht automatisch gleichgesetzt.
+Rezeptzutaten zeigen den verfügbaren Vorrat. Fehlende Zutaten lassen sich unter Berücksichtigung der gewählten Portionen und kompatiblen Einheiten (g/kg, ml/l, Stück) zur Einkaufsliste hinzufügen. Steht dieselbe Zutat bereits offen auf der Liste, wird die Menge addiert (z. B. 200 g + 0,3 kg Tomaten = 500 g) und das Rezept ergänzt, statt einen doppelten Eintrag anzulegen. Die Abteilung (Obst & Gemüse, Kühlregal, Fisch & Fleisch, Gewürze & Öle, Vorrat) wird aus dem Namen abgeleitet; kurze Wörter wie „Ei“ zählen nur als ganzes Wort, damit etwa „Reis“ oder „Rindfleisch“ richtig einsortiert werden. Eine neue Einkaufsliste startet leer. Abgelaufene Vorräte zählen nicht als verfügbar. Der Abgleich verwendet identische Namen ohne Unterschiede in Groß-/Kleinschreibung und Leerzeichen; unterschiedliche Produktbezeichnungen werden nicht automatisch gleichgesetzt.
 
 „Gekocht · Zutaten vom Vorrat abbuchen“ zieht nach Bestätigung die benötigten Mengen ab und verwendet zuerst Chargen mit dem frühesten MHD. Fehlt eine Zutat, wird nichts abgebucht. Niedrige Bestände können ohne doppelte offene Einträge auf die Einkaufsliste gesetzt werden.
 
@@ -64,7 +69,9 @@ Abgehakte Einkaufsartikel lassen sich mit ihren Mengen ins Inventar übertragen 
 3. Optional eine Inventar-Datenbank-ID eintragen oder „Inventar-Datenbank in Notion anlegen“ wählen. Die App erstellt oder verwendet „Yummify Inventar“ unter der übergeordneten Seite der Rezeptdatenbank. Diese Seite muss für die Integration freigegeben sein.
 4. Die Inventar-Verbindung prüfen und synchronisieren. Das Inventar verwendet denselben Token wie die Rezepte.
 
-Inventaranbindung und Rezeptanlage verwenden die Notion-API-Version `2025-09-03` und benötigen eine Datenbank mit genau einer Datenquelle. Das vorhandene Schema wird vor dem Schreiben geprüft.
+Als Datenbank-ID akzeptiert die App die reine ID (mit oder ohne Bindestriche) und jeden Notion-Link, auch in der Form `notion.so/arbeitsbereich/Rezepte-<id>?v=…`.
+
+Alle Notion-Zugriffe verwenden die API-Version `2025-09-03`. Inventaranbindung und Rezeptanlage benötigen eine Datenbank mit genau einer Datenquelle; beim Lesen von Rezepten werden alle Datenquellen berücksichtigt. Das vorhandene Schema wird vor dem Schreiben geprüft. Bei Notion-Ratenbegrenzung (HTTP 429) wartet die App die von Notion genannte Zeit ab und versucht es bis zu dreimal erneut.
 
 ### Rezeptdatenbank
 
@@ -79,8 +86,12 @@ Die folgenden Namen sind tatsächliche Notion-Feldnamen und bleiben auch in der 
 | `Kategorie` | `select`, `multi_select` oder `rich_text` | Kategorie; erforderlich, wenn beim Anlegen ausgefüllt |
 | `Küche` | `select` oder `multi_select` | Zusätzliche Filter beim Lesen |
 | `Tags` | `multi_select` | Zusätzliche Filter beim Lesen |
-| `Bewertung` | `select` oder `number` | Sternebewertung, z. B. `★` bis `★★★★★` oder 1 bis 5 |
+| `Bewertung` | `select` oder `number` | Sternebewertung, z. B. `★` bis `★★★★★` oder 1 bis 5; der Typ wird aus dem Schema gelesen |
 | `Geplant am` | `date` | Optionales Zurückschreiben des geplanten Datums |
+| `Zeit`, `Zubereitungszeit`, `Kochzeit` oder `Dauer` | `number` oder Text, z. B. „30 Min.“ | Optional: Zubereitungszeit in Minuten |
+| `Kalorien` oder `kcal`, `Protein`, `Kohlenhydrate`, `Fett` | `number` oder Text | Optional: Nährwerte pro Portion |
+| `Schwierigkeit` oder `Aufwand` | `select` oder Text | Optional: Anzeige in der Rezeptansicht |
+| `Kosten` oder `Preis` | `select` oder Text | Optional: Anzeige in der Rezeptansicht |
 | Seiteninhalt | Notion-Blöcke | Zubereitung; neue Rezepte speichern jeden Schritt als nummerierten Listenblock |
 | Seiten-Cover | Externes oder hochgeladenes Bild | Rezeptbild |
 
@@ -116,13 +127,19 @@ Existieren `Kalorien` und `kcal` gleichzeitig, hat `Kalorien` Vorrang. Fehlende 
 
 ## Offline-Nutzung und Synchronisation
 
-Inventaränderungen werden zuerst lokal gespeichert. Ausstehende Änderungen, Löschungen und Bilder bleiben bis zur erfolgreichen Übertragung erhalten. Mit aktiviertem automatischem Abgleich wird beim Öffnen und nach Änderungen synchronisiert; wartende Änderungen werden etwa jede Minute erneut versucht, solange der App-Prozess läuft. Zusätzlich ist ein manueller Abgleich möglich. Ohne automatischen Abgleich erfolgt die Übertragung nur manuell.
+Inventaränderungen werden zuerst lokal gespeichert. Ausstehende Änderungen, Löschungen und Bilder bleiben bis zur erfolgreichen Übertragung erhalten. Während eines Abgleichs bleibt das Inventar bedienbar: Speichern wartet nicht mehr auf Notion. Wird ein Artikel geändert, während er gerade übertragen wird, bleibt er als ausstehend markiert und wird im nächsten Durchgang erneut gesendet. Ist der lokale Inventarspeicher beschädigt, startet die App trotzdem, sichert die Rohdaten und lädt den Stand beim nächsten Abgleich aus Notion. Nicht mehr benötigte eigene Fotos werden nach dem Ersetzen oder Löschen eines Artikels entfernt. Mit aktiviertem automatischem Abgleich wird beim Öffnen und nach Änderungen synchronisiert; wartende Änderungen werden etwa jede Minute erneut versucht, solange der App-Prozess läuft. Zusätzlich ist ein manueller Abgleich möglich. Ohne automatischen Abgleich erfolgt die Übertragung nur manuell.
 
-Das Inventar ist nach Datenbank getrennt. Ein zunächst lokal erfasstes Inventar wird bei der ersten Einrichtung übernommen. Noch nicht synchronisierte lokale Änderungen haben bei Konflikten Vorrang; Änderungen anderer Geräte werden beim nächsten Abgleich geladen. Wochenplan und Einkaufsliste werden lokal gespeichert.
+Das Inventar ist nach Datenbank getrennt. Ein zunächst lokal erfasstes Inventar wird bei der ersten Einrichtung übernommen. Noch nicht synchronisierte lokale Änderungen haben bei Konflikten Vorrang; Änderungen anderer Geräte werden beim nächsten Abgleich geladen. Wochenplan, Einkaufsliste und Favoriten werden lokal gespeichert.
+
+## Datenschutz und Sicherheit
+
+- Der Notion-Token wird nur auf dem Gerät gespeichert und ist von Android-Cloud-Backups und Geräteübertragungen ausgeschlossen. Nach einem Gerätewechsel muss er neu eingegeben werden.
+- Netzwerkprotokolle gibt es nur in Debug- und Preview-Builds; sie enthalten nur Header, und der `Authorization`-Header wird geschwärzt. Release-Builds protokollieren keine Anfragen.
+- Open Food Facts erhält nur den Barcode, nie Notion-Zugangsdaten.
 
 ## Entwickeln, bauen und installieren
 
-Aktueller App-Stand: **1.1.0**, Android **8.0+ (API 26)**; Compile-/Target-SDK **34**.
+Aktueller App-Stand: **1.2.0**, Android **8.0+ (API 26)**; Compile-/Target-SDK **34**.
 
 Benötigt werden JDK 17, Android SDK 34 und die Android-Build-Werkzeuge. Android Studio kann für die Entwicklung verwendet werden. Den SDK-Pfad über `local.properties` (`sdk.dir=…`) oder `ANDROID_HOME` konfigurieren.
 
@@ -136,11 +153,26 @@ adb -d shell am start -n de.yummify.app/.MainActivity
 
 # Tests und Android Lint ausführen
 ./gradlew testDebugUnitTest lintDebug
+
+# Test-Build „Yummify Preview“ bauen
+./gradlew assemblePreview
+adb -d install -r app/build/outputs/apk/preview/app-preview.apk
 ```
 
-Die Tests decken unter anderem Mengenrechnung, Haltbarkeit, atomare Rezept-Abbuchung, Datumsermittlung, Pagination, Notion-Feldzuordnung einschließlich `kcal`, Rezeptanlage, Fehlerbehandlung, Wiederaufnahme unterbrochener Übertragungen, Offline-Speicherung, Einkaufs-Doppelbuchungen und Widget-Darstellung ab.
+**Preview-Build:** `assemblePreview` erzeugt `app-preview.apk` mit der Paket-ID `de.yummify.app.preview` und dem Namen „Yummify Preview“. Die App wird neben der normalen Yummify-App installiert, ersetzt sie nicht und teilt keine Daten mit ihr. So lassen sich neue Versionen gefahrlos ausprobieren; Notion-Token und Datenbank-IDs müssen dort einmal eingetragen werden. Die APK ist mit dem Debug-Schlüssel signiert und nur zum Testen gedacht.
 
-Ein Release-Build (`./gradlew assembleRelease`) benötigt den lokal konfigurierten Signierschlüssel `app/release.jks`. APKs, Gradle-Caches, SDK-Pfade und Signierschlüssel werden nicht versioniert.
+Die Tests decken unter anderem Mengenrechnung, Haltbarkeit, atomare Rezept-Abbuchung, Datumsermittlung, Pagination, Notion-Feldzuordnung einschließlich `kcal`, Rezeptanlage und Rezept-Lesen, Zutaten-Parser, Notion-Links, Ratenbegrenzung, Einkaufskategorien und Zusammenführung, Fehlerbehandlung, Wiederaufnahme unterbrochener Übertragungen, beschädigten Speicher, Offline-Speicherung, Abgleich ohne Eingabe-Blockade, Einkaufs-Doppelbuchungen und Widget-Darstellung ab.
+
+Ein Release-Build (`./gradlew assembleRelease`) wird nur signiert, wenn der Schlüssel und seine Passwörter lokal hinterlegt sind. Die Passwörter stehen nicht mehr im Repository, sondern in `local.properties` (nicht versioniert) oder in Umgebungsvariablen (`YUMMIFY_STOREPASSWORD` usw.):
+
+```properties
+yummify.storeFile=release.jks
+yummify.storePassword=…
+yummify.keyAlias=yummify
+yummify.keyPassword=…
+```
+
+`yummify.storeFile` ist relativ zum Ordner `app/`; Standard ist `release.jks`. Ohne diese Angaben entsteht eine unsignierte Release-APK. APKs, Gradle-Caches, SDK-Pfade und Signierschlüssel werden nicht versioniert.
 
 ### Technik und Quellcode
 

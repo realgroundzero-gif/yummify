@@ -7,6 +7,7 @@ import de.yummify.app.data.model.InventoryItem
 import de.yummify.app.data.model.InventoryChoices
 import de.yummify.app.data.model.InventoryMath
 import de.yummify.app.data.model.compactProductNotes
+import de.yummify.app.data.model.normalized
 import de.yummify.app.data.remote.NotionInventoryApi
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -22,6 +23,10 @@ class InventoryRepository internal constructor(context: Context, private val api
     private val configRepo = UserPreferencesRepository.getInstance(context)
     private val gson = Gson()
     private val mutex = Mutex()
+    private val syncMutex = Mutex()
+    private val syncAgain = java.util.concurrent.atomic.AtomicBoolean(false)
+    private var loadWarning: String? = null
+    private val obsoleteImages = mutableListOf<String>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var database = configRepo.preferences.value.inventoryDatabaseIdInput
     private var records = load(database)
@@ -49,7 +54,9 @@ class InventoryRepository internal constructor(context: Context, private val api
             }
         }
     }
-    private val _syncState = MutableStateFlow(InventorySyncState(pending = records.count { it.dirty }))
+    private val _syncState = MutableStateFlow(InventorySyncState(pending = records.count { it.dirty }).let { state ->
+        loadWarning?.let { state.copy(message = it) } ?: state
+    })
     val syncState = _syncState.asStateFlow()
     init {
         scope.launch {
@@ -80,9 +87,15 @@ class InventoryRepository internal constructor(context: Context, private val api
     private fun key(id: String) = "items_${id.ifBlank { "local" }}"
     private fun load(id: String): List<InventoryItem> {
         val raw = prefs.getString(key(id), null) ?: return emptyList()
-        // Preserve malformed storage instead of silently replacing it with an empty inventory.
-        val stored: List<InventoryItem> = gson.fromJson(raw, object : TypeToken<List<InventoryItem>>() {}.type) ?: emptyList()
-        val compact = stored.map { it.compactProductNotes() }
+        val stored: List<InventoryItem> = try {
+            gson.fromJson<List<InventoryItem>>(raw, object : TypeToken<List<InventoryItem>>() {}.type) ?: emptyList()
+        } catch (e: Exception) {
+            // Keep the unreadable data under a backup key instead of crashing on every start or overwriting it.
+            prefs.edit().putString("${key(id)}_corrupt_${System.currentTimeMillis()}", raw).remove(key(id)).commit()
+            loadWarning = "Gespeichertes Inventar war beschädigt und wurde gesichert. Ein Abgleich lädt den Stand aus Notion."
+            return emptyList()
+        }
+        val compact = stored.map { it.normalized().compactProductNotes() }
         if (compact != stored) check(prefs.edit().putString(key(id), gson.toJson(compact)).commit()) { "Produktnotizen konnten nicht gespeichert werden." }
         return compact
     }
@@ -112,14 +125,21 @@ class InventoryRepository internal constructor(context: Context, private val api
             require(item.barcode.isBlank() || records.none { !it.deleted && it.id != item.id && it.barcode.trim() == item.barcode.trim() } || records.any { it.id == item.id }) {
                 "Dieser Barcode ist bereits im Inventar. Bitte den vorhandenen Artikel öffnen."
             }
+            records.firstOrNull { it.id == item.id }?.localCoverPath?.takeIf { it != item.localCoverPath }?.let { synchronized(obsoleteImages) { obsoleteImages += it } }
             records = records.filterNot { it.id == item.id } + item.copy(dirty = true)
         }
+        deleteObsoleteImages()
     }
     suspend fun adjust(id: String, delta: Double) = mutate {
         records = records.map { if (it.id == id) it.copy(quantity = (it.quantity + delta).coerceAtLeast(0.0), dirty = true) else it }
     }
     suspend fun remove(id: String) = mutate {
         records = records.map { if (it.id == id) it.copy(deleted = true, dirty = true) else it }
+    }
+    /** Photos are private copies; delete them once no record refers to them anymore. */
+    private fun deleteObsoleteImages() {
+        val paths = synchronized(obsoleteImages) { obsoleteImages.toList().also { obsoleteImages.clear() } }
+        paths.filter { path -> records.none { it.localCoverPath == path } }.forEach { java.io.File(it).delete() }
     }
     suspend fun consume(ingredients: List<de.yummify.app.data.model.Ingredient>, multiplier: Double) = mutate {
         records = InventoryMath.consume(ingredients, multiplier, records)
@@ -131,41 +151,83 @@ class InventoryRepository internal constructor(context: Context, private val api
         records = if (existing == null) records + item else records.map { if (it.id == existing.id) it.copy(quantity = it.quantity + item.quantity, dirty = true) else it }
         purchases = purchases + purchaseId
     }
-    suspend fun sync() = withContext(Dispatchers.IO) {
-        mutex.withLock {
+    /**
+     * Network calls run outside [mutex], so edits are never blocked by a slow Notion. A record that
+     * changes while its upload is running stays dirty and is sent again in the next round.
+     */
+    suspend fun sync(): Unit = withContext(Dispatchers.IO) {
+        if (!syncMutex.tryLock()) { syncAgain.set(true); return@withContext }
+        try {
+            do {
+                syncAgain.set(false)
+                syncOnce()
+            } while (syncAgain.get())
+        } finally { syncMutex.unlock() }
+    }
+
+    private suspend fun syncOnce() {
+        val (token, db) = mutex.withLock {
             val config = configRepo.preferences.value
-            if (config.tokenInput.isBlank() || database.isBlank()) { updateStatus(); return@withLock }
-            _syncState.value = _syncState.value.copy(busy = true, configured = true, message = "Synchronisiert …")
-            try {
-                val api = apiFactory(config.tokenInput)
-                val source = api.source(database)
-                persistChoices(api.choices(source))
-                val remote = api.all(source)
-                require(remote.map { it.id }.distinct().size == remote.size) { "Doppelte Artikel-IDs in Notion. Bitte die IDs bereinigen." }
+            if (config.tokenInput.isBlank() || database.isBlank()) { updateStatus(); return }
+            config.tokenInput to database
+        }
+        _syncState.value = _syncState.value.copy(busy = true, configured = true, message = "Synchronisiert …")
+        try {
+            val api = apiFactory(token)
+            val source = api.source(db)
+            val remoteChoices = api.choices(source)
+            val remote = api.all(source)
+            require(remote.map { it.id }.distinct().size == remote.size) { "Doppelte Artikel-IDs in Notion. Bitte die IDs bereinigen." }
+            val pending = mutex.withLock {
+                if (database != db) return
+                persistChoices(remoteChoices)
                 // Dirty local entries take precedence. Unchanged remote removals are reflected locally.
                 val dirty = records.filter { it.dirty }
-                records = remote.filter { row -> dirty.none { it.id == row.id || (it.pageId != null && it.pageId == row.pageId) } }.map { row -> row.copy(localCoverPath = records.firstOrNull { it.id == row.id || it.pageId == row.pageId }?.localCoverPath).compactProductNotes() } + dirty
+                records = remote.filter { row -> dirty.none { it.id == row.id || (it.pageId != null && it.pageId == row.pageId) } }
+                    .map { row -> row.copy(localCoverPath = records.firstOrNull { it.id == row.id || (row.pageId != null && it.pageId == row.pageId) }?.localCoverPath).compactProductNotes() } + dirty
                 persist()
-                records.filter { it.dirty }.forEach { pending ->
-                    val remoteItem = remote.firstOrNull { it.id == pending.id || (pending.pageId != null && it.pageId == pending.pageId) }
-                    val item = pending.copy(pageId = pending.pageId ?: remoteItem?.pageId)
-                    if (item.deleted) {
-                        api.delete(source, item)
-                        records = records.filterNot { it.id == item.id }
-                    } else {
-                        val pageId = api.save(source, item)
-                        records = records.map { if (it.id == item.id) item.copy(pageId = pageId, dirty = false, coverPending = false, coverUrl = api.savedCover(pageId) ?: if (item.coverPending && item.localCoverPath != null) null else item.coverUrl) else it }
-                    }
-                    persist()
-                }
-                _syncState.value = _syncState.value.copy(message = "Mit Notion synchronisiert · ${java.time.LocalTime.now().withSecond(0).withNano(0)}")
-            } catch (e: CancellationException) { throw e
-            } catch (e: Exception) {
-                _syncState.value = _syncState.value.copy(message = "Lokal gespeichert · ${e.message ?: "Notion nicht erreichbar"}")
-            } finally {
-                _syncState.value = _syncState.value.copy(busy = false, pending = records.count { it.dirty })
+                records.filter { it.dirty }
             }
+            pending.forEach { snapshot ->
+                val remoteItem = remote.firstOrNull { it.id == snapshot.id || (snapshot.pageId != null && it.pageId == snapshot.pageId) }
+                val item = snapshot.copy(pageId = snapshot.pageId ?: remoteItem?.pageId)
+                if (item.deleted) {
+                    api.delete(source, item)
+                    mutex.withLock {
+                        if (database != db) return
+                        item.localCoverPath?.let { synchronized(obsoleteImages) { obsoleteImages += it } }
+                        records = records.filterNot { it.id == item.id && it.deleted }
+                        persist()
+                        deleteObsoleteImages()
+                    }
+                } else {
+                    val pageId = api.save(source, item)
+                    val savedCover = api.savedCover(pageId)
+                    mutex.withLock {
+                        if (database != db) return
+                        records = records.map { current -> if (current.id == item.id) applySaved(current, snapshot, item, pageId, savedCover) else current }
+                        persist()
+                    }
+                }
+            }
+            _syncState.value = _syncState.value.copy(message = "Mit Notion synchronisiert · ${java.time.LocalTime.now().withSecond(0).withNano(0)}")
+        } catch (e: CancellationException) { throw e
+        } catch (e: Exception) {
+            _syncState.value = _syncState.value.copy(message = "Lokal gespeichert · ${e.message ?: "Notion nicht erreichbar"}")
+        } finally {
+            _syncState.value = _syncState.value.copy(busy = false, pending = records.count { it.dirty })
         }
+    }
+
+    private fun applySaved(current: InventoryItem, snapshot: InventoryItem, sent: InventoryItem, pageId: String, savedCover: String?): InventoryItem {
+        val coverSent = sent.coverPending && current.localCoverPath == sent.localCoverPath && current.coverUrl == sent.coverUrl
+        val coverUrl = if (!sent.coverPending) current.coverUrl
+            else if (coverSent) savedCover ?: if (sent.localCoverPath != null) null else sent.coverUrl
+            else current.coverUrl
+        return if (current == snapshot) sent.copy(pageId = pageId, dirty = false, coverPending = false, coverUrl = coverUrl)
+        // Changed while uploading: keep it dirty, but remember the page so the next round updates instead of creating.
+        else current.copy(pageId = current.pageId ?: pageId, coverPending = current.coverPending && !coverSent,
+            coverUrl = if (coverSent) coverUrl else current.coverUrl)
     }
     fun syncOnResume() { if (configRepo.preferences.value.autoSyncEnabled) scope.launch { sync() } }
     companion object {

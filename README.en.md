@@ -8,17 +8,22 @@ Yummify is an Android app for recipes, weekly meal planning, shopping lists and 
 
 ### Recipes
 
-- Load recipes from Notion, including all database results through pagination, page covers, categories, cuisines and tags.
+- Load recipes from Notion, including all database results through pagination, page covers, categories, cuisines and tags. Recipes are loaded once per connection and shared by all screens; reload them with “Erneut versuchen” (retry) or the synchronization in the settings.
+- The last loaded recipes are stored on the device. Without a network the app shows them with an offline notice; loading errors show their cause and a retry button instead of an empty list.
 - Search titles, descriptions and ingredients; filter by categories from existing recipes. Filters stay visible while scrolling.
-- Scale ingredient quantities by changing the number of servings. The parser supports decimal numbers, fractions and common units.
-- Display instructions from Notion page content, with support for headings, lists, quotes, callouts and text formatting.
-- Manage favorites and write ratings of one to five stars back to Notion.
+- Scale ingredient quantities by changing the number of servings. The parser understands decimals (“1,5 kg”), fractions (“1/2 TL”, “1 1/2 EL”, “½ Bund”), ranges (“2–3 Zehen”, the larger value counts) and common units. When Notion lists one ingredient per line, additions such as “1 Zwiebel, gewürfelt” stay together.
+- Display instructions from Notion page content, with support for headings, lists, quotes, callouts and text formatting. Long pages with more than 100 blocks are loaded completely.
+- Time, calories, difficulty and cost appear only when the matching Notion properties are filled in (see the table below). Recipes without a cover show a neutral placeholder.
+- Bookmark favorites. They are stored on the device (not in Notion), and the bookmark in the search bar filters the list to favorites only.
+- Write ratings of one to five stars back to Notion. If saving fails, the previous rating is restored and the reason is shown.
 - Create recipes directly in Notion using the plus button: name, description, servings, category, ingredients, preparation steps and an optional HTTPS cover. The form validates inputs and the database schema; errors preserve the draft.
 - Sample recipes are available without a configured Notion connection. This is not a complete offline synchronization of the recipe database.
 
 ### Weekly planner and widget
 
-Schedule recipes for a date and meal slot: breakfast, lunch, dinner or snack. The planner is stored locally and supports browsing weeks and marking meals as cooked. For connected Notion recipes, the planned date is written back to the `Geplant am` date property when it exists and is writable. The planner does not show a daily nutrition summary at the bottom.
+Schedule recipes for a date and meal slot: breakfast, lunch, dinner or snack. The planner is stored locally and supports browsing weeks and marking meals as cooked. A new planner starts empty; sample entries from earlier versions are removed on first start.
+
+For connected Notion recipes, the planned date is written back to the `Geplant am` date property when it exists. Because Notion holds one date per recipe, it shows the next planned date from today (otherwise the most recent past one). Removing a recipe's last plan clears the property. If Notion cannot be reached, the local plan stays saved and the app reports that the Notion date was not updated. The planner does not show a daily nutrition summary at the bottom.
 
 The home screen widget shows Monday through Sunday with the calendar week, dates and planned meals. It highlights today and labels empty days as having no planned meals. Tapping it opens the planner. The widget supports a minimum size of 4×2, resizing and a background transparency setting saved separately for each widget. Its configuration displays the actual layout with current plans. Changes to the plan, date and time zone update the display.
 
@@ -51,7 +56,7 @@ Existing Notion covers appear in item details. The image action explicitly offer
 
 ### Stock, cooking and shopping lists
 
-Recipe ingredients show available inventory. Missing ingredients can be added to the shopping list based on selected servings and compatible units (g/kg, ml/l, pieces). Expired stock does not count as available. Matching uses identical names, ignoring case and whitespace; different product names are not automatically treated as equivalent.
+Recipe ingredients show available inventory. Missing ingredients can be added to the shopping list based on selected servings and compatible units (g/kg, ml/l, pieces). If the same ingredient is already open on the list, the quantity is added up (for example 200 g + 0.3 kg tomatoes = 500 g) and the recipe is appended instead of creating a duplicate entry. The aisle (fruit and vegetables, dairy, meat and fish, spices and oils, pantry) is derived from the name; short words such as “Ei” (egg) only count as whole words, so “Reis” (rice) or “Rindfleisch” (beef) are sorted correctly. A new shopping list starts empty. Expired stock does not count as available. Matching uses identical names, ignoring case and whitespace; different product names are not automatically treated as equivalent.
 
 The cooking action deducts the required quantities after confirmation, using batches with the earliest best-before date first. If an ingredient is missing, nothing is deducted. Low-stock items can be added to the shopping list without duplicate open entries.
 
@@ -64,7 +69,9 @@ Checked shopping items can be transferred with their quantities to the inventory
 3. Optionally enter an inventory database ID or use the inventory database creation action. The app creates or reuses `Yummify Inventar` under the recipe database's parent page. That page must be shared with the integration.
 4. Test the inventory connection and synchronize. Inventory uses the same token as recipes.
 
-Inventory integration and recipe creation use Notion API version `2025-09-03` and require a database with exactly one data source. The existing schema is checked before writing.
+As database ID the app accepts the plain ID (with or without dashes) and any Notion link, including the form `notion.so/workspace/Rezepte-<id>?v=…`.
+
+All Notion requests use API version `2025-09-03`. Inventory integration and recipe creation require a database with exactly one data source; reading recipes includes all data sources. The existing schema is checked before writing. When Notion rate-limits requests (HTTP 429), the app waits for the time Notion specifies and retries up to three times.
 
 ### Recipe database
 
@@ -79,8 +86,12 @@ The following names are actual Notion property names. Keep them unchanged even w
 | `Kategorie` | `select`, `multi_select` or `rich_text` | Category; required if filled in during creation |
 | `Küche` | `select` or `multi_select` | Additional filters when reading |
 | `Tags` | `multi_select` | Additional filters when reading |
-| `Bewertung` | `select` or `number` | Star rating, e.g. `★` through `★★★★★` or 1 through 5 |
+| `Bewertung` | `select` or `number` | Star rating, e.g. `★` through `★★★★★` or 1 through 5; the type is read from the schema |
 | `Geplant am` | `date` | Optional write-back of the planned date |
+| `Zeit`, `Zubereitungszeit`, `Kochzeit` or `Dauer` | `number` or text, e.g. “30 Min.” | Optional: preparation time in minutes |
+| `Kalorien` or `kcal`, `Protein`, `Kohlenhydrate`, `Fett` | `number` or text | Optional: nutrition per serving |
+| `Schwierigkeit` or `Aufwand` | `select` or text | Optional: shown in the recipe view |
+| `Kosten` or `Preis` | `select` or text | Optional: shown in the recipe view |
 | Page content | Notion blocks | Instructions; new recipes store each step as a numbered list block |
 | Page cover | External or uploaded image | Recipe image |
 
@@ -116,13 +127,19 @@ If both `Kalorien` and `kcal` exist, `Kalorien` takes priority. Missing nutritio
 
 ## Offline use and synchronization
 
-Inventory changes are saved locally first. Pending edits, deletions and images are retained until successfully transferred. With automatic synchronization enabled, the app synchronizes on opening and after changes; pending changes are retried about once a minute while the app process is running. Manual synchronization is also available. With automatic synchronization disabled, transfers run manually only.
+Inventory changes are saved locally first. Pending edits, deletions and images are retained until successfully transferred. The inventory stays usable during synchronization: saving no longer waits for Notion. If an item changes while it is being uploaded, it stays pending and is sent again in the next round. If the local inventory storage is damaged, the app still starts, keeps the raw data as a backup and loads the state from Notion at the next synchronization. Own photos that are no longer needed are removed after an item's photo is replaced or the item is deleted. With automatic synchronization enabled, the app synchronizes on opening and after changes; pending changes are retried about once a minute while the app process is running. Manual synchronization is also available. With automatic synchronization disabled, transfers run manually only.
 
-Inventory is separated by database. Initially local inventory is adopted when configuring a database for the first time. Unsynchronized local changes take priority in conflicts; changes from other devices are loaded during the next synchronization. The meal plan and shopping list are stored locally.
+Inventory is separated by database. Initially local inventory is adopted when configuring a database for the first time. Unsynchronized local changes take priority in conflicts; changes from other devices are loaded during the next synchronization. The meal plan, shopping list and favorites are stored locally.
+
+## Privacy and security
+
+- The Notion token is stored only on the device and is excluded from Android cloud backups and device transfers. After switching devices, enter it again.
+- Network logging exists only in debug and preview builds; it contains headers only, with the `Authorization` header redacted. Release builds do not log requests.
+- Open Food Facts receives only the barcode, never Notion credentials.
 
 ## Develop, build and install
 
-Current app version: **1.1.0**, Android **8.0+ (API 26)**; compile/target SDK **34**.
+Current app version: **1.2.0**, Android **8.0+ (API 26)**; compile/target SDK **34**.
 
 You need JDK 17, Android SDK 34 and the Android build tools. Android Studio can be used for development. Configure the SDK path through `local.properties` (`sdk.dir=…`) or `ANDROID_HOME`.
 
@@ -136,11 +153,26 @@ adb -d shell am start -n de.yummify.app/.MainActivity
 
 # Run tests and Android Lint
 ./gradlew testDebugUnitTest lintDebug
+
+# Build the “Yummify Preview” test build
+./gradlew assemblePreview
+adb -d install -r app/build/outputs/apk/preview/app-preview.apk
 ```
 
-Tests cover quantity calculations, expiration, atomic recipe stock deduction, date handling, pagination, Notion property mapping including `kcal`, recipe creation, error handling, interrupted transfer recovery, offline storage, duplicate shopping transfers and widget rendering.
+**Preview build:** `assemblePreview` creates `app-preview.apk` with the package ID `de.yummify.app.preview` and the name “Yummify Preview”. It installs next to the regular Yummify app, does not replace it and shares no data with it, so new versions can be tried safely; enter the Notion token and database IDs there once. The APK is signed with the debug key and intended for testing only.
 
-A release build (`./gradlew assembleRelease`) requires the locally configured signing key `app/release.jks`. APKs, Gradle caches, SDK paths and signing keys are not tracked in Git.
+Tests cover quantity calculations, expiration, atomic recipe stock deduction, date handling, pagination, Notion property mapping including `kcal`, recipe creation and reading, the ingredient parser, Notion links, rate limiting, shopping categories and merging, error handling, interrupted transfer recovery, damaged storage, offline storage, synchronization without blocking edits, duplicate shopping transfers and widget rendering.
+
+A release build (`./gradlew assembleRelease`) is signed only when the key and its passwords are configured locally. The passwords are no longer in the repository; put them in `local.properties` (not tracked) or environment variables (`YUMMIFY_STOREPASSWORD` and so on):
+
+```properties
+yummify.storeFile=release.jks
+yummify.storePassword=…
+yummify.keyAlias=yummify
+yummify.keyPassword=…
+```
+
+`yummify.storeFile` is relative to the `app/` folder and defaults to `release.jks`. Without these values the release APK is unsigned. APKs, Gradle caches, SDK paths and signing keys are not tracked in Git.
 
 ### Technology and source code
 

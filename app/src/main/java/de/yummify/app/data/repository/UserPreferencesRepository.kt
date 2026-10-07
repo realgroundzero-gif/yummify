@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class UserPreferences(
     val darkModeEnabled: Boolean = false,
-    val remindersEnabled: Boolean = true,
+
     val autoSyncEnabled: Boolean = true,
     val tokenInput: String = "",
     val databaseIdInput: String = "",
@@ -21,7 +21,6 @@ class UserPreferencesRepository(context: Context) {
     private val _preferences = MutableStateFlow(
         UserPreferences(
             darkModeEnabled = prefs.getBoolean(KEY_DARK_MODE, false),
-            remindersEnabled = prefs.getBoolean(KEY_REMINDERS, true),
             autoSyncEnabled = prefs.getBoolean(KEY_AUTO_SYNC, true),
             tokenInput = prefs.getString(KEY_TOKEN, "") ?: "",
             databaseIdInput = prefs.getString(KEY_DATABASE_ID, "") ?: "",
@@ -33,11 +32,6 @@ class UserPreferencesRepository(context: Context) {
     fun setDarkModeEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_DARK_MODE, enabled).apply()
         _preferences.value = _preferences.value.copy(darkModeEnabled = enabled)
-    }
-
-    fun setRemindersEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_REMINDERS, enabled).apply()
-        _preferences.value = _preferences.value.copy(remindersEnabled = enabled)
     }
 
     fun setAutoSyncEnabled(enabled: Boolean) {
@@ -60,7 +54,6 @@ class UserPreferencesRepository(context: Context) {
 
     companion object {
         private const val KEY_DARK_MODE = "dark_mode"
-        private const val KEY_REMINDERS = "reminders"
         private const val KEY_AUTO_SYNC = "auto_sync"
         private const val KEY_TOKEN = "notion_token"
         private const val KEY_DATABASE_ID = "notion_db_id"

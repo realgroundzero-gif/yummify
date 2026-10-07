@@ -52,10 +52,18 @@ class NotionInventoryApiTest {
         val archive = server.takeRequest()
         assertEquals("PATCH", archive.method); assertTrue(archive.body.readUtf8().contains("in_trash"))
     }
+    private fun noWaitApi() = NotionInventoryApi("test-token", okhttp3.OkHttpClient.Builder()
+        .addInterceptor(de.yummify.app.data.remote.RateLimitRetry(sleep = {})).build(), server.url("v1").toString().removeSuffix("/"))
     @Test fun failedFetchIsNotAnEmptyInventory() {
-        respond("""{"message":"Rate limited"}""", 429)
-        val error = assertThrows(java.io.IOException::class.java) { api.all("source") }
+        repeat(4) { respond("""{"message":"Rate limited"}""", 429) }
+        val error = assertThrows(java.io.IOException::class.java) { noWaitApi().all("source") }
         assertTrue(error.message!!.contains("429"))
+        assertEquals("Three retries after the first attempt", 4, server.requestCount)
+    }
+    @Test fun rateLimitIsRetriedBeforeReportingFailure() {
+        respond("""{"message":"Rate limited"}""", 429)
+        respond("""{"results":[${page("p1", "c1")}],"has_more":false}""")
+        assertEquals(listOf("c1"), noWaitApi().all("source").map { it.id })
     }
     @Test fun rejectsMultipleSourcesInsteadOfWritingToWrongTable() {
         respond("""{"data_sources":[{"id":"one"},{"id":"two"}]}""")

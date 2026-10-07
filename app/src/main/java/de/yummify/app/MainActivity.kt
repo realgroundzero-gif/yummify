@@ -62,7 +62,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        handleIntent(intent)
+        // After rotation or a theme change the navigation state is restored; replaying the intent would open screens twice.
+        if (savedInstanceState == null) handleIntent(intent)
 
         val prefsRepo = de.yummify.app.data.repository.UserPreferencesRepository.getInstance(applicationContext)
         setContent {
@@ -91,11 +92,7 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: android.content.Intent?) {
         launchRequestState.intValue++
         launchRouteState.value = intent?.getStringExtra("route")
-        val recipeId = intent?.getStringExtra("recipeId")
-        launchRecipeIdState.value = recipeId
-        if (!recipeId.isNullOrEmpty()) {
-            launchRecipeIdState.value = recipeId
-        }
+        launchRecipeIdState.value = intent?.getStringExtra("recipeId")
     }
 }
 

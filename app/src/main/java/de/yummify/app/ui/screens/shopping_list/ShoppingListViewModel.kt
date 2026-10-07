@@ -15,7 +15,6 @@ data class ShoppingListUiState(
     val visibleItems: List<ShoppingItem> = emptyList(),
     val groupedItems: Map<String, List<ShoppingItem>> = emptyMap(),
     val filter: String = "missing",
-    val isSyncing: Boolean = false,
     val openItems: Int = 0,
     val transferring: Boolean = false,
     val message: String? = null
@@ -84,14 +83,6 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
             } catch (e: kotlinx.coroutines.CancellationException) { throw e
             } catch (e: Exception) { _uiState.value = _uiState.value.copy(message = e.message) }
             finally { _uiState.value = _uiState.value.copy(transferring = false) }
-        }
-    }
-
-    fun triggerSync() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isSyncing = true)
-            kotlinx.coroutines.delay(1500)
-            _uiState.value = _uiState.value.copy(isSyncing = false)
         }
     }
 }

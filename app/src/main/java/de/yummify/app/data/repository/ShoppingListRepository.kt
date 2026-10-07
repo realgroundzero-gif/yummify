@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import de.yummify.app.data.local.SampleData
 import de.yummify.app.data.model.Ingredient
 import de.yummify.app.data.model.InventoryItem
 import de.yummify.app.data.model.InventoryMath
@@ -12,125 +11,138 @@ import de.yummify.app.data.model.ShoppingItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Locale
 import java.util.UUID
 
 class ShoppingListRepository private constructor(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("yummify_shopping_list", Context.MODE_PRIVATE)
     private val gson = Gson()
+    private val lock = Any()
 
-    private val _items = MutableStateFlow<List<ShoppingItem>>(loadItems())
+    private val _items = MutableStateFlow(loadItems())
     val items: StateFlow<List<ShoppingItem>> = _items.asStateFlow()
 
     private fun loadItems(): List<ShoppingItem> {
-        val json = prefs.getString(KEY_ITEMS, null) ?: return SampleData.shoppingItems
-        return try {
-            val type = object : TypeToken<List<ShoppingItem>>() {}.type
-            gson.fromJson(json, type) ?: SampleData.shoppingItems
-        } catch (e: Exception) {
-            SampleData.shoppingItems
+        val json = prefs.getString(KEY_ITEMS, null) ?: return emptyList()
+        val stored: List<ShoppingItem> = runCatching {
+            gson.fromJson<List<ShoppingItem>>(json, object : TypeToken<List<ShoppingItem>>() {}.type)
+        }.getOrNull() ?: run {
+            prefs.edit().putString("${KEY_ITEMS}_corrupt_${System.currentTimeMillis()}", json).apply()
+            return emptyList()
         }
+        // Earlier versions showed demo items until the list was first saved; drop them once.
+        val cleaned = stored.filterNot { it.id in SAMPLE_IDS && it.quantity == null && it.unit == null }
+        if (cleaned != stored) prefs.edit().putString(KEY_ITEMS, gson.toJson(cleaned)).apply()
+        return cleaned
     }
 
-    private fun saveItems(list: List<ShoppingItem>) {
-        val json = gson.toJson(list)
-        prefs.edit().putString(KEY_ITEMS, json).apply()
-        _items.value = list
+    /** Read, change and store under one lock, so widget taps and app actions cannot overwrite each other. */
+    private fun update(change: (List<ShoppingItem>) -> List<ShoppingItem>) {
+        synchronized(lock) {
+            val list = change(_items.value)
+            prefs.edit().putString(KEY_ITEMS, gson.toJson(list)).apply()
+            _items.value = list
+        }
         de.yummify.app.widget.ShoppingListWidgetProvider.updateAllWidgets(context)
     }
 
     fun addInventoryNeeds(stock: List<InventoryItem>): Int {
-        val current = _items.value.toMutableList()
         var count = 0
-        stock.forEach { item ->
-            if (current.none { !it.isChecked && InventoryMath.normalizedName(it.name) == InventoryMath.normalizedName(item.name) && it.unit == item.unit }) {
-                val amount = (item.minimum - item.quantity).coerceAtLeast(1.0)
-                current.add(ShoppingItem(UUID.randomUUID().toString(), item.name, "${InventoryMath.number(amount)} ${item.unit}", item.category,
-                    note = "Inventar nachfüllen", quantity = amount, unit = item.unit))
-                count++
+        update { list ->
+            val current = list.toMutableList()
+            stock.forEach { item ->
+                if (current.none { !it.isChecked && InventoryMath.normalizedName(it.name) == InventoryMath.normalizedName(item.name) && it.unit == item.unit }) {
+                    val amount = (item.minimum - item.quantity).coerceAtLeast(1.0)
+                    current.add(ShoppingItem(UUID.randomUUID().toString(), item.name, "${InventoryMath.number(amount)} ${item.unit}".trim(), item.category,
+                        note = "Inventar nachfüllen", quantity = amount, unit = item.unit))
+                    count++
+                }
             }
+            current
         }
-        saveItems(current)
         return count
     }
 
-    fun removeItems(ids: Set<String>) = saveItems(_items.value.filterNot { it.id in ids })
+    fun removeItems(ids: Set<String>) = update { list -> list.filterNot { it.id in ids } }
 
-    fun toggleItem(id: String) {
-        val updated = _items.value.map {
-            if (it.id == id) it.copy(isChecked = !it.isChecked) else it
-        }
-        saveItems(updated)
-    }
+    fun toggleItem(id: String) = update { list -> list.map { if (it.id == id) it.copy(isChecked = !it.isChecked) else it } }
 
-    fun clearDoneItems() {
-        val remaining = _items.value.filter { !it.isChecked }
-        saveItems(remaining)
-    }
+    fun clearDoneItems() = update { list -> list.filter { !it.isChecked } }
 
+    /** Adds ingredients; an open entry with the same name and a convertible unit is increased instead of duplicated. */
     fun addIngredients(recipeTitle: String, ingredients: List<Ingredient>, portionMultiplier: Double): Int {
-        val current = _items.value.toMutableList()
-        var addedCount = 0
-
-        ingredients.forEach { ingredient ->
-            val formattedAmount = ingredient.getFormattedAmount(portionMultiplier)
-            val category = when {
-                ingredient.name.contains("Gemüse", ignoreCase = true) ||
-                ingredient.name.contains("Paprika", ignoreCase = true) ||
-                ingredient.name.contains("Zwiebel", ignoreCase = true) ||
-                ingredient.name.contains("Knoblauch", ignoreCase = true) ||
-                ingredient.name.contains("Tomate", ignoreCase = true) ||
-                ingredient.name.contains("Pilz", ignoreCase = true) ||
-                ingredient.name.contains("Zitrone", ignoreCase = true) ||
-                ingredient.name.contains("Avocado", ignoreCase = true) ||
-                ingredient.name.contains("Salat", ignoreCase = true) ||
-                ingredient.name.contains("Basilikum", ignoreCase = true) -> "Obst & Gemüse"
-
-                ingredient.name.contains("Milch", ignoreCase = true) ||
-                ingredient.name.contains("Käse", ignoreCase = true) ||
-                ingredient.name.contains("Parmesan", ignoreCase = true) ||
-                ingredient.name.contains("Sahne", ignoreCase = true) ||
-                ingredient.name.contains("Butter", ignoreCase = true) ||
-                ingredient.name.contains("Feta", ignoreCase = true) ||
-                ingredient.name.contains("Ei", ignoreCase = true) ||
-                ingredient.name.contains("Joghurt", ignoreCase = true) -> "Kühlregal & Milchprodukte"
-
-                ingredient.name.contains("Hähnchen", ignoreCase = true) ||
-                ingredient.name.contains("Fleisch", ignoreCase = true) ||
-                ingredient.name.contains("Hackfleisch", ignoreCase = true) ||
-                ingredient.name.contains("Lachs", ignoreCase = true) ||
-                ingredient.name.contains("Speck", ignoreCase = true) ||
-                ingredient.name.contains("Schinken", ignoreCase = true) -> "Fisch & Fleisch"
-
-                ingredient.name.contains("Öl", ignoreCase = true) ||
-                ingredient.name.contains("Salz", ignoreCase = true) ||
-                ingredient.name.contains("Pfeffer", ignoreCase = true) ||
-                ingredient.name.contains("Gewürz", ignoreCase = true) ||
-                ingredient.name.contains("Erz", ignoreCase = true) ||
-                ingredient.name.contains("Essig", ignoreCase = true) -> "Gewürze & Öle"
-
-                else -> "Vorrat & Trockenwaren"
-            }
-
-            val newItem = ShoppingItem(
-                id = UUID.randomUUID().toString(),
-                name = ingredient.name,
-                amountWithUnit = formattedAmount,
-                category = category,
-                recipeName = recipeTitle,
-                isChecked = false,
-                quantity = ingredient.amount * portionMultiplier,
-                unit = ingredient.unit.ifBlank { "Stk" }
-            )
-            current.add(0, newItem)
-            addedCount++
-        }
-
-        saveItems(current)
-        return addedCount
+        update { list -> mergeIngredients(list, recipeTitle, ingredients, portionMultiplier) }
+        return ingredients.size
     }
 
     companion object {
         private const val KEY_ITEMS = "shopping_items_json"
+        private val SAMPLE_IDS = (1..14).map { "s$it" }.toSet()
+
+        internal fun mergeIngredients(list: List<ShoppingItem>, recipeTitle: String, ingredients: List<Ingredient>,
+                                      multiplier: Double, newId: () -> String = { UUID.randomUUID().toString() }): List<ShoppingItem> {
+            val current = list.toMutableList()
+            ingredients.forEach { ingredient ->
+                val unit = ingredient.unit.ifBlank { "Stk" }
+                val amount = ingredient.amount * multiplier
+                val sameName = { item: ShoppingItem -> !item.isChecked && InventoryMath.normalizedName(item.name) == InventoryMath.normalizedName(ingredient.name) }
+                val index = current.indexOfFirst { item ->
+                    sameName(item) && item.quantity != null && item.unit != null && InventoryMath.convert(amount, unit, item.unit) != null
+                }
+                val unquantified = if (amount > 0) -1 else current.indexOfFirst(sameName)
+                if (unquantified >= 0) {
+                    // "Salz" without an amount: one open entry is enough, just note the extra recipe.
+                    val existing = current[unquantified]
+                    current[unquantified] = existing.copy(recipeName = joinRecipes(existing.recipeName, recipeTitle))
+                } else if (index >= 0 && amount > 0) {
+                    val existing = current[index]
+                    val total = existing.quantity!! + InventoryMath.convert(amount, unit, existing.unit!!)!!
+                    current[index] = existing.copy(quantity = total, amountWithUnit = format(total, existing.unit), recipeName = joinRecipes(existing.recipeName, recipeTitle))
+                } else {
+                    current.add(0, ShoppingItem(id = newId(), name = ingredient.name,
+                        amountWithUnit = if (amount > 0) format(amount, ingredient.unit) else "",
+                        category = categoryFor(ingredient.name), recipeName = recipeTitle,
+                        quantity = amount.takeIf { it > 0 }, unit = unit))
+                }
+            }
+            return current
+        }
+
+        private fun joinRecipes(existing: String?, added: String) =
+            listOfNotNull(existing, added).flatMap { it.split(" · ") }.filter { it.isNotBlank() }.distinct().joinToString(" · ")
+
+        private fun format(amount: Double, unit: String) = "${InventoryMath.number(amount)} $unit".trim()
+
+        /**
+         * Ordered rules; the first match wins. "=x" matches a whole word, "*x" a word ending in x
+         * (compounds such as "Olivenöl"), anything else a part of the name. So "Ei" never hits "Reis".
+         */
+        private val categoryRules: List<Pair<String, List<String>>> = listOf(
+            "Fisch & Fleisch" to listOf("fleisch", "hähnchen", "huhn", "pute", "rind", "schwein", "hack", "lachs", "thunfisch", "fisch",
+                "garnele", "speck", "schinken", "wurst", "salami", "chorizo", "bacon"),
+            "Gewürze & Öle" to listOf("*öl", "*salz", "pfeffer", "gewürz", "pulver", "essig", "zimt", "kreuzkümmel", "curry",
+                "oregano", "thymian", "chili", "muskat", "brühe"),
+            "Obst & Gemüse" to listOf("gemüse", "paprika", "zwiebel", "knoblauch", "tomate", "pilz", "champignon", "zitrone", "limette",
+                "avocado", "salat", "basilikum", "petersilie", "koriander", "kartoffel", "möhre", "karotte", "zucchini", "gurke",
+                "spinat", "brokkoli", "apfel", "banane", "beere", "ingwer", "lauch", "aubergine", "kürbis"),
+            "Kühlregal & Milchprodukte" to listOf("milch", "käse", "parmesan", "mozzarella", "burrata", "sahne", "butter", "feta",
+                "joghurt", "quark", "schmand", "crème fraîche", "=ei", "=eier", "eigelb", "eiweiß")
+        )
+
+        /** Picks a shopping category from the ingredient name. */
+        fun categoryFor(name: String): String {
+            val lower = name.lowercase(Locale.GERMAN)
+            val words = lower.split(Regex("""[^\p{L}]+""")).filter { it.isNotEmpty() }
+            return categoryRules.firstOrNull { (_, keywords) ->
+                keywords.any { keyword ->
+                    when (keyword.first()) {
+                        '=' -> keyword.drop(1) in words
+                        '*' -> words.any { it.endsWith(keyword.drop(1)) }
+                        else -> lower.contains(keyword)
+                    }
+                }
+            }?.first ?: "Vorrat & Trockenwaren"
+        }
 
         @Volatile
         private var INSTANCE: ShoppingListRepository? = null
