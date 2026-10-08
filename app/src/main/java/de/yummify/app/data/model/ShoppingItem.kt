@@ -25,5 +25,7 @@ data class CoveredItem(
     val reason: String,
     val quantity: Double?,
     val unit: String?,
-    val recipeName: String?
+    val recipeName: String?,
+    /** Set when the user confirmed a "Vielleicht schon da" suggestion; "Doch kaufen" then remembers the decision. */
+    val suggestionKey: String? = null
 )

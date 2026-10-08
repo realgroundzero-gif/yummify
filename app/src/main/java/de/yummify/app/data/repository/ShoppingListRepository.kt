@@ -9,6 +9,7 @@ import de.yummify.app.data.model.Ingredient
 import de.yummify.app.data.model.InventoryItem
 import de.yummify.app.data.model.InventoryMath
 import de.yummify.app.data.model.ShoppingItem
+import de.yummify.app.data.model.StockSuggestion
 import de.yummify.app.data.model.WeekShoppingResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -95,9 +96,32 @@ class ShoppingListRepository private constructor(private val context: Context) {
             mergeIngredients(list, item.recipeName.orEmpty(), listOf(Ingredient(item.name, item.quantity ?: 0.0, item.unit.orEmpty())), 1.0)
         }
         setCovered(_covered.value.filterNot { it.id == id })
+        item.suggestionKey?.let { dismissSuggestion(it) }   // the user wanted to buy it after all
     }
 
     fun dismissCovered() = setCovered(emptyList())
+
+    private val _dismissed = MutableStateFlow(loadDismissed())
+    /** Name pairs for which the user answered "Nein, kaufen"; the suggestion does not come back for them. */
+    val dismissedSuggestions: StateFlow<Set<String>> = _dismissed.asStateFlow()
+
+    private fun loadDismissed(): Set<String> = runCatching {
+        gson.fromJson<List<String>>(prefs.getString(KEY_DISMISSED, null), object : TypeToken<List<String>>() {}.type)
+    }.getOrNull().orEmpty().toSet()
+
+    fun dismissSuggestion(key: String) {
+        val updated = _dismissed.value + key
+        prefs.edit().putString(KEY_DISMISSED, gson.toJson(updated.toList())).apply()
+        _dismissed.value = updated
+    }
+
+    /** "Ist vorrätig": takes the entry off the list and keeps it under "Bereits im Vorrat" so it can be undone. */
+    fun acceptSuggestion(suggestion: StockSuggestion, newId: String = java.util.UUID.randomUUID().toString()) {
+        val entry = _items.value.firstOrNull { it.id == suggestion.itemId } ?: return
+        update { list -> list.filterNot { it.id == entry.id } }
+        setCovered(_covered.value + CoveredItem(newId, entry.name, entry.amountWithUnit.ifBlank { "nach Bedarf" },
+            "Vorrat: ${suggestion.stockName} (${suggestion.stockAmount})", entry.quantity, entry.unit, entry.recipeName, suggestion.key))
+    }
 
     fun removeItems(ids: Set<String>) = update { list -> list.filterNot { it.id in ids } }
 
@@ -114,6 +138,7 @@ class ShoppingListRepository private constructor(private val context: Context) {
     companion object {
         private const val KEY_ITEMS = "shopping_items_json"
         private const val KEY_COVERED = "covered_items_json"
+        private const val KEY_DISMISSED = "dismissed_suggestions_json"
         private val SAMPLE_IDS = (1..14).map { "s$it" }.toSet()
 
         internal fun mergeIngredients(list: List<ShoppingItem>, recipeTitle: String, ingredients: List<Ingredient>,

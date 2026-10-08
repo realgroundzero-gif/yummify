@@ -87,4 +87,22 @@ object IngredientMatcher {
         val first = tokens(a)
         return first.isNotEmpty() && first == tokens(b)
     }
+
+    /**
+     * Weaker than [same]: the names are not the same ingredient for the rules, but one contains the other
+     * ("Hähnchenbrust" in "Hähnchenbrustfilet", "Paprika" in "Rote Paprika"). Only used to ask the user, never to decide.
+     */
+    fun similar(a: String, b: String): Boolean {
+        val first = tokens(a)
+        val second = tokens(b)
+        if (first.isEmpty() || second.isEmpty() || first == second) return false
+        if (first.containsAll(second) || second.containsAll(first)) return true
+        return first.any { x -> second.any { y -> x != y && minOf(x.length, y.length) >= MIN_PART && (x.contains(y) || y.contains(x)) } }
+    }
+
+    /** Identifies a name pair independent of order, quantity and spelling variants, so a decision can be remembered. */
+    fun pairKey(a: String, b: String): String =
+        listOf(tokens(a).sorted().joinToString(" "), tokens(b).sorted().joinToString(" ")).sorted().joinToString("|")
+
+    private const val MIN_PART = 5
 }

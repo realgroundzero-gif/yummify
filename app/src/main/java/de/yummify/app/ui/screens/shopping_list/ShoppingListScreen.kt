@@ -157,6 +157,22 @@ fun ShoppingListScreen(
             }
         }
         state.message?.let { message -> item { Text(message, modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium) } }
+        if (state.suggestions.isNotEmpty()) item {
+            Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)) {
+                Column(Modifier.padding(vertical = 8.dp)) {
+                    Text("Vielleicht schon da", Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    state.suggestions.forEach { suggestion ->
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+                            Text("${suggestion.itemName}: im Vorrat ${suggestion.stockName} (${suggestion.stockAmount})", style = MaterialTheme.typography.bodyMedium)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilledTonalButton(onClick = { viewModel.confirmSuggestion(suggestion) }) { Text("Ist vorrätig") }
+                                TextButton(onClick = { viewModel.rejectSuggestion(suggestion) }) { Text("Nein, kaufen") }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         if (state.covered.isNotEmpty()) item {
             Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)) {
                 Column {

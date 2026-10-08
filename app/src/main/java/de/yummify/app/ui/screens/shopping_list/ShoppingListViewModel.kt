@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.yummify.app.data.model.CoveredItem
 import de.yummify.app.data.model.ShoppingItem
+import de.yummify.app.data.model.StockSuggestion
+import de.yummify.app.data.model.StockSuggestions
 import de.yummify.app.data.model.WeekShoppingPlanner
 import de.yummify.app.data.model.summary
 import de.yummify.app.data.repository.InventoryRepository
@@ -15,6 +17,7 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import de.yummify.app.data.repository.ShoppingListRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -28,6 +31,7 @@ data class ShoppingListUiState(
     val transferring: Boolean = false,
     val planning: Boolean = false,
     val covered: List<CoveredItem> = emptyList(),
+    val suggestions: List<StockSuggestion> = emptyList(),
     val message: String? = null
 )
 
@@ -59,6 +63,11 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
         viewModelScope.launch {
             shoppingRepo.covered.collect { covered -> _uiState.value = _uiState.value.copy(covered = covered) }
         }
+        viewModelScope.launch {
+            combine(shoppingRepo.items, InventoryRepository.getInstance(application).items, shoppingRepo.dismissedSuggestions) { list, stock, dismissed ->
+                StockSuggestions.find(list, stock, dismissed)
+            }.collect { suggestions -> _uiState.value = _uiState.value.copy(suggestions = suggestions) }
+        }
     }
 
     /** Puts what the planned meals need on the list, minus inventory and what is already listed. */
@@ -85,6 +94,8 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    fun confirmSuggestion(suggestion: StockSuggestion) = shoppingRepo.acceptSuggestion(suggestion)
+    fun rejectSuggestion(suggestion: StockSuggestion) = shoppingRepo.dismissSuggestion(suggestion.key)
     fun restoreCovered(id: String) = shoppingRepo.restoreCovered(id)
     fun dismissCovered() = shoppingRepo.dismissCovered()
 
