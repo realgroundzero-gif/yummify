@@ -14,7 +14,7 @@ Sieben Agents begleiten eine Iteration vom Backlog bis zur signierten APK. Das B
 
 ## Was im Repo liegt
 
-- `.claude/agents/` die sieben Agents, `.claude/settings.json` die Berechtigungen. Gradle und Issue-Befehle laufen ohne Rückfrage. Push, PRs, Releases und `release.sh` fragen nach. Force-Push und Löschen sind gesperrt.
+- `.claude/agents/` die sieben Agents, `.claude/settings.json` die Berechtigungen. Gradle und Issue-Befehle mit `gh` laufen ohne Rückfrage, ebenso das Lesen mit den GitHub-Werkzeugen der Sitzung. Schreiben mit diesen Werkzeugen (`issue_write`, Kommentar, Sub-Issue), Push, PRs, Releases und `release.sh` fragen nach. Force-Push und Löschen sind gesperrt.
 - `.github/ISSUE_TEMPLATE/` Vorlagen für Epic, Story und Bug.
 - `scripts/setup-github.sh` legt Labels und Milestone an, `scripts/link-sub-issue.sh` hängt eine Story als Sub-Issue an ein Epic, `scripts/release.sh` prüft den Milestone, baut, signiert, taggt und schreibt Checksumme nach `releases/`.
 - `CLAUDE.md` Projektkontext, Backlog-Regeln und Definition of Done.
@@ -34,7 +34,7 @@ Das Projekt hat weder Hilt noch Room, MockK, Turbine oder Compose-UI-Tests. Dami
 
 ## Noch zu tun (auf deinem Rechner)
 
-1. `gh auth login`, danach `gh auth status` prüfen. In einer Cloud-Sitzung ist `gh` meist nicht angemeldet, dort laufen die Agents nicht. Sie sind für Claude Code auf deinem Rechner gedacht.
+1. `gh auth login`, danach `gh auth status` prüfen. Das gilt für deinen Rechner. In einer Cloud-Sitzung ist GraphQL gesperrt, dort scheitern alle `gh issue ...`-Befehle mit „403“ (siehe unten).
 2. Labels und ersten Milestone anlegen: `scripts/setup-github.sh 1.4.0`. Die bisherigen Issues (#5 bis #9) tragen noch keine Labels.
 3. Nach dem Merge von PR #7 auf `main` den Startpunkt taggen: `git tag -a v1.3.0 -m "Iteration 1.3.0"` und `git push origin v1.3.0`. Das Tag muss zu dem Stand passen, den du als 1.3.0 betrachtest (nicht `v0.1.0`, die App ist schon bei 1.3.0).
 4. Signier-Variablen setzen (nicht im Repo): `YUMMIFY_KEYSTORE`, `YUMMIFY_STORE_PW`, `YUMMIFY_KEY_ALIAS`, `YUMMIFY_KEY_PW`. Der Keystore sollte ein neuer sein, das alte Passwort steht in der Git-Historie.
@@ -51,6 +51,15 @@ Beim ersten Durchlauf lässt du den `product-owner` mit dem Wort „Entwurf“ s
 1. Story-Branches pushen, PRs erstellen (den Text liefert der `redakteur`, `Closes #Nr` ist schon drin) und mergen. Die Stories schließen sich dabei.
 2. `release-manager` für die Version starten. Das Skript bricht ab, solange der Milestone offene Issues hat.
 3. Push von `main` und Tag, GitHub-Release mit der APK anlegen (Release Notes stehen in `docs/iterations/v<VERSION>.md`), Milestone schließen.
+
+## Cloud-Sitzungen
+
+Nur über die REST-Schnittstelle (`gh api repos/...`) kommt `gh` in einer Cloud-Sitzung durch. Deshalb:
+
+- `scripts/setup-github.sh` und `scripts/link-sub-issue.sh` nutzen nur REST und laufen auch in der Cloud. Das Setup-Skript prüft den Zugriff mit einem Repo-Aufruf statt mit `gh auth status`, das dort einen ungültigen Token meldet.
+- Der `product-owner` prüft zu Beginn, ob `gh issue list` geht. Falls nicht, nimmt er die GitHub-Werkzeuge der Sitzung (`mcp__github__...`). Die Zuordnung steht in `product-owner.md`.
+- Die anderen Agents (`designer`, `backend-dev`, `frontend-dev`, `tester`, `redakteur`) lesen Issues mit `gh issue view` und schreiben Kommentare mit `gh issue comment`. Das geht in der Cloud nicht. Dort liest und schreibt die Hauptsitzung die Issues für sie, oder sie laufen lokal.
+- `release.sh` ist nur lokal gedacht (Keystore, `main`, `gh issue list`).
 
 ## Hinweise
 

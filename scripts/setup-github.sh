@@ -4,9 +4,20 @@
 #         scripts/setup-github.sh 0.2.0      -> Labels + Milestone "v0.2.0"
 set -euo pipefail
 
-gh auth status >/dev/null 2>&1 || { echo "Nicht bei GitHub angemeldet: gh auth login" >&2; exit 1; }
+# Nur REST-Aufrufe (gh api). Das funktioniert lokal und in Cloud-Sitzungen, in denen GraphQL gesperrt ist.
+# Statt "gh auth status" (meldet in der Cloud einen ungültigen Token) wird das Repo direkt abgefragt.
+gh api "repos/{owner}/{repo}" --jq .full_name >/dev/null 2>&1 \
+  || { echo "GitHub-Repo nicht erreichbar. Angemeldet (gh auth login)? Gibt es einen Remote 'origin'?" >&2; exit 1; }
 
-label() { gh label create "$1" --color "$2" --description "$3" --force >/dev/null; echo "Label: $1"; }
+# Legt ein Label an oder aktualisiert Farbe und Beschreibung, wenn es schon existiert (idempotent).
+label() {
+  local name="$1" color="$2" description="$3" encoded="${1//:/%3A}"
+  if ! gh api -X POST "repos/{owner}/{repo}/labels" -f name="$name" -f color="$color" -f description="$description" >/dev/null 2>&1; then
+    gh api -X PATCH "repos/{owner}/{repo}/labels/${encoded}" -f color="$color" -f description="$description" >/dev/null \
+      || { echo "Label $name konnte nicht angelegt werden." >&2; exit 1; }
+  fi
+  echo "Label: $name"
+}
 
 label epic        6F42C1 "Großes Feature, bündelt Stories"
 label story       0E8A16 "User Story mit Akzeptanzkriterien"
