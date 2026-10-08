@@ -108,7 +108,7 @@ class InventoryRepository internal constructor(context: Context, private val api
         val config = configRepo.preferences.value
         val configured = config.tokenInput.isNotBlank() && database.isNotBlank()
         _syncState.value = _syncState.value.copy(configured = configured, pending = records.count { it.dirty },
-            message = if (!configured) "Lokal gespeichert · Notion noch nicht eingerichtet" else if (_syncState.value.message.contains("noch nicht eingerichtet")) "Notion eingerichtet · Bereit zum Synchronisieren" else _syncState.value.message)
+            message = if (!configured && _syncState.value.message == loadWarning) _syncState.value.message else if (!configured) "Lokal gespeichert · Notion noch nicht eingerichtet" else if (_syncState.value.message.contains("noch nicht eingerichtet")) "Notion eingerichtet · Bereit zum Synchronisieren" else _syncState.value.message)
     }
     private suspend fun mutate(action: () -> Unit) = withContext(Dispatchers.IO) {
         mutex.withLock {

@@ -20,10 +20,14 @@ object IngredientMatcher {
 
     /** Cuts one plural or inflection ending ("Tomaten" → "tomat", "Zwiebeln" → "zwiebel"); stems stay at least 3 letters long. */
     private fun stem(folded: String): String {
+        var result = folded
         for (ending in listOf("en", "er", "e", "n", "s")) {
-            if (folded.endsWith(ending) && folded.length - ending.length >= 3) return folded.removeSuffix(ending)
+            // "Kürbis", "Erdnuss", "weiß" end in s without being a plural.
+            if (ending == "s" && (folded.endsWith("ss") || folded.endsWith("is") || folded.endsWith("us"))) continue
+            if (folded.endsWith(ending) && folded.length - ending.length >= 3) { result = folded.removeSuffix(ending); break }
         }
-        return folded
+        // "Kürbisse" and "Kürbis", "weiße" and "weiß" must reach the same stem.
+        return if (result.endsWith("iss")) result.dropLast(1) else result
     }
 
     private fun normalize(word: String) = stem(fold(word))
@@ -37,7 +41,7 @@ object IngredientMatcher {
         "geschalt", "geschalte", "gerieben", "geriebene", "geraspelt", "gemahlen", "gemahlene", "gepresst", "fein", "feine", "grob",
         "grobe", "klein", "kleine", "gross", "grosse", "mittelgross", "reif", "reife", "bio", "ca", "etwa", "evtl", "optional",
         "nach", "geschmack", "zum", "zur", "fur", "in", "aus", "von", "und", "oder", "mit", "ohne", "der", "die", "das", "ein", "eine",
-        "einige", "etwas", "getrocknet", "getrocknete", "tiefgekuhlt", "tk"
+        "einige", "etwas", "getrocknet", "getrocknete", "tiefgekuhlt", "tk", "natur", "flussig", "flussige"
     ).map { normalize(it) }.toSet()
 
     /** Words that name the same product. The first entry of each group is the canonical word. */
@@ -57,7 +61,11 @@ object IngredientMatcher {
         listOf("Ei", "Eier"),
         listOf("Zucchini", "Zucchino"),
         listOf("Pute", "Truthahn"),
-        listOf("Garnele", "Shrimp", "Krabbe")
+        listOf("Garnele", "Shrimp", "Krabbe"),
+        listOf("Sojasauce", "Sojasoße"),
+        listOf("Lauch", "Porree"),
+        listOf("Hähnchen", "Hühnchen", "Huhn"),
+        listOf("Kirschtomate", "Cherrytomate")
     )
 
     private val canonical: Map<String, String> = synonymGroups.flatMap { group ->

@@ -1,0 +1,135 @@
+# a	b	label (gleich = dieselbe Zutat im Einkauf, verschieden = darf nie zusammengelegt werden)
+Rote Paprika	Paprika rot	gleich
+Passierte Tomaten (Dose)	Tomaten passiert	gleich
+Zwiebeln	Zwiebel	gleich
+Knoblauchzehen	Knoblauch	gleich
+Frühlingszwiebeln	Lauchzwiebeln	gleich
+Möhren	Karotten	gleich
+Sahne	Schlagsahne	gleich
+Hackfleisch	Hack	gleich
+Joghurt	Jogurt	gleich
+Quark	Topfen	gleich
+Eier	Ei	gleich
+Zucchini	Zucchino	gleich
+Kartoffeln	Kartoffel	gleich
+Frische Petersilie	Petersilie	gleich
+Gehackte Mandeln	Mandeln	gleich
+Olivenöl	Olivenöl (extra vergine)	gleich
+Parmesan	Parmesan, gerieben	gleich
+Rucola	Rauke	gleich
+Blumenkohl	Karfiol	gleich
+Aubergine	Auberginen	gleich
+Gemüsebrühe	Brühe Gemüse	gleich
+Rinderhack	Hack vom Rind	gleich
+Hühnerbrust	Hähnchenbrust	gleich
+Tomaten	Tomate	gleich
+Gurke	Salatgurke	gleich
+Basilikum	Basilikum frisch	gleich
+Cherrytomaten	Kirschtomaten	gleich
+Mozzarella	Mozzarella (Kugel)	gleich
+Zitronensaft	Saft einer Zitrone	gleich
+Rotwein	Wein rot	gleich
+Butter	Butter (kalt)	gleich
+Spaghetti	Spaghetti (500 g)	gleich
+Reis	Reis (Basmati)	gleich
+Paprikaschote	Paprika	gleich
+Garnelen	Shrimps	gleich
+Pute	Truthahn	gleich
+Mehl	Weizenmehl	gleich
+Kokosmilch	Kokosmilch (Dose)	gleich
+Thymian	Thymian frisch	gleich
+Sojasauce	Sojasoße	gleich
+Lauch	Porree	gleich
+Champignons	Pilze Champignon	gleich
+Erdnüsse	Erdnuss	gleich
+Schnittlauch	Schnittlauch (Bund)	gleich
+Kichererbsen	Kichererbsen (Dose)	gleich
+Limette	Limetten	gleich
+Ingwer	Ingwer frisch	gleich
+Pfeffer	Pfeffer (gemahlen)	gleich
+Weiße Bohnen	Bohnen weiß	gleich
+Frischkäse	Frischkäse natur	gleich
+Kürbis	Kürbisse	gleich
+Spinat	Blattspinat	gleich
+Haferflocken	Haferflocken (zart)	gleich
+Honig	Honig flüssig	gleich
+Rosmarin	Rosmarin frisch	gleich
+Karotte	Möhre	gleich
+Kartoffel	Erdapfel	gleich
+Sahne	Obers	gleich
+Milch	Kokosmilch	verschieden
+Paprika	Rote Paprika	verschieden
+Tomaten	Passierte Tomaten	verschieden
+Butter	Erdnussbutter	verschieden
+Mehl	Maismehl	verschieden
+Zucker	Puderzucker	verschieden
+Zucker	Vanillezucker	verschieden
+Essig	Balsamico	verschieden
+Öl	Olivenöl	verschieden
+Reis	Reisnudeln	verschieden
+Nudeln	Reisnudeln	verschieden
+Salz	Pfeffer	verschieden
+Zwiebel	Frühlingszwiebel	verschieden
+Zwiebel	Rote Zwiebel	verschieden
+Knoblauch	Knoblauchpulver	verschieden
+Kartoffeln	Süßkartoffeln	verschieden
+Sahne	Saure Sahne	verschieden
+Joghurt	Sojajoghurt	verschieden
+Käse	Frischkäse	verschieden
+Käse	Parmesan	verschieden
+Hackfleisch	Hühnerbrust	verschieden
+Hähnchenbrust	Hähnchenkeule	verschieden
+Rinderbrühe	Gemüsebrühe	verschieden
+Zitrone	Limette	verschieden
+Zitronensaft	Zitronenschale	verschieden
+Petersilie	Petersilienwurzel	verschieden
+Pilze	Champignons	verschieden
+Kokosmilch	Kokosöl	verschieden
+Mandeln	Mandelmus	verschieden
+Erdnüsse	Erdnussbutter	verschieden
+Weißwein	Rotwein	verschieden
+Weißwein	Weißweinessig	verschieden
+Brot	Brötchen	verschieden
+Ei	Eigelb	verschieden
+Eier	Eiweiß	verschieden
+Tomatenmark	Tomaten	verschieden
+Tomatenmark	Ketchup	verschieden
+Senf	Senfkörner	verschieden
+Pfeffer	Paprikapulver	verschieden
+Paprika	Paprikapulver	verschieden
+Chili	Chilipulver	verschieden
+Ingwer	Ingwerpulver	verschieden
+Zimt	Zimtstange	verschieden
+Thymian	Majoran	verschieden
+Basilikum	Petersilie	verschieden
+Gurke	Essiggurke	verschieden
+Lauch	Frühlingszwiebel	verschieden
+Spinat	Mangold	verschieden
+Brokkoli	Blumenkohl	verschieden
+Rosenkohl	Grünkohl	verschieden
+Rindfleisch	Schweinefleisch	verschieden
+Lachs	Thunfisch	verschieden
+Schinken	Speck	verschieden
+Wurst	Wiener Würstchen	verschieden
+Nüsse	Nussöl	verschieden
+Haferflocken	Haferdrink	verschieden
+Mandelmilch	Milch	verschieden
+Butter	Margarine	verschieden
+Zucker	Süßstoff	verschieden
+Reis	Reismehl	verschieden
+Erbsen	Kichererbsen	verschieden
+Bohnen	Kidneybohnen	verschieden
+Linsen	Rote Linsen	verschieden
+Weizenmehl	Vollkornmehl	verschieden
+Dinkelmehl	Weizenmehl	verschieden
+Hefe	Backpulver	verschieden
+Backpulver	Natron	verschieden
+Apfel	Apfelsaft	verschieden
+Apfel	Apfelmus	verschieden
+Orange	Orangensaft	verschieden
+Banane	Bananenchips	verschieden
+Kakao	Kakaobutter	verschieden
+Schokolade	Schokostreusel	verschieden
+Vanille	Vanillezucker	verschieden
+Wasser	Mineralwasser	verschieden
+Wein	Weinessig	verschieden
