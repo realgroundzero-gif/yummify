@@ -2,7 +2,15 @@
 
 **Deutsch** · [English](README.en.md)
 
-Yummify ist eine Android-App für Rezepte, Wochenplanung, Einkaufsliste und Lebensmittelvorräte. Sie verbindet deine Notion-Rezept- und Inventardatenbanken mit einer Oberfläche aus Kotlin und Jetpack Compose. Die App-Oberfläche ist derzeit deutschsprachig.
+Yummify ist eine Android-App für Rezepte, Wochenplanung, Einkaufsliste und Lebensmittelvorräte. Sie verbindet deine Notion-Rezept- und Inventardatenbanken mit einer Oberfläche aus Kotlin und Jetpack Compose. Die Oberfläche ist überwiegend deutsch; Darstellungs-Einstellungen und Rasterkarten gibt es zusätzlich auf Englisch.
+
+## Releases
+
+| Version | Datum | Kurzbeschreibung |
+|---|---|---|
+| v1.4.0 | geplant (noch kein Tag) | Einstellungen mit Untermenüs: Darstellung, Datenpflege, Daten und Backup (Export, Import, Speicher, Löschen) |
+
+Veröffentlicht ist bisher noch kein Tag. Eine Zeile kommt mit dem Git-Tag `vX.Y.Z` und der zugehörigen APK dazu.
 
 ## Funktionen
 
@@ -63,13 +71,32 @@ Rezeptzutaten zeigen den verfügbaren Vorrat. Fehlende Zutaten lassen sich unter
 
 **„Vielleicht schon da“:** Hat die Einkaufsliste einen offenen Eintrag, den der Abgleich nicht als Vorrat erkennt, der Vorrat aber etwas Ähnliches (nicht abgelaufen, Bestand über 0) enthält, etwa „Hähnchenbrustfilet“ auf der Liste und „Hähnchenbrust“ im Vorrat, fragt die App nach. „Ist vorrätig“ nimmt den Eintrag von der Liste und legt ihn unter „Bereits im Vorrat“ ab, „Doch kaufen“ macht das rückgängig. „Nein, kaufen“ blendet den Hinweis für genau dieses Namenspaar dauerhaft aus, unabhängig von der Menge. Die App ändert die Liste nie ohne deine Antwort. Ein Embedding-Modell ist dafür nicht im Einsatz: Die Messung mit 134 Zutatenpaaren (`ingredient_pairs.tsv`) hat gezeigt, dass die getesteten Modelle deutsche Zutaten nicht sauber trennen (z. B. Öl ~ Olivenöl), während der Regelabgleich 48 von 58 gleichen Paaren erkennt und kein verschiedenes Paar verbindet.
 
-**Einstellungen:** Das Menü hat sieben Untermenüs. *Profil* (Anzeigename auf dem Gerät, Auto-Sync), *Darstellung* (siehe unten), *Verbindungen* (Notion-Token, Rezept- und Inventar-Datenbank-ID, Verbindungstest, Synchronisation), *Datenpflege*, *Daten und Backup* (siehe unten), *Info* und *Rechtliches* (die letzten beiden sind noch leer). In der **Datenpflege** erweiterst du die Auswahllisten der verbundenen Notion-Datenbanken (Select und Multi-Select, etwa Kategorie, Küche, Lagerort oder Einheit): Neuer Eintrag eingeben, hinzufügen, und die App legt ihn sofort in Notion an. Bestehende Einträge werden mit ihrer ID unverändert mitgeschickt, es wird nie etwas umbenannt oder gelöscht; doppelte Einträge (ohne Beachtung der Groß-/Kleinschreibung) werden nicht noch einmal angelegt, Kommas sind in Notion-Einträgen nicht erlaubt. Die Integration braucht dafür das Recht, Inhalte zu ändern; fehlt es, zeigt die App die Notion-Meldung. Textfelder und Status-Spalten lassen sich so nicht erweitern, die App wandelt keine Spalten um. Neue Inventar-Einträge stehen direkt in den Auswahlfeldern des Inventars zur Verfügung.
-
-**Darstellung (Einstellungen):** *Farbschema* Hell, Dunkel oder System (folgt dem Modus des Geräts); die Wahl wirkt sofort ohne Neustart. Wer vorher den Dark-Mode-Schalter genutzt hat, behält seine Wahl (an = Dunkel, aus = Hell, einmalige Übernahme); ohne frühere Einstellung gilt Hell. Der Schalter im Profil ist entfallen. *Dynamische Farben* (ab Android 12): an = Material-You-Farben passend zum Hintergrundbild, aus = die festen Yummify-Farben; unter Android 11 und älter ist die Option deaktiviert („Erst ab Android 12 verfügbar“). *Startseite*: Rezepte (Standard), Wochenplan, Einkaufsliste oder Inventar; sie öffnet sich beim Start aus dem Launcher. Widgets und Links, die ein Ziel mitgeben, haben Vorrang, und beim Drehen des Geräts oder der Rückkehr aus dem Hintergrund springt die App nicht zur Startseite zurück. *Rezeptansicht*: Liste (Standard) oder Raster; das Raster zeigt die Rezepte in zwei oder mehr Spalten unter der Karte „Rezept des Tages“. Die Wahl gilt nur für die Rezeptübersicht, nicht für das Inventar. *Sprache*: System, Deutsch oder English, unabhängig von der Systemsprache (ab Android 13 auch in den Systemeinstellungen unter „App-Sprachen“). Die App ist erst teilweise übersetzt: Die Darstellungs-Einstellungen, das Menü-Element „Darstellung“ und die Raster-Karten gibt es auf Englisch, alle übrigen Bildschirme bleiben Deutsch. Alle Werte bleiben nach einem Neustart erhalten.
-
 „Gekocht · Zutaten vom Vorrat abbuchen“ zieht nach Bestätigung die benötigten Mengen ab und verwendet zuerst Chargen mit dem frühesten MHD. Fehlt eine Zutat, wird nichts abgebucht. Niedrige Bestände können ohne doppelte offene Einträge auf die Einkaufsliste gesetzt werden.
 
 Abgehakte Einkaufsartikel lassen sich mit ihren Mengen ins Inventar übertragen und aus der Einkaufsliste entfernen. Eine gespeicherte Übernahme-ID verhindert Doppelbuchungen nach einem Abbruch. Nicht numerische Mengen müssen manuell erfasst werden; Lagerort und MHD lassen sich anschließend ergänzen.
+
+## Einstellungen
+
+Das Menü öffnet sieben Untermenüs:
+
+- **Profil:** Anzeigename (bleibt auf diesem Gerät) und Auto-Sync für den Inventarabgleich.
+- **Darstellung:** Farbschema, dynamische Farben, Startseite, Rezeptansicht und Sprache (siehe unten).
+- **Verbindungen:** Notion-Token, Rezept- und Inventar-Datenbank-ID, Verbindungstest und Synchronisation (siehe [Notion einrichten](#notion-einrichten)).
+- **Datenpflege:** Auswahllisten der Notion-Datenbanken erweitern (siehe unten).
+- **Daten und Backup:** Export, Import, Speicher und Löschen lokaler Daten (siehe [Daten und Backup](#daten-und-backup)).
+- **Info** und **Rechtliches:** Die Untermenüs sind angelegt, haben aber noch keinen Inhalt.
+
+**Darstellung**
+
+- **Farbschema:** Hell, Dunkel oder System (folgt dem Modus des Geräts). Die Wahl wirkt ohne Neustart. Wer vorher den Dark-Mode-Schalter genutzt hat, behält seine Wahl (an = Dunkel, aus = Hell; einmalige Übernahme). Ohne frühere Einstellung gilt Hell. Der Schalter im Profil ist entfallen.
+- **Dynamische Farben** (ab Android 12): an = Material-You-Farben passend zum Hintergrundbild, aus = die festen Yummify-Farben. Unter Android 11 und älter ist die Option deaktiviert („Erst ab Android 12 verfügbar“).
+- **Startseite:** Rezepte (Standard), Wochenplan, Einkaufsliste oder Inventar. Sie öffnet sich beim Start aus dem Launcher. Widgets und Links mit eigenem Ziel haben Vorrang; Drehen des Geräts oder Rückkehr aus dem Hintergrund springt nicht zur Startseite zurück.
+- **Rezeptansicht:** Liste (Standard) oder Raster. Das Raster zeigt die Rezepte in Spalten von mindestens 150 dp Breite unter der Karte „Rezept des Tages“. Die Wahl gilt nur für die Rezeptübersicht, nicht für das Inventar.
+- **Sprache:** System, Deutsch oder English, unabhängig von der Systemsprache. Ab Android 13 zusätzlich unter „App-Sprachen“ in den Systemeinstellungen. Übersetzt sind die Darstellungs-Einstellungen, der Menüeintrag „Darstellung“ und die Rasterkarten; alle übrigen Bildschirme bleiben Deutsch.
+
+Alle Werte bleiben nach einem Neustart erhalten. Noch nicht auf einem Gerät geprüft: Material-You-Farben und der Sprachwechsel unter Android 12 und älter.
+
+**Datenpflege:** Hier erweiterst du die Auswahllisten (Select und Multi-Select, etwa Kategorie, Küche, Lagerort oder Einheit) der verbundenen Notion-Datenbanken. Neuen Eintrag eingeben und hinzufügen; die App legt ihn sofort in Notion an und er steht danach in der App zur Wahl. Bestehende Einträge werden mit ihrer ID unverändert mitgeschickt, nichts wird umbenannt oder gelöscht. Doppelte Einträge (ohne Beachtung der Groß-/Kleinschreibung) werden nicht erneut angelegt. Einträge dürfen höchstens 100 Zeichen lang sein und kein Komma enthalten. Die Integration braucht das Recht, Inhalte zu ändern; fehlt es, zeigt die App die Meldung von Notion. Textfelder und Status-Spalten lassen sich so nicht erweitern, die App wandelt keine Spalten um. Neue Inventar-Einträge stehen danach direkt in den Auswahlfeldern des Inventars zur Verfügung.
 
 ## Notion einrichten
 
@@ -142,17 +169,19 @@ Das Inventar ist nach Datenbank getrennt. Ein zunächst lokal erfasstes Inventar
 
 ## Daten und Backup
 
-Einstellungen → „Daten und Backup“ bündelt alles rund um die lokalen Daten. Die App braucht dafür keine Speicherberechtigung: Die Dateiauswahl übernimmt der Android-Dateiwähler.
+Einstellungen → „Daten und Backup“ bündelt alles rund um die lokalen Daten. Die App braucht dafür keine Speicherberechtigung (angefordert werden nur Internet und Netzwerkstatus); die Dateiauswahl übernimmt der Android-Dateiwähler.
 
-- **Daten exportieren:** Erstellt eine ZIP-Datei mit Rezepte-Cache, Favoriten, Wochenplan, Einkaufsliste (samt „Bereits im Vorrat“ und abgelehnten Vorschlägen), Inventar, Einstellungen, den lokalen Produktbildern und einem Manifest (Formatversion, App-Version, Zeitstempel). Die Erfolgsmeldung nennt die Zahl der gesicherten Elemente. Wird die Datei nicht vollständig geschrieben, meldet die App einen Fehler und löscht die Teildatei.
+- **Daten exportieren:** Erstellt eine ZIP-Datei mit Rezepte-Cache, Favoriten, Wochenplan, Einkaufsliste (samt „Bereits im Vorrat“ und abgelehnten Vorschlägen), Inventar, Einstellungen, den lokalen Produktbildern und einem Manifest (Formatversion, App-Version, Zeitstempel, Angabe, ob ein Token enthalten ist). Die Erfolgsmeldung nennt die Zahl der gesicherten Elemente. Wird die Datei nicht vollständig geschrieben, meldet die App einen Fehler und löscht die Teildatei. Lässt sie sich nicht löschen, warnt die App, dass die Datei nicht verwendet werden darf.
 - **Notion-Token:** Standardmäßig ist der Token nicht im Export. „Notion-Token in Export aufnehmen“ steht beim Öffnen immer auf Aus und verlangt eine ausdrückliche Bestätigung. Die Datei ist nicht verschlüsselt; wer sie besitzt, kann den Token lesen.
-- **Daten importieren:** Die Datei wird zuerst vollständig geprüft (gültige ZIP, Manifest, lesbare JSON-Dateien, bekannte Formatversion). Erst nach der Zusammenfassung und deiner Bestätigung wird etwas geändert. Bei einer defekten Datei, einem fremden Format oder einer neueren Formatversion bricht der Import mit einer Meldung ab, und deine Daten bleiben unverändert. Schlägt das Übernehmen mittendrin fehl, wird der vorherige Stand wiederhergestellt. Ältere Exporte ohne neuere Felder werden beim Laden ergänzt.
+- **Daten importieren:** Die Datei wird zuerst vollständig geprüft (gültige ZIP, Manifest, lesbare JSON-Dateien, bekannte Formatversion). Erst nach der Zusammenfassung und deiner Bestätigung wird etwas geändert. Bei einer defekten Datei, einem fremden Format oder einer neueren Formatversion bricht der Import mit einer Meldung ab, und deine Daten bleiben unverändert. Schlägt das Übernehmen mittendrin fehl, wird der vorherige Stand wiederhergestellt. Ältere Exporte ohne neuere Felder werden beim Laden ergänzt. Stammt das Inventar aus einer anderen Notion-Datenbank, werden die Verknüpfungen zu Notion-Seiten entfernt.
 - **Zusammenführen** (Standard): Elemente werden über ihre ID zusammengelegt, nichts geht verloren. Weil einzelne Elemente keinen Änderungszeitpunkt haben, entscheidet bei Konflikten der Zeitpunkt je Bereich: Ist der Export neuer als die letzte lokale Änderung des Bereichs, gewinnt die Datei, sonst (auch bei Gleichstand) der lokale Stand. Nicht abgeglichene lokale Inventar-Änderungen haben immer Vorrang vor einem unveränderten Dateistand. Aus der Datei übernommene Inventar-Einträge werden als ausstehend markiert und beim normalen Abgleich nach Notion übertragen. Löschungen werden nicht übertragen.
-- **Vorhandene Daten ersetzen:** Ersetzt die lokalen Daten nach einer Sicherheitsabfrage durch den Dateiinhalt. Notion wird nicht verändert.
+- **Vorhandene Daten ersetzen:** Ersetzt die lokalen Daten nach einer Sicherheitsabfrage durch den Dateiinhalt. Nicht synchronisierte lokale Inventar-Änderungen gehen dabei verloren. Notion wird nicht verändert.
 - **Token im Import:** Enthält die Datei einen Token, fragt die App vor der Übernahme. Ohne Zustimmung bleibt der aktuelle Token. Datenbank-IDs werden nur übernommen, wenn lokal noch keine gesetzt ist.
-- **Automatisches Backup:** Schalter, Standard an. Dann sichert Android die App-Daten gemäß den Backup-Regeln, immer ohne den Notion-Token. Aus: Android sichert keine App-Daten (Cloud-Backup und Geräteübertragung). Bereits vorhandene Backups bleiben bestehen und lassen sich in den Android-Einstellungen löschen.
+- **Automatisches Backup:** Schalter, Standard an. Dann sichert Android die App-Daten gemäß den Backup-Regeln, immer ohne den Notion-Token. Aus: Android sichert keine App-Daten (Cloud-Backup und Geräteübertragung). Bereits vorhandene Backups bleiben bestehen und lassen sich in den Android-Einstellungen löschen. Der Schalter gilt pro Gerät und gehört nicht zum Export.
 - **Speicher:** Zeigt getrennt, wie viel Platz Daten (JSON/Einstellungen), lokale Produktbilder und Cache belegen. „Bildcache leeren“ leert nur den Cache; Rezepte, Inventar und Produktbilder bleiben.
 - **Alle lokalen Daten löschen:** Entfernt Rezepte-Cache, Favoriten, Wochenplan, Einkaufsliste, Inventar inklusive lokaler Produktbilder und den Cache von diesem Gerät. Nach Warnung (inklusive Hinweis auf nicht synchronisierte Inventar-Änderungen) und Eintippen von „LÖSCHEN“. Es wird nichts an Notion geschrieben oder gelöscht; Token, Datenbank-IDs und Einstellungen bleiben, Widgets werden aktualisiert.
+
+Noch nicht auf einem Gerät geprüft: der Android-Dateiwähler sowie das Verhalten des Backup-Agents im System (Cloud-Backup und Geräteübertragung).
 
 ## Datenschutz und Sicherheit
 
@@ -162,7 +191,7 @@ Einstellungen → „Daten und Backup“ bündelt alles rund um die lokalen Date
 
 ## Entwickeln, bauen und installieren
 
-Aktueller App-Stand: **1.3.0**, Android **8.0+ (API 26)**; Compile-/Target-SDK **36** (Android 16).
+Versionsname: `versionName` kommt aus dem letzten Git-Tag `vX.Y.Z`. Solange kein Tag existiert, greift der Fallback **1.3.0** aus `app/build.gradle.kts`. Mindestens Android **8.0 (API 26)**; Compile-/Target-SDK **36** (Android 16).
 
 Benötigt werden JDK 17 oder neuer, Android SDK 36 und die Android-Build-Werkzeuge. Android Studio kann für die Entwicklung verwendet werden. Den SDK-Pfad über `local.properties` (`sdk.dir=…`) oder `ANDROID_HOME` konfigurieren.
 
@@ -184,7 +213,7 @@ adb -d install -r app/build/outputs/apk/preview/app-preview.apk
 
 **Preview-Build:** `assemblePreview` erzeugt `app-preview.apk` mit der Paket-ID `de.yummify.app.preview` und dem Namen „Yummify Preview“. Die App wird neben der normalen Yummify-App installiert, ersetzt sie nicht und teilt keine Daten mit ihr. So lassen sich neue Versionen gefahrlos ausprobieren; Notion-Token und Datenbank-IDs müssen dort einmal eingetragen werden. Die APK ist mit dem Debug-Schlüssel signiert und nur zum Testen gedacht.
 
-Die Tests decken unter anderem Mengenrechnung, Haltbarkeit, atomare Rezept-Abbuchung, Datumsermittlung, Pagination, Notion-Feldzuordnung einschließlich `kcal`, Rezeptanlage und Rezept-Lesen, Zutaten-Parser, Notion-Links, Ratenbegrenzung, Einkaufskategorien und Zusammenführung, Fehlerbehandlung, Wiederaufnahme unterbrochener Übertragungen, beschädigten Speicher, Offline-Speicherung, Abgleich ohne Eingabe-Blockade, Einkaufs-Doppelbuchungen und Widget-Darstellung ab.
+Die Tests decken unter anderem Mengenrechnung, Haltbarkeit, atomare Rezept-Abbuchung, Datumsermittlung, Pagination, Notion-Feldzuordnung einschließlich `kcal`, Rezeptanlage und Rezept-Lesen, Zutaten-Parser, Notion-Links, Ratenbegrenzung, Einkaufskategorien und Zusammenführung, Fehlerbehandlung, Wiederaufnahme unterbrochener Übertragungen, beschädigten Speicher, Offline-Speicherung, Abgleich ohne Eingabe-Blockade, Einkaufs-Doppelbuchungen und Widget-Darstellung ab. Dazu kommen Export und Import (Prüfung, Zusammenführen, Ersetzen, Token-Behandlung), die Darstellungs-Einstellungen, die Datenpflege-Optionen und die Backup-Regeln.
 
 Ein Release-Build (`./gradlew assembleRelease`) wird nur signiert, wenn der Schlüssel und seine Passwörter lokal hinterlegt sind. Die Passwörter stehen nicht mehr im Repository, sondern in `local.properties` (nicht versioniert) oder in Umgebungsvariablen (`YUMMIFY_KEYSTORE`, `YUMMIFY_STORE_PW`, `YUMMIFY_KEY_ALIAS`, `YUMMIFY_KEY_PW`):
 

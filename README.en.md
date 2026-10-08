@@ -2,7 +2,15 @@
 
 [Deutsch](README.md) · **English**
 
-Yummify is an Android app for recipes, weekly meal planning, shopping lists and food inventory. It connects your Notion recipe and inventory databases to an interface built with Kotlin and Jetpack Compose. The app interface is currently in German.
+Yummify is an Android app for recipes, weekly meal planning, shopping lists and food inventory. It connects your Notion recipe and inventory databases to an interface built with Kotlin and Jetpack Compose. The interface is mostly German; the appearance settings and grid cards are also available in English.
+
+## Releases
+
+| Version | Date | Summary |
+|---|---|---|
+| v1.4.0 | planned (no tag yet) | Settings with sub menus: Appearance, Data care, Data and backup (export, import, storage, delete) |
+
+No release tag has been published yet. A row is added once the Git tag `vX.Y.Z` and its APK exist.
 
 ## Features
 
@@ -63,13 +71,34 @@ Recipe ingredients show available inventory. Missing ingredients can be added to
 
 **“Vielleicht schon da” (maybe already there):** If the shopping list has an open entry that the matching does not recognise as stock, but the inventory holds something similar (unexpired, quantity above 0), such as “Hähnchenbrustfilet” on the list and “Hähnchenbrust” in the inventory, the app asks. “Ist vorrätig” takes the entry off the list and puts it under “Bereits im Vorrat”; “Doch kaufen” undoes it. “Nein, kaufen” hides the hint for exactly that name pair permanently, whatever the quantity. The app never changes the list without your answer. No embedding model is used: measuring 134 ingredient pairs (`ingredient_pairs.tsv`) showed that the tested models do not separate German ingredients cleanly (for example Öl ~ Olivenöl), while the rule matching finds 48 of 58 equal pairs and merges no different pair.
 
-**Settings:** The menu has seven sub menus. *Profil* (display name on the device, auto-sync), *Darstellung* (appearance, see below), *Verbindungen* (connections: Notion token, recipe and inventory database IDs, connection test, synchronization), *Datenpflege* (data maintenance), *Daten und Backup* (data and backup, see below), *Info* and *Rechtliches* (legal; the last two are still empty). In **Datenpflege** you extend the dropdown lists of the connected Notion databases (select and multi-select, such as category, cuisine, storage location or unit): type a new entry, add it, and the app creates it in Notion right away. Existing entries are sent back with their IDs unchanged, so nothing is ever renamed or deleted; duplicates (ignoring case) are not created again, and Notion does not allow commas in entries. The integration needs the permission to update content; if it is missing, the app shows Notion's message. Text and status columns cannot be extended this way, and the app does not convert columns. New inventory entries are available in the inventory's dropdowns immediately.
-
-**Appearance (settings):** *Color scheme* Light, Dark or System (follows the device mode); the choice takes effect immediately without a restart. Anyone who used the old dark mode switch keeps their choice (on = Dark, off = Light, adopted once); without an earlier setting the app is Light. The switch in the profile is gone. *Dynamic colors* (Android 12+): on = Material You colors matching the wallpaper, off = the fixed Yummify colors; on Android 11 and older the option is disabled ("Available from Android 12 only"). *Start page*: Recipes (default), Meal plan, Shopping list or Inventory; it opens when the app is started from the launcher. Widgets and links that carry a target take precedence, and rotating the device or returning from the background does not jump back to the start page. *Recipe view*: List (default) or Grid; the grid shows recipes in two or more columns below the "Recipe of the day" card. The choice applies to the recipe overview only, not to the inventory. *Language*: System, Deutsch or English, independent of the system language (on Android 13+ also in the system settings under "App languages"). The app is only partly translated: the appearance settings, the "Darstellung" menu entry and the grid cards are available in English, all other screens stay German. All values survive a restart.
-
 The cooking action deducts the required quantities after confirmation, using batches with the earliest best-before date first. If an ingredient is missing, nothing is deducted. Low-stock items can be added to the shopping list without duplicate open entries.
 
 Checked shopping items can be transferred with their quantities to the inventory and removed from the shopping list. A stored transfer ID prevents duplicate bookings after an interruption. Non-numeric quantities require manual entry; storage location and best-before date can be added afterwards.
+
+## Settings
+
+The menu opens seven sub menus:
+
+- **Profil:** display name (stays on this device) and auto-sync for the inventory synchronization.
+- **Darstellung** (Appearance): color scheme, dynamic colors, start page, recipe view and language (see below).
+- **Verbindungen** (Connections): Notion token, recipe and inventory database IDs, connection test and synchronization (see [Set up Notion](#set-up-notion)).
+- **Datenpflege** (Data care): extend the dropdown lists of the Notion databases (see below).
+- **Daten und Backup** (Data and backup): export, import, storage and deletion of local data (see [Data and backup](#data-and-backup)).
+- **Info** and **Rechtliches** (legal): the sub menus exist but have no content yet.
+
+In the English app only the Appearance entry is translated; the other menu labels stay German.
+
+**Darstellung (Appearance)**
+
+- **Color scheme:** Light, Dark or System (follows the device mode). The choice takes effect without a restart. Anyone who used the old dark mode switch keeps their choice (on = Dark, off = Light; adopted once). Without an earlier setting the app is Light. The switch in the profile is gone.
+- **Dynamic colors** (Android 12+): on = Material You colors matching the wallpaper, off = the fixed Yummify colors. On Android 11 and older the option is disabled ("Available from Android 12 only").
+- **Start page:** Recipes (default), Meal plan, Shopping list or Inventory. It opens when the app is started from the launcher. Widgets and links that carry a target take precedence; rotating the device or returning from the background does not jump back to the start page.
+- **Recipe view:** List (default) or Grid. The grid uses columns of at least 150 dp width below the "Recipe of the day" card. The choice applies to the recipe overview only, not to the inventory.
+- **Language:** System, Deutsch or English, independent of the system language. From Android 13 also under "App languages" in the system settings. Translated are the appearance settings, the "Darstellung" menu entry and the grid cards; all other screens stay German.
+
+All values survive a restart. Not yet checked on a device: Material You colors and the language switch on Android 12 and older.
+
+**Datenpflege (Data care):** Here you extend the dropdown lists (select and multi-select, such as category, cuisine, storage location or unit) of the connected Notion databases. Type a new entry and add it; the app creates it in Notion immediately and it is available in the app afterwards. Existing entries are sent back with their IDs unchanged; nothing is renamed or deleted. Duplicates (ignoring case) are not created again. Entries may be at most 100 characters long and must not contain a comma. The integration needs permission to update content; if it is missing, the app shows Notion's message. Text and status columns cannot be extended this way, and the app does not convert columns. New inventory entries are available in the inventory's dropdowns right away.
 
 ## Set up Notion
 
@@ -142,17 +171,19 @@ Inventory is separated by database. Initially local inventory is adopted when co
 
 ## Data and backup
 
-Settings → "Daten und Backup" (Data and backup) collects everything about local data. No storage permission is needed: files are picked with the Android file picker.
+Settings → "Daten und Backup" (the menu label stays German in the English app) collects everything about local data. No storage permission is needed (only internet and network state are requested); files are picked with the Android file picker.
 
-- **Export data:** Creates a ZIP file with the recipe cache, favorites, meal plan, shopping list (including "already in stock" and dismissed suggestions), inventory, settings, the local product images and a manifest (format version, app version, timestamp). The success message shows how many items were saved. If the file cannot be written completely, the app reports an error and deletes the partial file.
+- **Export data:** Creates a ZIP file with the recipe cache, favorites, meal plan, shopping list (including "already in stock" and dismissed suggestions), inventory, settings, the local product images and a manifest (format version, app version, timestamp, whether a token is included). The success message shows how many items were saved. If the file cannot be written completely, the app reports an error and deletes the partial file. If the partial file cannot be deleted, the app warns that it must not be used.
 - **Notion token:** The token is not part of an export by default. "Include Notion token in export" is always off when the screen opens and needs an explicit confirmation. The file is not encrypted; anyone who has it can read the token.
-- **Import data:** The file is fully checked first (valid ZIP, manifest, readable JSON files, known format version). Nothing changes until you have seen the summary and confirmed. A damaged file, a foreign format or a newer format version aborts the import with a message and your data stays untouched. If applying fails halfway, the previous state is restored. Exports from older versions without newer fields are completed on load.
+- **Import data:** The file is fully checked first (valid ZIP, manifest, readable JSON files, known format version). Nothing changes until you have seen the summary and confirmed. A damaged file, a foreign format or a newer format version aborts the import with a message and your data stays untouched. If applying fails halfway, the previous state is restored. Exports from older versions without newer fields are completed on load. If the file contains inventory from another Notion database, links to Notion pages are removed.
 - **Merge** (default): Items are combined by ID, nothing is lost. Single items have no change time, so conflicts are decided per area: if the export is newer than the last local change of that area, the file wins, otherwise (also on a tie) the local state wins. Unsynced local inventory changes always beat an unchanged file entry. Inventory entries taken from the file are marked as pending and uploaded to Notion by the normal sync. Deletions are not transferred.
-- **Replace existing data:** After a safety prompt, replaces the local data with the file content. Notion is not changed.
+- **Replace existing data:** After a safety prompt, replaces the local data with the file content. Unsynchronized local inventory changes are lost in the process. Notion is not changed.
 - **Token on import:** If the file contains a token, the app asks before applying it. Without consent the current token stays. Database IDs are only taken over if none is set locally.
-- **Automatic backup:** Switch, on by default. When on, Android backs up the app data according to the backup rules, always without the Notion token. When off, Android backs up no app data (cloud backup and device transfer). Existing backups remain and can be deleted in the Android settings.
+- **Automatic backup:** Switch, on by default. When on, Android backs up the app data according to the backup rules, always without the Notion token. When off, Android backs up no app data (cloud backup and device transfer). Existing backups remain and can be deleted in the Android settings. The switch applies per device and is not part of the export.
 - **Storage:** Shows separately how much space data (JSON/settings), local product images and cache use. "Bildcache leeren" (clear image cache) only clears the cache; recipes, inventory and product images stay.
 - **Delete all local data:** Removes the recipe cache, favorites, meal plan, shopping list, inventory including local product images, and the cache from this device. After a warning (including a note about unsynced inventory changes) and typing "LÖSCHEN". Nothing is written to or deleted in Notion; token, database IDs and settings stay, widgets are updated.
+
+Not yet checked on a device: the Android file picker and the behavior of the backup agent in the system (cloud backup and device transfer).
 
 ## Privacy and security
 
@@ -162,7 +193,7 @@ Settings → "Daten und Backup" (Data and backup) collects everything about loca
 
 ## Develop, build and install
 
-Current app version: **1.3.0**, Android **8.0+ (API 26)**; compile/target SDK **36** (Android 16).
+Version name: `versionName` comes from the latest Git tag `vX.Y.Z`. As long as no tag exists, the fallback **1.3.0** from `app/build.gradle.kts` applies. Minimum Android **8.0 (API 26)**; compile/target SDK **36** (Android 16).
 
 You need JDK 17 or newer, Android SDK 36 and the Android build tools. Android Studio can be used for development. Configure the SDK path through `local.properties` (`sdk.dir=…`) or `ANDROID_HOME`.
 
@@ -184,7 +215,7 @@ adb -d install -r app/build/outputs/apk/preview/app-preview.apk
 
 **Preview build:** `assemblePreview` creates `app-preview.apk` with the package ID `de.yummify.app.preview` and the name “Yummify Preview”. It installs next to the regular Yummify app, does not replace it and shares no data with it, so new versions can be tried safely; enter the Notion token and database IDs there once. The APK is signed with the debug key and intended for testing only.
 
-Tests cover quantity calculations, expiration, atomic recipe stock deduction, date handling, pagination, Notion property mapping including `kcal`, recipe creation and reading, the ingredient parser, Notion links, rate limiting, shopping categories and merging, error handling, interrupted transfer recovery, damaged storage, offline storage, synchronization without blocking edits, duplicate shopping transfers and widget rendering.
+Tests cover quantity calculations, expiration, atomic recipe stock deduction, date handling, pagination, Notion property mapping including `kcal`, recipe creation and reading, the ingredient parser, Notion links, rate limiting, shopping categories and merging, error handling, interrupted transfer recovery, damaged storage, offline storage, synchronization without blocking edits, duplicate shopping transfers and widget rendering. They also cover export and import (checks, merge, replace, token handling), the appearance settings, the data care options and the backup rules.
 
 A release build (`./gradlew assembleRelease`) is signed only when the key and its passwords are configured locally. The passwords are no longer in the repository; put them in `local.properties` (not tracked) or environment variables (`YUMMIFY_KEYSTORE`, `YUMMIFY_STORE_PW`, `YUMMIFY_KEY_ALIAS`, `YUMMIFY_KEY_PW`):
 
