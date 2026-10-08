@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import de.yummify.app.share.RecipeSharer
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +66,9 @@ fun RecipeDetailScreen(
         return
     }
     val snackbar = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    var sharing by remember { mutableStateOf(false) }
     LaunchedEffect(state.inventoryMessage) {
         state.inventoryMessage?.let { snackbar.showSnackbar(it, withDismissAction = true); viewModel.messageShown() }
     }
@@ -124,6 +129,26 @@ fun RecipeDetailScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick = {
+                                if (!sharing) scope.launch {
+                                    sharing = true
+                                    try { RecipeSharer.share(context, recipe, state.servings) }
+                                    catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                                    catch (_: Exception) { snackbar.showSnackbar("Teilen ist nicht möglich. Bitte erneut versuchen.") }
+                                    finally { sharing = false }
+                                }
+                            },
+                            enabled = !sharing,
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
+                        ) {
+                            if (sharing) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                            else Icon(
+                                Icons.Filled.Share,
+                                contentDescription = "Rezept teilen",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         IconButton(
                             onClick = { showPlanDialog = true },
                             modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)

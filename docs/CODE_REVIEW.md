@@ -36,6 +36,8 @@ Stand Version 1.2.0. Erledigte Befunde sind jeweils durch Unit-Tests abgesichert
 | 28 Lokale Bilder | ✅ Ersetzte und gelöschte Fotos werden entfernt |
 | 29 Strings in Ressourcen | ⏳ Offen, erst bei Bedarf einer zweiten Sprache |
 
+Issue [#6](https://github.com/realgroundzero-gif/yummify/issues/6) (Rezept teilen) ist umgesetzt: `share/RecipeShareText` (Text), `share/RecipeCardRenderer` (Karte per Canvas), `share/RecipeSharer` (Cache, FileProvider, Share-Sheet). Offen für einen Test auf dem Gerät: Darstellung als Bildunterschrift in WhatsApp, Telegram und Signal sowie der Alternativ-Intent für reine Text-Apps (`EXTRA_ALTERNATE_INTENTS`).
+
 Neu: Build-Typ `preview` (`de.yummify.app.preview`, „Yummify Preview“) für Test-APKs, die neben der normalen App laufen.
 
 ---
