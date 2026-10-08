@@ -4,6 +4,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import de.yummify.app.ui.components.hideBottomBarOnScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,9 +38,12 @@ fun MealPlannerScreen(
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it, withDismissAction = true); viewModel.message.value = null } }
 
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     Box(Modifier.fillMaxSize()) {
     LazyColumn(
+        state = listState,
         modifier = Modifier
+            .hideBottomBarOnScroll(listState)
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding(),

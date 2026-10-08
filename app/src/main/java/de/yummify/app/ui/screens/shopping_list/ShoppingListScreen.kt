@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import de.yummify.app.ui.components.hideBottomBarOnScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -64,8 +65,11 @@ fun ShoppingListScreen(
         confirmButton = { TextButton(onClick = { confirmTransfer = false; viewModel.transferPurchased() }) { Text("Übernehmen") } },
         dismissButton = { TextButton(onClick = { confirmTransfer = false }) { Text("Abbrechen") } })
 
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     LazyColumn(
+        state = listState,
         modifier = Modifier
+            .hideBottomBarOnScroll(listState)
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding(),

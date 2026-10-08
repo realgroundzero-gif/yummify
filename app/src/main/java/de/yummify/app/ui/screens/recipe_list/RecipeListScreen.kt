@@ -22,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,8 +34,7 @@ import de.yummify.app.ui.components.*
 fun RecipeListScreen(
     onRecipeClick: (String) -> Unit,
     overviewRequest: Int = 0,
-    bottomBarInset: Dp = 0.dp,
-    onChromeVisibilityChanged: (Boolean) -> Unit = {},
+    bottomBarInset: () -> Dp = NoBottomInset,
     viewModel: RecipeListViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -42,65 +42,63 @@ fun RecipeListScreen(
     val scope = rememberCoroutineScope()
 
     val listState = rememberLazyListState()
-    LaunchedEffect(overviewRequest) { if (overviewRequest > 0) listState.scrollToItem(0) }
-    val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 } }
-    LaunchedEffect(atTop) { onChromeVisibilityChanged(atTop) }
+    // Logo and search move with the finger and give their space to the list; the category chips stay.
+    val headerBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    KeepHeaderReachable(headerBehavior, listState)
+    LaunchedEffect(overviewRequest) {
+        if (overviewRequest > 0) { headerBehavior.state.heightOffset = 0f; listState.scrollToItem(0) }
+    }
     Scaffold(
-        modifier = Modifier.fillMaxSize().padding(bottom = bottomBarInset),
+        modifier = Modifier.fillMaxSize().bottomInset(bottomBarInset),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             FloatingActionButton(onClick = { viewModel.beginCreation(); creating = true }) { Icon(Icons.Default.Add, "Rezept hinzufügen") }
         }
     ) { padding ->
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(bottom = 96.dp),
-            modifier = Modifier
+        Column(
+            Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()
+                .nestedScroll(headerBehavior.nestedScrollConnection)
         ) {
-            item(key = "header") {
-            Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary
-                ) {
-                    Image(
-                        painter = androidx.compose.ui.res.painterResource(id = de.yummify.app.R.drawable.ic_launcher_foreground),
-                        contentDescription = "Yummify Logo",
-                        modifier = Modifier.size(36.dp)
+            CollapsingHeader(headerBehavior) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary
+                        ) {
+                            Image(
+                                painter = androidx.compose.ui.res.painterResource(id = de.yummify.app.R.drawable.ic_launcher_foreground),
+                                contentDescription = "Yummify Logo",
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                        Text(
+                            text = "yummify",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    SearchBarRow(
+                        query = state.searchQuery,
+                        onQueryChange = viewModel::onSearchQueryChanged,
+                        favoritesOnly = state.favoritesOnly,
+                        onFavoritesToggle = viewModel::onFavoritesOnlyToggled,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
+                    RecipeStatusRow(state, onRetry = viewModel::onSyncClicked, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 }
-                Text(
-                    text = "yummify",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
             }
-
-            // Search Bar (Fixed at top - retained while scrolling)
-            SearchBarRow(
-                query = state.searchQuery,
-                onQueryChange = viewModel::onSearchQueryChanged,
-                favoritesOnly = state.favoritesOnly,
-                onFavoritesToggle = viewModel::onFavoritesOnlyToggled,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-            RecipeStatusRow(state, onRetry = viewModel::onSyncClicked, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-
-            }
-            }
-            stickyHeader(key = "filters") {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -115,9 +113,11 @@ fun RecipeListScreen(
                     )
                 }
             }
-
-            }
-
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(bottom = 96.dp),
+                modifier = Modifier.weight(1f).fillMaxWidth().hideBottomBarOnScroll(listState)
+            ) {
                 // Hero Recipe Card
                 state.heroRecipe?.let { hero ->
                     item {
@@ -195,6 +195,7 @@ fun RecipeListScreen(
                         )
                     }
                 }
+            }
         }
     }
     if (creating) RecipeCreateScreen(state.isCreating, state.creationError, onDismiss = { creating = false }, onSave = { draft ->

@@ -39,7 +39,7 @@ Ein zweites Startbildschirm-Widget zeigt die aktuelle Einkaufsliste im dunklen Y
 - Alphabetisch sortierte, ein- und ausklappbare Kategorieabschnitte mit Artikelanzahl und kontrastreichen Überschriften, die beim Scrollen sichtbar bleiben. Artikel ohne Zuordnung erscheinen unter „Ohne Kategorie“; innerhalb der Gruppen wird nach MHD und Name sortiert.
 - Artikel im Vollbild bearbeiten: Mengen-Stepper mit auswählbarer Schrittweite, Auswahlfelder aus dem Notion-Schema und Datumsauswahl. Die Standardschritte sind 1 für Stück und Packungen, 50 für g/ml und 0,1 für kg/l.
 - Durch Wischen nach links oder rechts mit anschließender Bestätigung löschen. Für Screenreader ist die Löschaktion ebenfalls verfügbar.
-- Plus-Buttons in Inventar und Rezeptübersicht berücksichtigen die tatsächliche Höhe der unteren Navigation, auch bei größerer Schrift. Im Inventar bleibt die Navigation beim Scrollen sichtbar.
+- Plus-Buttons in Inventar und Rezeptübersicht berücksichtigen die tatsächliche Höhe der unteren Navigation, auch bei größerer Schrift. Beim Scrollen folgen Kopfbereich (Logo, Suche, Status) und untere Navigation dem Finger: Sie verschwinden beim Abwärtsscrollen und kommen beim Zurückscrollen sofort wieder; lässt du los, rasten sie ein. Kategorie-Chips bleiben stehen, bei laufendem Screenreader und kurzen Listen bleibt alles sichtbar.
 
 ### Barcode und automatische Produktdaten
 

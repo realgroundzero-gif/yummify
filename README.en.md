@@ -39,7 +39,7 @@ A second home screen widget displays the current shopping list in the dark Yummi
 - Browse alphabetically sorted, collapsible category sections with item counts and contrasting headings that stay visible while scrolling. Uncategorized items have their own section; items within each group are sorted by best-before date and name.
 - Edit items in a full-screen form with a quantity stepper, adjustable increments, selection options from the Notion schema and a date picker. Default increments are 1 for pieces and packages, 50 for g/ml and 0.1 for kg/l.
 - Swipe left or right and confirm to delete an item. The delete action is also available to screen readers.
-- Plus buttons in the inventory and recipe list account for the actual bottom navigation height, including larger font sizes. Navigation stays visible while scrolling the inventory.
+- Plus buttons in the inventory and recipe list account for the actual bottom navigation height, including larger font sizes. While scrolling, the header (logo, search, status) and the bottom navigation follow your finger: they slide away when you scroll down and return as soon as you scroll back; when you let go they snap to shown or hidden. Category chips stay put; with a screen reader running, or when the list is short, everything stays visible.
 
 ### Barcodes and automatic product data
 
