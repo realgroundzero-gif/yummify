@@ -63,6 +63,8 @@ Recipe ingredients show available inventory. Missing ingredients can be added to
 
 **“Vielleicht schon da” (maybe already there):** If the shopping list has an open entry that the matching does not recognise as stock, but the inventory holds something similar (unexpired, quantity above 0), such as “Hähnchenbrustfilet” on the list and “Hähnchenbrust” in the inventory, the app asks. “Ist vorrätig” takes the entry off the list and puts it under “Bereits im Vorrat”; “Doch kaufen” undoes it. “Nein, kaufen” hides the hint for exactly that name pair permanently, whatever the quantity. The app never changes the list without your answer. No embedding model is used: measuring 134 ingredient pairs (`ingredient_pairs.tsv`) showed that the tested models do not separate German ingredients cleanly (for example Öl ~ Olivenöl), while the rule matching finds 48 of 58 equal pairs and merges no different pair.
 
+**Settings:** The menu has five sub menus. *Profil* (display name on the device, dark mode, auto-sync), *Verbindungen* (connections: Notion token, recipe and inventory database IDs, connection test, synchronization), *Datenpflege* (data maintenance), *Info* and *Rechtliches* (legal; the last two are still empty). In **Datenpflege** you extend the dropdown lists of the connected Notion databases (select and multi-select, such as category, cuisine, storage location or unit): type a new entry, add it, and the app creates it in Notion right away. Existing entries are sent back with their IDs unchanged, so nothing is ever renamed or deleted; duplicates (ignoring case) are not created again, and Notion does not allow commas in entries. The integration needs the permission to update content; if it is missing, the app shows Notion's message. Text and status columns cannot be extended this way, and the app does not convert columns. New inventory entries are available in the inventory's dropdowns immediately.
+
 The cooking action deducts the required quantities after confirmation, using batches with the earliest best-before date first. If an ingredient is missing, nothing is deducted. Low-stock items can be added to the shopping list without duplicate open entries.
 
 Checked shopping items can be transferred with their quantities to the inventory and removed from the shopping list. A stored transfer ID prevents duplicate bookings after an interruption. Non-numeric quantities require manual entry; storage location and best-before date can be added afterwards.
@@ -70,7 +72,7 @@ Checked shopping items can be transferred with their quantities to the inventory
 ## Set up Notion
 
 1. Create a Notion integration with read, insert and update permissions, and share the required databases or parent pages with it.
-2. Enter the integration token and recipe database ID in the app settings, save and test the connection.
+2. Enter the integration token and recipe database ID under Settings › Verbindungen, save and test the connection.
 3. Optionally enter an inventory database ID or use the inventory database creation action. The app creates or reuses `Yummify Inventar` under the recipe database's parent page. That page must be shared with the integration.
 4. Test the inventory connection and synchronize. Inventory uses the same token as recipes.
 

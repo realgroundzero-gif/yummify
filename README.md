@@ -63,6 +63,8 @@ Rezeptzutaten zeigen den verfügbaren Vorrat. Fehlende Zutaten lassen sich unter
 
 **„Vielleicht schon da“:** Hat die Einkaufsliste einen offenen Eintrag, den der Abgleich nicht als Vorrat erkennt, der Vorrat aber etwas Ähnliches (nicht abgelaufen, Bestand über 0) enthält, etwa „Hähnchenbrustfilet“ auf der Liste und „Hähnchenbrust“ im Vorrat, fragt die App nach. „Ist vorrätig“ nimmt den Eintrag von der Liste und legt ihn unter „Bereits im Vorrat“ ab, „Doch kaufen“ macht das rückgängig. „Nein, kaufen“ blendet den Hinweis für genau dieses Namenspaar dauerhaft aus, unabhängig von der Menge. Die App ändert die Liste nie ohne deine Antwort. Ein Embedding-Modell ist dafür nicht im Einsatz: Die Messung mit 134 Zutatenpaaren (`ingredient_pairs.tsv`) hat gezeigt, dass die getesteten Modelle deutsche Zutaten nicht sauber trennen (z. B. Öl ~ Olivenöl), während der Regelabgleich 48 von 58 gleichen Paaren erkennt und kein verschiedenes Paar verbindet.
 
+**Einstellungen:** Das Menü hat fünf Untermenüs. *Profil* (Anzeigename auf dem Gerät, Dark Mode, Auto-Sync), *Verbindungen* (Notion-Token, Rezept- und Inventar-Datenbank-ID, Verbindungstest, Synchronisation), *Datenpflege*, *Info* und *Rechtliches* (die letzten beiden sind noch leer). In der **Datenpflege** erweiterst du die Auswahllisten der verbundenen Notion-Datenbanken (Select und Multi-Select, etwa Kategorie, Küche, Lagerort oder Einheit): Neuer Eintrag eingeben, hinzufügen, und die App legt ihn sofort in Notion an. Bestehende Einträge werden mit ihrer ID unverändert mitgeschickt, es wird nie etwas umbenannt oder gelöscht; doppelte Einträge (ohne Beachtung der Groß-/Kleinschreibung) werden nicht noch einmal angelegt, Kommas sind in Notion-Einträgen nicht erlaubt. Die Integration braucht dafür das Recht, Inhalte zu ändern; fehlt es, zeigt die App die Notion-Meldung. Textfelder und Status-Spalten lassen sich so nicht erweitern, die App wandelt keine Spalten um. Neue Inventar-Einträge stehen direkt in den Auswahlfeldern des Inventars zur Verfügung.
+
 „Gekocht · Zutaten vom Vorrat abbuchen“ zieht nach Bestätigung die benötigten Mengen ab und verwendet zuerst Chargen mit dem frühesten MHD. Fehlt eine Zutat, wird nichts abgebucht. Niedrige Bestände können ohne doppelte offene Einträge auf die Einkaufsliste gesetzt werden.
 
 Abgehakte Einkaufsartikel lassen sich mit ihren Mengen ins Inventar übertragen und aus der Einkaufsliste entfernen. Eine gespeicherte Übernahme-ID verhindert Doppelbuchungen nach einem Abbruch. Nicht numerische Mengen müssen manuell erfasst werden; Lagerort und MHD lassen sich anschließend ergänzen.
@@ -70,7 +72,7 @@ Abgehakte Einkaufsartikel lassen sich mit ihren Mengen ins Inventar übertragen 
 ## Notion einrichten
 
 1. Eine Notion-Integration mit Lese-, Einfüge- und Änderungsrechten einrichten und die benötigten Datenbanken beziehungsweise übergeordneten Seiten für diese Integration freigeben.
-2. Unter Einstellungen den Integration-Token und die Rezept-Datenbank-ID eintragen, speichern und die Verbindung prüfen.
+2. Unter Einstellungen › Verbindungen den Integration-Token und die Rezept-Datenbank-ID eintragen, speichern und die Verbindung prüfen.
 3. Optional eine Inventar-Datenbank-ID eintragen oder „Inventar-Datenbank in Notion anlegen“ wählen. Die App erstellt oder verwendet „Yummify Inventar“ unter der übergeordneten Seite der Rezeptdatenbank. Diese Seite muss für die Integration freigegeben sein.
 4. Die Inventar-Verbindung prüfen und synchronisieren. Das Inventar verwendet denselben Token wie die Rezepte.
 

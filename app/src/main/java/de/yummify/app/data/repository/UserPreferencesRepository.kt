@@ -12,7 +12,8 @@ data class UserPreferences(
     val autoSyncEnabled: Boolean = true,
     val tokenInput: String = "",
     val databaseIdInput: String = "",
-    val inventoryDatabaseIdInput: String = ""
+    val inventoryDatabaseIdInput: String = "",
+    val profileName: String = ""
 )
 
 class UserPreferencesRepository(context: Context) {
@@ -24,7 +25,8 @@ class UserPreferencesRepository(context: Context) {
             autoSyncEnabled = prefs.getBoolean(KEY_AUTO_SYNC, true),
             tokenInput = prefs.getString(KEY_TOKEN, "") ?: "",
             databaseIdInput = prefs.getString(KEY_DATABASE_ID, "") ?: "",
-            inventoryDatabaseIdInput = prefs.getString("notion_inventory_db_id", "") ?: ""
+            inventoryDatabaseIdInput = prefs.getString("notion_inventory_db_id", "") ?: "",
+            profileName = prefs.getString(KEY_PROFILE_NAME, "") ?: ""
         )
     )
     val preferences: StateFlow<UserPreferences> = _preferences.asStateFlow()
@@ -37,6 +39,12 @@ class UserPreferencesRepository(context: Context) {
     fun setAutoSyncEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_AUTO_SYNC, enabled).apply()
         _preferences.value = _preferences.value.copy(autoSyncEnabled = enabled)
+    }
+
+    fun setProfileName(name: String) {
+        val trimmed = name.trim().take(60)
+        prefs.edit().putString(KEY_PROFILE_NAME, trimmed).apply()
+        _preferences.value = _preferences.value.copy(profileName = trimmed)
     }
 
     fun saveNotionConfig(token: String, databaseId: String, inventoryDatabaseId: String = _preferences.value.inventoryDatabaseIdInput) {
@@ -53,6 +61,7 @@ class UserPreferencesRepository(context: Context) {
     }
 
     companion object {
+        private const val KEY_PROFILE_NAME = "profile_name"
         private const val KEY_DARK_MODE = "dark_mode"
         private const val KEY_AUTO_SYNC = "auto_sync"
         private const val KEY_TOKEN = "notion_token"
