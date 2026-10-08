@@ -136,6 +136,20 @@ Inventaränderungen werden zuerst lokal gespeichert. Ausstehende Änderungen, L�
 
 Das Inventar ist nach Datenbank getrennt. Ein zunächst lokal erfasstes Inventar wird bei der ersten Einrichtung übernommen. Noch nicht synchronisierte lokale Änderungen haben bei Konflikten Vorrang; Änderungen anderer Geräte werden beim nächsten Abgleich geladen. Wochenplan, Einkaufsliste und Favoriten werden lokal gespeichert.
 
+## Daten und Backup
+
+Einstellungen → „Daten und Backup“ bündelt alles rund um die lokalen Daten. Die App braucht dafür keine Speicherberechtigung: Die Dateiauswahl übernimmt der Android-Dateiwähler.
+
+- **Daten exportieren:** Erstellt eine ZIP-Datei mit Rezepte-Cache, Favoriten, Wochenplan, Einkaufsliste (samt „Bereits im Vorrat“ und abgelehnten Vorschlägen), Inventar, Einstellungen, den lokalen Produktbildern und einem Manifest (Formatversion, App-Version, Zeitstempel). Die Erfolgsmeldung nennt die Zahl der gesicherten Elemente. Wird die Datei nicht vollständig geschrieben, meldet die App einen Fehler und löscht die Teildatei.
+- **Notion-Token:** Standardmäßig ist der Token nicht im Export. „Notion-Token in Export aufnehmen“ steht beim Öffnen immer auf Aus und verlangt eine ausdrückliche Bestätigung. Die Datei ist nicht verschlüsselt; wer sie besitzt, kann den Token lesen.
+- **Daten importieren:** Die Datei wird zuerst vollständig geprüft (gültige ZIP, Manifest, lesbare JSON-Dateien, bekannte Formatversion). Erst nach der Zusammenfassung und deiner Bestätigung wird etwas geändert. Bei einer defekten Datei, einem fremden Format oder einer neueren Formatversion bricht der Import mit einer Meldung ab, und deine Daten bleiben unverändert. Schlägt das Übernehmen mittendrin fehl, wird der vorherige Stand wiederhergestellt. Ältere Exporte ohne neuere Felder werden beim Laden ergänzt.
+- **Zusammenführen** (Standard): Elemente werden über ihre ID zusammengelegt, nichts geht verloren. Weil einzelne Elemente keinen Änderungszeitpunkt haben, entscheidet bei Konflikten der Zeitpunkt je Bereich: Ist der Export neuer als die letzte lokale Änderung des Bereichs, gewinnt die Datei, sonst (auch bei Gleichstand) der lokale Stand. Nicht abgeglichene lokale Inventar-Änderungen haben immer Vorrang vor einem unveränderten Dateistand. Aus der Datei übernommene Inventar-Einträge werden als ausstehend markiert und beim normalen Abgleich nach Notion übertragen. Löschungen werden nicht übertragen.
+- **Vorhandene Daten ersetzen:** Ersetzt die lokalen Daten nach einer Sicherheitsabfrage durch den Dateiinhalt. Notion wird nicht verändert.
+- **Token im Import:** Enthält die Datei einen Token, fragt die App vor der Übernahme. Ohne Zustimmung bleibt der aktuelle Token. Datenbank-IDs werden nur übernommen, wenn lokal noch keine gesetzt ist.
+- **Automatisches Backup:** Schalter, Standard an. Dann sichert Android die App-Daten gemäß den Backup-Regeln, immer ohne den Notion-Token. Aus: Android sichert keine App-Daten (Cloud-Backup und Geräteübertragung). Bereits vorhandene Backups bleiben bestehen und lassen sich in den Android-Einstellungen löschen.
+- **Speicher:** Zeigt getrennt, wie viel Platz Daten (JSON/Einstellungen), lokale Produktbilder und Cache belegen. „Bildcache leeren“ leert nur den Cache; Rezepte, Inventar und Produktbilder bleiben.
+- **Alle lokalen Daten löschen:** Entfernt Rezepte-Cache, Favoriten, Wochenplan, Einkaufsliste, Inventar inklusive lokaler Produktbilder und den Cache von diesem Gerät. Nach Warnung (inklusive Hinweis auf nicht synchronisierte Inventar-Änderungen) und Eintippen von „LÖSCHEN“. Es wird nichts an Notion geschrieben oder gelöscht; Token, Datenbank-IDs und Einstellungen bleiben, Widgets werden aktualisiert.
+
 ## Datenschutz und Sicherheit
 
 - Der Notion-Token wird nur auf dem Gerät gespeichert und ist von Android-Cloud-Backups und Geräteübertragungen ausgeschlossen. Nach einem Gerätewechsel muss er neu eingegeben werden.

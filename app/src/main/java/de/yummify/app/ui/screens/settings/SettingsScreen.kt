@@ -416,6 +416,8 @@ fun SettingsScreen(
             }
         }
 
+        DataBackupSection()
+
         // App info
         Column(
             modifier = Modifier

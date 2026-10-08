@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.util.Locale
 import java.util.UUID
 
-class ShoppingListRepository private constructor(private val context: Context) {
+class ShoppingListRepository internal constructor(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("yummify_shopping_list", Context.MODE_PRIVATE)
     private val gson = Gson()
     private val lock = Any()
@@ -100,6 +100,15 @@ class ShoppingListRepository private constructor(private val context: Context) {
     }
 
     fun dismissCovered() = setCovered(emptyList())
+
+    /** Reads list, covered items and dismissed suggestions again, e.g. after a data import or deletion. */
+    fun reloadFromStorage() {
+        synchronized(lock) {
+            _items.value = loadItems()
+            _covered.value = loadCovered()
+            _dismissed.value = loadDismissed()
+        }
+    }
 
     private val _dismissed = MutableStateFlow(loadDismissed())
     /** Name pairs for which the user answered "Nein, kaufen"; the suggestion does not come back for them. */

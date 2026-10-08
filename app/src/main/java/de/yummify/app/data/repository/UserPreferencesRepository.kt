@@ -18,16 +18,19 @@ data class UserPreferences(
 class UserPreferencesRepository(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("yummify_user_prefs", Context.MODE_PRIVATE)
 
-    private val _preferences = MutableStateFlow(
-        UserPreferences(
-            darkModeEnabled = prefs.getBoolean(KEY_DARK_MODE, false),
-            autoSyncEnabled = prefs.getBoolean(KEY_AUTO_SYNC, true),
-            tokenInput = prefs.getString(KEY_TOKEN, "") ?: "",
-            databaseIdInput = prefs.getString(KEY_DATABASE_ID, "") ?: "",
-            inventoryDatabaseIdInput = prefs.getString("notion_inventory_db_id", "") ?: ""
-        )
+    private fun readFromStorage() = UserPreferences(
+        darkModeEnabled = prefs.getBoolean(KEY_DARK_MODE, false),
+        autoSyncEnabled = prefs.getBoolean(KEY_AUTO_SYNC, true),
+        tokenInput = prefs.getString(KEY_TOKEN, "") ?: "",
+        databaseIdInput = prefs.getString(KEY_DATABASE_ID, "") ?: "",
+        inventoryDatabaseIdInput = prefs.getString("notion_inventory_db_id", "") ?: ""
     )
+
+    private val _preferences = MutableStateFlow(readFromStorage())
     val preferences: StateFlow<UserPreferences> = _preferences.asStateFlow()
+
+    /** Reads all values from storage again after a data import. New fields belong into [readFromStorage]. */
+    fun reloadFromStorage() { _preferences.value = readFromStorage() }
 
     fun setDarkModeEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_DARK_MODE, enabled).apply()
