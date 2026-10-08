@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # versionName comes from the latest tag, versionCode from the commit count
       - uses: actions/setup-java@v5
         with:
           distribution: temurin

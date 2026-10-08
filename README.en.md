@@ -166,7 +166,7 @@ adb -d install -r app/build/outputs/apk/preview/app-preview.apk
 
 Tests cover quantity calculations, expiration, atomic recipe stock deduction, date handling, pagination, Notion property mapping including `kcal`, recipe creation and reading, the ingredient parser, Notion links, rate limiting, shopping categories and merging, error handling, interrupted transfer recovery, damaged storage, offline storage, synchronization without blocking edits, duplicate shopping transfers and widget rendering.
 
-A release build (`./gradlew assembleRelease`) is signed only when the key and its passwords are configured locally. The passwords are no longer in the repository; put them in `local.properties` (not tracked) or environment variables (`YUMMIFY_STOREPASSWORD` and so on):
+A release build (`./gradlew assembleRelease`) is signed only when the key and its passwords are configured locally. The passwords are no longer in the repository; put them in `local.properties` (not tracked) or environment variables (`YUMMIFY_KEYSTORE`, `YUMMIFY_STORE_PW`, `YUMMIFY_KEY_ALIAS`, `YUMMIFY_KEY_PW`):
 
 ```properties
 yummify.storeFile=release.jks
@@ -175,7 +175,7 @@ yummify.keyAlias=yummify
 yummify.keyPassword=…
 ```
 
-`yummify.storeFile` is relative to the `app/` folder and defaults to `release.jks`. Without these values the release APK is unsigned. APKs, Gradle caches, SDK paths and signing keys are not tracked in Git.
+`yummify.storeFile` is relative to the `app/` folder and defaults to `release.jks`. Releases are made with `scripts/release.sh <VERSION>`: it checks branch, milestone and tests, sets the tag `vX.Y.Z`, builds the signed APK and stores it with a checksum in `releases/`. `versionName` comes from the latest tag, `versionCode` is the number of commits. The backlog lives in GitHub issues; setup and workflow of the agent team are described in [docs/agent-team.md](docs/agent-team.md) (German). Without these values the release APK is unsigned. APKs, Gradle caches, SDK paths and signing keys are not tracked in Git.
 
 ### Automated checks (GitHub Actions)
 

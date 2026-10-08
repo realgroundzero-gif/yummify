@@ -166,7 +166,7 @@ adb -d install -r app/build/outputs/apk/preview/app-preview.apk
 
 Die Tests decken unter anderem Mengenrechnung, Haltbarkeit, atomare Rezept-Abbuchung, Datumsermittlung, Pagination, Notion-Feldzuordnung einschließlich `kcal`, Rezeptanlage und Rezept-Lesen, Zutaten-Parser, Notion-Links, Ratenbegrenzung, Einkaufskategorien und Zusammenführung, Fehlerbehandlung, Wiederaufnahme unterbrochener Übertragungen, beschädigten Speicher, Offline-Speicherung, Abgleich ohne Eingabe-Blockade, Einkaufs-Doppelbuchungen und Widget-Darstellung ab.
 
-Ein Release-Build (`./gradlew assembleRelease`) wird nur signiert, wenn der Schlüssel und seine Passwörter lokal hinterlegt sind. Die Passwörter stehen nicht mehr im Repository, sondern in `local.properties` (nicht versioniert) oder in Umgebungsvariablen (`YUMMIFY_STOREPASSWORD` usw.):
+Ein Release-Build (`./gradlew assembleRelease`) wird nur signiert, wenn der Schlüssel und seine Passwörter lokal hinterlegt sind. Die Passwörter stehen nicht mehr im Repository, sondern in `local.properties` (nicht versioniert) oder in Umgebungsvariablen (`YUMMIFY_KEYSTORE`, `YUMMIFY_STORE_PW`, `YUMMIFY_KEY_ALIAS`, `YUMMIFY_KEY_PW`):
 
 ```properties
 yummify.storeFile=release.jks
@@ -175,7 +175,7 @@ yummify.keyAlias=yummify
 yummify.keyPassword=…
 ```
 
-`yummify.storeFile` ist relativ zum Ordner `app/`; Standard ist `release.jks`. Ohne diese Angaben entsteht eine unsignierte Release-APK. APKs, Gradle-Caches, SDK-Pfade und Signierschlüssel werden nicht versioniert.
+`yummify.storeFile` ist relativ zum Ordner `app/`; Standard ist `release.jks`. Für Releases gibt es `scripts/release.sh <VERSION>`: Es prüft Branch, Milestone und Tests, setzt den Tag `vX.Y.Z`, baut die signierte APK und legt sie mit Checksumme in `releases/` ab. `versionName` kommt aus dem letzten Tag, `versionCode` ist die Anzahl der Commits. Das Backlog liegt in GitHub Issues, Einrichtung und Ablauf des Agent-Teams stehen in [docs/agent-team.md](docs/agent-team.md). Ohne diese Angaben entsteht eine unsignierte Release-APK. APKs, Gradle-Caches, SDK-Pfade und Signierschlüssel werden nicht versioniert.
 
 ### Automatische Prüfung (GitHub Actions)
 
