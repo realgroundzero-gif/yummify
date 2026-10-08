@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.yummify.app.data.model.Recipe
+import de.yummify.app.data.model.RecipeLayout
 import de.yummify.app.data.model.RecipeDraft
 import de.yummify.app.data.remote.NotionRecipeApi
 import de.yummify.app.data.repository.RecipeRepository
@@ -34,7 +35,8 @@ data class RecipeListUiState(
     val isCreating: Boolean = false,
     val creationError: String? = null,
     val error: String? = null,
-    val fromNotion: Boolean = false
+    val fromNotion: Boolean = false,
+    val layout: RecipeLayout = RecipeLayout.Default
 )
 
 private data class Filters(val query: String = "", val category: String = "all", val favoritesOnly: Boolean = false)
@@ -46,11 +48,11 @@ class RecipeListViewModel(application: Application) : AndroidViewModel(applicati
     private val filters = MutableStateFlow(Filters())
     private val creation = MutableStateFlow(Creation())
 
-    val uiState: StateFlow<RecipeListUiState> = combine(recipes.state, filters, creation) { state, filter, create ->
-        build(state, filter, create)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, build(recipes.state.value, Filters(), Creation()))
+    val uiState: StateFlow<RecipeListUiState> = combine(recipes.state, filters, creation, prefsRepo.preferences) { state, filter, create, prefs ->
+        build(state, filter, create, prefs.recipeLayout)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, build(recipes.state.value, Filters(), Creation(), prefsRepo.preferences.value.recipeLayout))
 
-    private fun build(state: RecipeState, filter: Filters, create: Creation): RecipeListUiState {
+    private fun build(state: RecipeState, filter: Filters, create: Creation, layout: RecipeLayout): RecipeListUiState {
         val all = state.recipes
         val browsing = filter.query.isBlank() && filter.category == "all" && !filter.favoritesOnly
         val hero = if (browsing && all.size > 1) all.firstOrNull { it.isHeroOfDay } ?: all.first() else null
@@ -64,7 +66,7 @@ class RecipeListViewModel(application: Application) : AndroidViewModel(applicati
             searchQuery = filter.query, selectedCategory = filter.category, favoritesOnly = filter.favoritesOnly,
             isSyncing = state.loading && all.isNotEmpty(), isLoading = state.loading && all.isEmpty(),
             lastSyncTime = state.lastSync?.let(::relative).orEmpty(), isCreating = create.busy, creationError = create.error,
-            error = state.error, fromNotion = state.fromNotion
+            error = state.error, fromNotion = state.fromNotion, layout = layout
         )
     }
 

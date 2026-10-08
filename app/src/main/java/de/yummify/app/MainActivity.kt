@@ -1,5 +1,6 @@
 package de.yummify.app
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.Dp
 import de.yummify.app.ui.components.HideOnScrollState
 import de.yummify.app.ui.components.LocalBottomBarScroll
@@ -46,7 +48,12 @@ import de.yummify.app.ui.screens.recipe_list.RecipeListScreen
 import de.yummify.app.ui.screens.settings.SettingsScreen
 import de.yummify.app.ui.screens.inventory.InventoryScreen
 import de.yummify.app.ui.screens.shopping_list.ShoppingListScreen
+import de.yummify.app.data.model.StartDestination
+import de.yummify.app.data.model.resolveLaunchTarget
+import de.yummify.app.data.repository.UserPreferencesRepository
+import de.yummify.app.ui.AppLocale
 import de.yummify.app.ui.theme.YummifyTheme
+import de.yummify.app.ui.theme.isDark
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector, val iconOutlined: ImageVector) {
     object Recipes : Screen("recipes", "Rezepte", Icons.AutoMirrored.Filled.MenuBook, Icons.AutoMirrored.Outlined.MenuBook)
@@ -63,20 +70,30 @@ class MainActivity : ComponentActivity() {
     private val launchRouteState = mutableStateOf<String?>(null)
     private val launchRequestState = mutableIntStateOf(0)
 
+    // Android 12 and older: the chosen app language is put into the context here; Android 13+ handles it in the system.
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase, UserPreferencesRepository.readAppLanguage(newBase)))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // After rotation or a theme change the navigation state is restored; replaying the intent would open screens twice.
         if (savedInstanceState == null) handleIntent(intent)
 
-        val prefsRepo = de.yummify.app.data.repository.UserPreferencesRepository.getInstance(applicationContext)
+        val prefsRepo = UserPreferencesRepository.getInstance(applicationContext)
+        // From Android 13 on the language can also be changed in the system settings; that choice wins.
+        AppLocale.systemChoice(this)?.let { if (it != prefsRepo.preferences.value.appLanguage) prefsRepo.setAppLanguage(it) }
         setContent {
             val userPrefs by prefsRepo.preferences.collectAsState()
             val launchRecipeId by launchRecipeIdState
             val launchRoute by launchRouteState
             val launchRequest by launchRequestState
-            YummifyTheme(darkTheme = userPrefs.darkModeEnabled) {
-                YummifyApp(initialRecipeId = launchRecipeId, initialRoute = launchRoute, launchRequest = launchRequest)
+            YummifyTheme(darkTheme = userPrefs.themeMode.isDark(), dynamicColor = userPrefs.dynamicColorEnabled) {
+                YummifyApp(
+                    initialRecipeId = launchRecipeId, initialRoute = launchRoute, launchRequest = launchRequest,
+                    preferredStartRoute = userPrefs.startDestination.route
+                )
             }
         }
     }
@@ -102,8 +119,18 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, launchRequest: Int = 0) {
+fun YummifyApp(
+    initialRecipeId: String? = null,
+    initialRoute: String? = null,
+    launchRequest: Int = 0,
+    preferredStartRoute: String = StartDestination.Default.route
+) {
     val navController = rememberNavController()
+    // Decided once per task and saved with the instance state: a rotation, a theme change or coming back from
+    // the background restores the navigation state and never jumps to the start page again.
+    val startRoute = rememberSaveable {
+        resolveLaunchTarget(initialRoute, initialRecipeId, preferredStartRoute, bottomNavItems.map { it.route }.toSet()).startRoute
+    }
     LaunchedEffect(initialRoute, launchRequest) {
         if (initialRoute != null && bottomNavItems.any { it.route == initialRoute }) navController.navigate(initialRoute) { launchSingleTop = true }
     }
@@ -140,7 +167,7 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
             CompositionLocalProvider(LocalBottomBarScroll provides bottomBar) {
             NavHost(
                 navController = navController,
-                startDestination = Screen.Recipes.route,
+                startDestination = startRoute,
                 modifier = Modifier.fillMaxSize(),
                 enterTransition = { fadeIn(animationSpec = tween(200)) },
                 exitTransition = { fadeOut(animationSpec = tween(150)) }
@@ -199,7 +226,11 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
                             if (screen == Screen.Recipes) {
                                 recipeOverviewRequest++
                                 if (!navController.popBackStack(Screen.Recipes.route, false)) {
-                                    navController.navigate(Screen.Recipes.route) { launchSingleTop = true }
+                                    // Recipes is not the start page: replace the stack above the start page.
+                                    navController.navigate(Screen.Recipes.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                    }
                                 }
                             } else navController.navigate(screen.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }

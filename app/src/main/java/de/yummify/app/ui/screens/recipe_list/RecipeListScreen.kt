@@ -7,6 +7,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import de.yummify.app.data.model.Recipe
+import de.yummify.app.data.model.RecipeLayout
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,11 +49,12 @@ fun RecipeListScreen(
     val scope = rememberCoroutineScope()
 
     val listState = rememberLazyListState()
-    // Logo and search move with the finger and give their space to the list; the category chips stay.
+    val gridState = rememberLazyGridState()
+    // Logo and search move with the finger and give their space to the list or grid; the category chips stay.
     val headerBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    KeepHeaderReachable(headerBehavior, listState)
+    KeepHeaderReachable(headerBehavior, if (state.layout == RecipeLayout.GRID) gridState else listState)
     LaunchedEffect(overviewRequest) {
-        if (overviewRequest > 0) { headerBehavior.state.heightOffset = 0f; listState.scrollToItem(0) }
+        if (overviewRequest > 0) { headerBehavior.state.heightOffset = 0f; listState.scrollToItem(0); gridState.scrollToItem(0) }
     }
     Scaffold(
         modifier = Modifier.fillMaxSize().bottomInset(bottomBarInset),
@@ -113,85 +121,40 @@ fun RecipeListScreen(
                     )
                 }
             }
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(bottom = 96.dp),
-                modifier = Modifier.weight(1f).fillMaxWidth().hideBottomBarOnScroll(listState)
-            ) {
-                // Hero Recipe Card
-                state.heroRecipe?.let { hero ->
-                    item {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "REZEPT DES TAGES",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "Notion Empfehlung",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            RecipeHeroCard(
-                                recipe = hero,
-                                onCardClick = { onRecipeClick(it.id) },
-                                onFavoriteToggle = viewModel::onFavoriteToggled
-                            )
-                        }
+            val onFavorite: (Recipe) -> Unit = viewModel::onFavoriteToggled
+            val hero = state.heroRecipe
+            if (state.layout == RecipeLayout.GRID) {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 150.dp),
+                    state = gridState,
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f).fillMaxWidth().hideBottomBarOnScroll(gridState)
+                ) {
+                    // Hero card, loading and empty state use the full width above and between the cards.
+                    if (hero != null) item(span = { GridItemSpan(maxLineSpan) }) { RecipeHeroSection(hero, onRecipeClick, onFavorite) }
+                    if (state.isLoading) item(span = { GridItemSpan(maxLineSpan) }) { RecipeLoadingPlaceholder() }
+                    else if (state.filteredRecipes.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) { RecipeEmptyPlaceholder(state) }
+                    else items(state.filteredRecipes, key = { it.id }) { recipe ->
+                        RecipeGridCard(recipe = recipe, onCardClick = { onRecipeClick(it.id) }, onFavoriteToggle = onFavorite)
                     }
                 }
-
-                // Recipe list
-                if (state.isLoading) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                } else if (state.filteredRecipes.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("🔍", style = MaterialTheme.typography.headlineLarge)
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    when {
-                                        state.favoritesOnly -> "Noch keine Favoriten"
-                                        state.recipes.isEmpty() && state.error != null -> "Rezepte konnten nicht geladen werden"
-                                        state.recipes.isEmpty() -> "Noch keine Rezepte in Notion"
-                                        else -> "Keine Rezepte gefunden"
-                                    },
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                if (state.favoritesOnly) Text("Tippe auf das Lesezeichen eines Rezepts, um es zu merken.",
-                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                } else {
-                    items(state.filteredRecipes, key = { it.id }) { recipe ->
+            } else {
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(bottom = 96.dp),
+                    modifier = Modifier.weight(1f).fillMaxWidth().hideBottomBarOnScroll(listState)
+                ) {
+                    if (hero != null) item { RecipeHeroSection(hero, onRecipeClick, onFavorite, Modifier.padding(horizontal = 16.dp)) }
+                    if (state.isLoading) item { RecipeLoadingPlaceholder() }
+                    else if (state.filteredRecipes.isEmpty()) item { RecipeEmptyPlaceholder(state) }
+                    else items(state.filteredRecipes, key = { it.id }) { recipe ->
                         RecipeListCard(
                             recipe = recipe,
                             onCardClick = { onRecipeClick(it.id) },
-                            onFavoriteToggle = viewModel::onFavoriteToggled,
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 5.dp)
+                            onFavoriteToggle = onFavorite,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)
                         )
                     }
                 }
@@ -201,10 +164,75 @@ fun RecipeListScreen(
     if (creating) RecipeCreateScreen(state.isCreating, state.creationError, onDismiss = { creating = false }, onSave = { draft ->
         viewModel.createRecipe(draft) {
             creating = false
-            scope.launch { listState.scrollToItem(0) }
+            scope.launch { listState.scrollToItem(0); gridState.scrollToItem(0) }
         }
     })
 
+}
+
+@Composable
+private fun RecipeHeroSection(hero: Recipe, onRecipeClick: (String) -> Unit, onFavoriteToggle: (Recipe) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "REZEPT DES TAGES",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Notion Empfehlung",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        RecipeHeroCard(
+            recipe = hero,
+            onCardClick = { onRecipeClick(it.id) },
+            onFavoriteToggle = onFavoriteToggle
+        )
+    }
+}
+
+@Composable
+private fun RecipeLoadingPlaceholder() {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Composable
+private fun RecipeEmptyPlaceholder(state: RecipeListUiState) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("🔍", style = MaterialTheme.typography.headlineLarge)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                when {
+                    state.favoritesOnly -> "Noch keine Favoriten"
+                    state.recipes.isEmpty() && state.error != null -> "Rezepte konnten nicht geladen werden"
+                    state.recipes.isEmpty() -> "Noch keine Rezepte in Notion"
+                    else -> "Keine Rezepte gefunden"
+                },
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (state.favoritesOnly) Text("Tippe auf das Lesezeichen eines Rezepts, um es zu merken.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 @Composable

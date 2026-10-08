@@ -24,8 +24,98 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
+import de.yummify.app.R
 import de.yummify.app.data.model.Recipe
+import de.yummify.app.ui.theme.YummifyTheme
+
+/** Compact card for the grid view of the recipe overview: image on top, title, rating and the first tag below. */
+@Composable
+fun RecipeGridCard(
+    recipe: Recipe,
+    onCardClick: (Recipe) -> Unit,
+    modifier: Modifier = Modifier,
+    onFavoriteToggle: ((Recipe) -> Unit)? = null
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onCardClick(recipe) },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column {
+            Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f)) {
+                RecipeImage(url = recipe.imageUrl, contentDescription = recipe.title, modifier = Modifier.fillMaxSize())
+                if (onFavoriteToggle != null) Surface(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+                ) {
+                    IconButton(onClick = { onFavoriteToggle(recipe) }, modifier = Modifier.size(48.dp)) {
+                        Icon(
+                            if (recipe.isFavorite) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                            contentDescription = stringResource(if (recipe.isFavorite) R.string.recipe_card_favorite_remove else R.string.recipe_card_favorite_add),
+                            tint = if (recipe.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = recipe.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (recipe.score > 0.0) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFBBC04), modifier = Modifier.size(13.dp))
+                    Spacer(Modifier.width(3.dp))
+                    Text(String.format("%.1f", recipe.score), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                recipe.tags.firstOrNull()?.let { tag ->
+                    Box(Modifier.background(MaterialTheme.colorScheme.secondaryContainer, CircleShape).padding(horizontal = 8.dp, vertical = 3.dp)) {
+                        Text(tag, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecipeGridCardPreviewBody(dark: Boolean) {
+    YummifyTheme(darkTheme = dark) {
+        Box(Modifier.background(MaterialTheme.colorScheme.background).padding(8.dp)) {
+            RecipeGridCard(
+                recipe = Recipe(
+                    id = "1", title = "Gemüsecurry mit Kokosmilch und Reis", description = "", imageUrl = "", cookTimeMinutes = 30, calories = null,
+                    proteinGrams = null, carbsGrams = null, fatGrams = null, category = "veggie", tags = listOf("Vegan", "Curry"), score = 4.0,
+                    ingredients = emptyList(), instructions = emptyList()
+                ),
+                onCardClick = {}, onFavoriteToggle = {}
+            )
+        }
+    }
+}
+
+@Preview(name = "Raster-Karte", showBackground = true, widthDp = 190)
+@Composable
+private fun RecipeGridCardPreview() = RecipeGridCardPreviewBody(dark = false)
+
+@Preview(name = "Raster-Karte dunkel", showBackground = true, widthDp = 190, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun RecipeGridCardDarkPreview() = RecipeGridCardPreviewBody(dark = true)
+
+@Preview(name = "Raster-Karte große Schrift", showBackground = true, widthDp = 190, fontScale = 1.6f)
+@Composable
+private fun RecipeGridCardLargeFontPreview() = RecipeGridCardPreviewBody(dark = false)
 
 @Composable
 fun RecipeHeroCard(

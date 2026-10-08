@@ -75,26 +75,12 @@ fun ProfileSection(onBack: () -> Unit, viewModel: SettingsViewModel = viewModel(
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(
-                    "Darstellung und Abgleich",
+                    "Abgleich",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
                 )
-                SettingsRow(
-                    icon = Icons.Filled.DarkMode,
-                    title = "Dark Mode",
-                    subtitle = if (state.darkModeEnabled) "Dunkles Erscheinungsbild aktiv" else "Helles Erscheinungsbild aktiv"
-                ) {
-                    Switch(
-                        checked = state.darkModeEnabled,
-                        onCheckedChange = viewModel::toggleDarkMode,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-                }
                 SettingsRow(
                     icon = Icons.Filled.Sync,
                     title = "Auto-Sync",
