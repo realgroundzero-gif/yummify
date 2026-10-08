@@ -38,6 +38,8 @@ Stand Version 1.2.0. Erledigte Befunde sind jeweils durch Unit-Tests abgesichert
 
 Issue [#6](https://github.com/realgroundzero-gif/yummify/issues/6) (Rezept teilen) ist umgesetzt: `share/RecipeShareText` (Text), `share/RecipeCardRenderer` (Karte per Canvas), `share/RecipeSharer` (Cache, FileProvider, Share-Sheet). Offen für einen Test auf dem Gerät: Darstellung als Bildunterschrift in WhatsApp, Telegram und Signal sowie der Alternativ-Intent für reine Text-Apps (`EXTRA_ALTERNATE_INTENTS`).
 
+Issue [#5](https://github.com/realgroundzero-gif/yummify/issues/5) ist in Schritt A und B umgesetzt (Version 1.3.0): `IngredientMatcher` (regelbasierter Abgleich, überall verwendet) und `WeekShoppingPlanner` mit „Aus Wochenplan hinzufügen“ und dem Abschnitt „Bereits im Vorrat“. **Offen ist Schritt C:** ein Embedding-Test mit rund 100 deutschen Zutatenpaaren. Die Matcher-Tests (`IngredientMatcherTest`) sind dafür die Messlatte: Das Modell muss mindestens alle dortigen Treffer finden und darf keine der dortigen „bleibt verschieden“-Paare verbinden. Der Matcher lässt Treffer aus, die ein Mensch erkennt (z. B. „Hähnchenbrust“ und „Hähnchenbrustfilet“), das ist gewollt; solche Fälle gehören als Synonyme in die Liste oder als Vorschlag („Meintest du …?“) in die Oberfläche.
+
 Neu: Build-Typ `preview` (`de.yummify.app.preview`, „Yummify Preview“) für Test-APKs, die neben der normalen App laufen.
 
 ---

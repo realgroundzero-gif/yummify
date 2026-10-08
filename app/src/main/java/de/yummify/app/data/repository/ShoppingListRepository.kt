@@ -4,10 +4,12 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import de.yummify.app.data.model.CoveredItem
 import de.yummify.app.data.model.Ingredient
 import de.yummify.app.data.model.InventoryItem
 import de.yummify.app.data.model.InventoryMath
 import de.yummify.app.data.model.ShoppingItem
+import de.yummify.app.data.model.WeekShoppingResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,7 +53,7 @@ class ShoppingListRepository private constructor(private val context: Context) {
         update { list ->
             val current = list.toMutableList()
             stock.forEach { item ->
-                if (current.none { !it.isChecked && InventoryMath.normalizedName(it.name) == InventoryMath.normalizedName(item.name) && it.unit == item.unit }) {
+                if (current.none { !it.isChecked && InventoryMath.sameIngredient(it.name, item.name) && it.unit == item.unit }) {
                     val amount = (item.minimum - item.quantity).coerceAtLeast(1.0)
                     current.add(ShoppingItem(UUID.randomUUID().toString(), item.name, "${InventoryMath.number(amount)} ${item.unit}".trim(), item.category,
                         note = "Inventar nachfüllen", quantity = amount, unit = item.unit))
@@ -62,6 +64,40 @@ class ShoppingListRepository private constructor(private val context: Context) {
         }
         return count
     }
+
+    private val _covered = MutableStateFlow(loadCovered())
+    /** Ingredients of the last week plan run that the inventory already covers. */
+    val covered: StateFlow<List<CoveredItem>> = _covered.asStateFlow()
+
+    private fun loadCovered(): List<CoveredItem> = runCatching {
+        gson.fromJson<List<CoveredItem>>(prefs.getString(KEY_COVERED, null), object : TypeToken<List<CoveredItem>>() {}.type)
+    }.getOrNull().orEmpty()
+
+    private fun setCovered(list: List<CoveredItem>) {
+        prefs.edit().putString(KEY_COVERED, gson.toJson(list)).apply()
+        _covered.value = list
+    }
+
+    /** Puts the planned purchases on the list and remembers what the inventory already covers. */
+    fun applyPlan(result: WeekShoppingResult) {
+        update { list ->
+            result.toBuy.fold(list) { acc, purchase ->
+                mergeIngredients(acc, purchase.recipes.joinToString(" · "), listOf(purchase.ingredient), 1.0, note = purchase.note)
+            }
+        }
+        setCovered(result.covered)
+    }
+
+    /** "Doch kaufen": moves a covered ingredient to the list. */
+    fun restoreCovered(id: String) {
+        val item = _covered.value.firstOrNull { it.id == id } ?: return
+        update { list ->
+            mergeIngredients(list, item.recipeName.orEmpty(), listOf(Ingredient(item.name, item.quantity ?: 0.0, item.unit.orEmpty())), 1.0)
+        }
+        setCovered(_covered.value.filterNot { it.id == id })
+    }
+
+    fun dismissCovered() = setCovered(emptyList())
 
     fun removeItems(ids: Set<String>) = update { list -> list.filterNot { it.id in ids } }
 
@@ -77,15 +113,17 @@ class ShoppingListRepository private constructor(private val context: Context) {
 
     companion object {
         private const val KEY_ITEMS = "shopping_items_json"
+        private const val KEY_COVERED = "covered_items_json"
         private val SAMPLE_IDS = (1..14).map { "s$it" }.toSet()
 
         internal fun mergeIngredients(list: List<ShoppingItem>, recipeTitle: String, ingredients: List<Ingredient>,
-                                      multiplier: Double, newId: () -> String = { UUID.randomUUID().toString() }): List<ShoppingItem> {
+                                      multiplier: Double, note: String? = null,
+                                      newId: () -> String = { UUID.randomUUID().toString() }): List<ShoppingItem> {
             val current = list.toMutableList()
             ingredients.forEach { ingredient ->
                 val unit = ingredient.unit.ifBlank { "Stk" }
                 val amount = ingredient.amount * multiplier
-                val sameName = { item: ShoppingItem -> !item.isChecked && InventoryMath.normalizedName(item.name) == InventoryMath.normalizedName(ingredient.name) }
+                val sameName = { item: ShoppingItem -> !item.isChecked && InventoryMath.sameIngredient(item.name, ingredient.name) }
                 val index = current.indexOfFirst { item ->
                     sameName(item) && item.quantity != null && item.unit != null && InventoryMath.convert(amount, unit, item.unit) != null
                 }
@@ -101,7 +139,7 @@ class ShoppingListRepository private constructor(private val context: Context) {
                 } else {
                     current.add(0, ShoppingItem(id = newId(), name = ingredient.name,
                         amountWithUnit = if (amount > 0) format(amount, ingredient.unit) else "",
-                        category = categoryFor(ingredient.name), recipeName = recipeTitle,
+                        category = categoryFor(ingredient.name), recipeName = recipeTitle, note = note,
                         quantity = amount.takeIf { it > 0 }, unit = unit))
                 }
             }
