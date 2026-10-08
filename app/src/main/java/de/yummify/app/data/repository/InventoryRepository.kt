@@ -84,6 +84,17 @@ class InventoryRepository internal constructor(context: Context, private val api
             }
         }
     }
+    /** Reads records, purchases and choices of the active database again (data import or deletion). */
+    suspend fun reloadFromStorage() = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            records = load(database)
+            purchases = prefs.getStringSet("purchases_${database}", emptySet()).orEmpty().toSet()
+            _choices.value = loadChoices(database)
+            synchronized(obsoleteImages) { obsoleteImages.clear() }
+            _items.value = records.filterNot { it.deleted }
+            updateStatus()
+        }
+    }
     private fun key(id: String) = "items_${id.ifBlank { "local" }}"
     private fun load(id: String): List<InventoryItem> {
         val raw = prefs.getString(key(id), null) ?: return emptyList()

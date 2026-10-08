@@ -26,8 +26,7 @@ data class UserPreferences(
 class UserPreferencesRepository(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("yummify_user_prefs", Context.MODE_PRIVATE)
 
-    private val _preferences = MutableStateFlow(
-        UserPreferences(
+    private fun readFromStorage() = UserPreferences(
             themeMode = loadThemeMode(),
             dynamicColorEnabled = prefs.getBoolean(KEY_DYNAMIC_COLOR, false),
             startDestination = StartDestination.fromRoute(prefs.getString(KEY_START_ROUTE, null)),
@@ -38,9 +37,13 @@ class UserPreferencesRepository(context: Context) {
             databaseIdInput = prefs.getString(KEY_DATABASE_ID, "") ?: "",
             inventoryDatabaseIdInput = prefs.getString("notion_inventory_db_id", "") ?: "",
             profileName = prefs.getString(KEY_PROFILE_NAME, "") ?: ""
-        )
     )
+
+    private val _preferences = MutableStateFlow(readFromStorage())
     val preferences: StateFlow<UserPreferences> = _preferences.asStateFlow()
+
+    /** Reads all values from storage again after a data import. New fields belong into [readFromStorage]. */
+    fun reloadFromStorage() { _preferences.value = readFromStorage() }
 
     /** Übernimmt den alten Dark-Mode-Schalter genau einmal; danach zählt nur noch der gespeicherte Modus. */
     private fun loadThemeMode(): ThemeMode {

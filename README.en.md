@@ -140,6 +140,20 @@ Inventory changes are saved locally first. Pending edits, deletions and images a
 
 Inventory is separated by database. Initially local inventory is adopted when configuring a database for the first time. Unsynchronized local changes take priority in conflicts; changes from other devices are loaded during the next synchronization. The meal plan, shopping list and favorites are stored locally.
 
+## Data and backup
+
+Settings → "Daten und Backup" (Data and backup) collects everything about local data. No storage permission is needed: files are picked with the Android file picker.
+
+- **Export data:** Creates a ZIP file with the recipe cache, favorites, meal plan, shopping list (including "already in stock" and dismissed suggestions), inventory, settings, the local product images and a manifest (format version, app version, timestamp). The success message shows how many items were saved. If the file cannot be written completely, the app reports an error and deletes the partial file.
+- **Notion token:** The token is not part of an export by default. "Include Notion token in export" is always off when the screen opens and needs an explicit confirmation. The file is not encrypted; anyone who has it can read the token.
+- **Import data:** The file is fully checked first (valid ZIP, manifest, readable JSON files, known format version). Nothing changes until you have seen the summary and confirmed. A damaged file, a foreign format or a newer format version aborts the import with a message and your data stays untouched. If applying fails halfway, the previous state is restored. Exports from older versions without newer fields are completed on load.
+- **Merge** (default): Items are combined by ID, nothing is lost. Single items have no change time, so conflicts are decided per area: if the export is newer than the last local change of that area, the file wins, otherwise (also on a tie) the local state wins. Unsynced local inventory changes always beat an unchanged file entry. Inventory entries taken from the file are marked as pending and uploaded to Notion by the normal sync. Deletions are not transferred.
+- **Replace existing data:** After a safety prompt, replaces the local data with the file content. Notion is not changed.
+- **Token on import:** If the file contains a token, the app asks before applying it. Without consent the current token stays. Database IDs are only taken over if none is set locally.
+- **Automatic backup:** Switch, on by default. When on, Android backs up the app data according to the backup rules, always without the Notion token. When off, Android backs up no app data (cloud backup and device transfer). Existing backups remain and can be deleted in the Android settings.
+- **Storage:** Shows separately how much space data (JSON/settings), local product images and cache use. "Bildcache leeren" (clear image cache) only clears the cache; recipes, inventory and product images stay.
+- **Delete all local data:** Removes the recipe cache, favorites, meal plan, shopping list, inventory including local product images, and the cache from this device. After a warning (including a note about unsynced inventory changes) and typing "LÖSCHEN". Nothing is written to or deleted in Notion; token, database IDs and settings stay, widgets are updated.
+
 ## Privacy and security
 
 - The Notion token is stored only on the device and is excluded from Android cloud backups and device transfers. After switching devices, enter it again.

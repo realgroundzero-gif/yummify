@@ -50,6 +50,7 @@ fun DataCareSection(onBack: () -> Unit, viewModel: DataCareViewModel = viewModel
                 }
             }
         }
+        DataBackupSection()
     }
 }
 
