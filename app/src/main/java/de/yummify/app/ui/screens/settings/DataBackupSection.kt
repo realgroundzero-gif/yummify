@@ -1,5 +1,6 @@
 package de.yummify.app.ui.screens.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -12,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,46 +23,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.yummify.app.R
+import de.yummify.app.ui.components.hideBottomBarOnScroll
 import de.yummify.app.data.backup.ImportMode
 import de.yummify.app.data.backup.formatBytes
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-/**
- * Einstiegszeile "Daten und Backup" für die Einstellungen. Öffnet das Untermenü als Vollbild-Dialog,
- * damit der Einstellungsbildschirm selbst nur diese eine Zeile braucht.
- */
+/** Untermenü "Daten und Backup" der Einstellungen. */
 @Composable
-fun DataBackupSection(viewModel: DataBackupViewModel = viewModel()) {
-    var open by rememberSaveable { mutableStateOf(false) }
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clickable(role = Role.Button) { open = true },
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow
-    ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceContainer, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Storage, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.backup_menu_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.backup_menu_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-    if (open) {
-        Dialog(onDismissRequest = { open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                DataBackupScreen(viewModel, onBack = { open = false })
-            }
-        }
-    }
+fun DataBackupSection(onBack: () -> Unit, viewModel: DataBackupViewModel = viewModel()) {
+    BackHandler(onBack = onBack)
+    DataBackupScreen(viewModel, onBack)
 }
 
 @Composable
@@ -79,7 +53,8 @@ private fun DataBackupScreen(viewModel: DataBackupViewModel, onBack: () -> Unit)
             Text(stringResource(R.string.backup_menu_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
         if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 32.dp)) {
+        val scrollState = rememberScrollState()
+        Column(Modifier.weight(1f).hideBottomBarOnScroll(scrollState).verticalScroll(scrollState).padding(bottom = 100.dp)) {
             state.message?.let { message ->
                 Surface(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), shape = RoundedCornerShape(16.dp),

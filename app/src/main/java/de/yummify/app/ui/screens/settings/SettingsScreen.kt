@@ -30,6 +30,7 @@ enum class SettingsSection(
     APPEARANCE("", "", Icons.Filled.Palette, R.string.settings_appearance_title, R.string.settings_appearance_subtitle),
     CONNECTIONS("Verbindungen", "Notion-Token und Datenbank-IDs", Icons.Filled.Cloud),
     DATA_CARE("Datenpflege", "Auswahllisten erweitern", Icons.Filled.Tune),
+    DATA_BACKUP("", "", Icons.Filled.Storage, R.string.backup_menu_title, R.string.backup_menu_subtitle),
     INFO("Info", "", Icons.Filled.Info),
     LEGAL("Rechtliches", "", Icons.Filled.Gavel)
 }
@@ -45,6 +46,7 @@ fun SettingsScreen() {
         SettingsSection.APPEARANCE -> AppearanceSection(back)
         SettingsSection.CONNECTIONS -> ConnectionsSection(back)
         SettingsSection.DATA_CARE -> DataCareSection(back)
+        SettingsSection.DATA_BACKUP -> DataBackupSection(back)
         SettingsSection.INFO -> EmptySection(section.title, back)
         SettingsSection.LEGAL -> EmptySection(section.title, back)
     }
