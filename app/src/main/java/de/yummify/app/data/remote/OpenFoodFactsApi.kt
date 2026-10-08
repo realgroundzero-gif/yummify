@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit
 class OpenFoodFactsApi(
     private val client: OkHttpClient = OkHttpClient.Builder().callTimeout(20, TimeUnit.SECONDS).build(),
     private val baseUrl: String = "https://world.openfoodfacts.org",
-    private val userAgent: String = "Yummify/1.1.0 (Android; https://github.com/realgroundzero-gif/yummify)"
+    private val userAgent: String = "Yummify/${de.yummify.app.BuildConfig.VERSION_NAME} (Android; https://github.com/realgroundzero-gif/yummify)"
 ) {
     fun product(barcode: String): FoodProduct? {
         val code = normalizeBarcode(barcode)

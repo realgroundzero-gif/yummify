@@ -49,6 +49,13 @@ data class InventoryItem(
     }
 }
 
+/** Gson ignores Kotlin defaults: entries stored by older versions may hold null in fields added later. */
+@Suppress("SENSELESS_COMPARISON", "USELESS_ELVIS")
+fun InventoryItem.normalized(): InventoryItem = copy(
+    id = id ?: java.util.UUID.randomUUID().toString(), name = name ?: "", unit = unit ?: "", category = category ?: "",
+    categoryOptions = categoryOptions ?: emptyList(), location = location ?: "", barcode = barcode ?: "", notes = notes ?: ""
+)
+
 object InventoryMath {
     fun quantityStep(unit: String): Double = when (unit.trim().lowercase(Locale.GERMAN)) {
         "g", "ml" -> 50.0
@@ -65,6 +72,8 @@ object InventoryMath {
 
     fun number(value: Double): String = java.text.DecimalFormat("0.###").format(value)
     fun normalizedName(value: String) = value.trim().lowercase(Locale.GERMAN).replace(Regex("\\s+"), " ")
+    /** Same ingredient despite different spelling, word order or additions like "(Dose)"; see [IngredientMatcher]. */
+    fun sameIngredient(a: String, b: String) = IngredientMatcher.same(a, b)
     private fun unit(value: String): Pair<String, Double> = when (value.trim().lowercase(Locale.GERMAN).removeSuffix(".")) {
         "g" -> "mass" to 1.0
         "kg" -> "mass" to 1000.0
@@ -83,7 +92,7 @@ object InventoryMath {
         ingredients.forEach { ingredient ->
             require(ingredient.amount.isFinite() && ingredient.amount >= 0) { "Ungültige Zutatenmenge." }
             var remaining = ingredient.amount * multiplier
-            val candidates = result.filter { !it.deleted && !it.isExpired(today) && normalizedName(it.name) == normalizedName(ingredient.name) && convert(it.quantity, it.unit, ingredient.unit) != null }
+            val candidates = result.filter { !it.deleted && !it.isExpired(today) && sameIngredient(it.name, ingredient.name) && convert(it.quantity, it.unit, ingredient.unit) != null }
                 .sortedBy { it.expiry ?: "9999-12-31" }
             candidates.forEach { candidate ->
                 if (remaining > 0) {
@@ -98,11 +107,12 @@ object InventoryMath {
         }
         return result
     }
-    fun missing(ingredient: Ingredient, multiplier: Double, stock: List<InventoryItem>, today: LocalDate = LocalDate.now()): Double {
-        val available = stock.filter { !it.deleted && !it.isExpired(today) && normalizedName(it.name) == normalizedName(ingredient.name) }
+    /** Stock that can be used for [ingredient]: same product, not expired, summed in the ingredient's unit. */
+    fun available(ingredient: Ingredient, stock: List<InventoryItem>, today: LocalDate = LocalDate.now()): Double =
+        stock.filter { !it.deleted && !it.isExpired(today) && sameIngredient(it.name, ingredient.name) }
             .sumOf { convert(it.quantity, it.unit, ingredient.unit) ?: 0.0 }
-        return (ingredient.amount * multiplier - available).coerceAtLeast(0.0)
-    }
+    fun missing(ingredient: Ingredient, multiplier: Double, stock: List<InventoryItem>, today: LocalDate = LocalDate.now()): Double =
+        (ingredient.amount * multiplier - available(ingredient, stock, today)).coerceAtLeast(0.0)
 }
 
 /** Persisted schema options, including values that are not used by any item yet. */

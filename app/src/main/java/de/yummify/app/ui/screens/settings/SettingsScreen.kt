@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import de.yummify.app.ui.components.hideBottomBarOnScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,11 +28,13 @@ fun SettingsScreen(
     val state by viewModel.uiState.collectAsState()
     var showToken by remember { mutableStateOf(false) }
 
+    val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
+            .hideBottomBarOnScroll(scrollState)
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .statusBarsPadding()
             .padding(bottom = 100.dp)
     ) {
@@ -397,23 +400,9 @@ fun SettingsScreen(
                     )
                 }
                 SettingsRow(
-                    icon = Icons.Filled.Notifications,
-                    title = "Mahlzeiten-Erinnerungen",
-                    subtitle = if (state.remindersEnabled) "Kochzeiten & Pläne benachrichtigen" else "Erinnerungen stummgeschaltet"
-                ) {
-                    Switch(
-                        checked = state.remindersEnabled,
-                        onCheckedChange = viewModel::toggleReminders,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-                }
-                SettingsRow(
                     icon = Icons.Filled.Sync,
                     title = "Auto-Sync",
-                    subtitle = if (state.autoSyncEnabled) "Alle 15 Minuten synchronisieren" else "Manuelle Synchronisation"
+                    subtitle = if (state.autoSyncEnabled) "Inventar beim Öffnen und nach Änderungen abgleichen" else "Manuelle Synchronisation"
                 ) {
                     Switch(
                         checked = state.autoSyncEnabled,

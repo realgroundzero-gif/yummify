@@ -5,53 +5,47 @@ import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import de.yummify.app.data.model.MealPlanItem
-import de.yummify.app.data.model.matchesDate
 import de.yummify.app.data.model.MealType
 import de.yummify.app.data.model.Recipe
+import de.yummify.app.data.model.matchesDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 class MealPlanRepository private constructor(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("yummify_meal_plan", Context.MODE_PRIVATE)
     private val gson = Gson()
 
-    private val _plannedMeals = MutableStateFlow<List<MealPlanItem>>(loadMeals())
+    private val _plannedMeals = MutableStateFlow(loadMeals())
     val plannedMeals: StateFlow<List<MealPlanItem>> = _plannedMeals.asStateFlow()
 
     private fun loadMeals(): List<MealPlanItem> {
-        val json = prefs.getString(KEY_MEALS, null)
-        if (json.isNullOrEmpty()) {
-            val initial = de.yummify.app.data.local.SampleData.mealPlanItems
-            prefs.edit().putString(KEY_MEALS, gson.toJson(initial)).apply()
-            return initial
+        val json = prefs.getString(KEY_MEALS, null) ?: return emptyList()
+        val stored: List<MealPlanItem> = runCatching {
+            gson.fromJson<List<MealPlanItem>>(json, object : TypeToken<List<MealPlanItem>>() {}.type)
+        }.getOrNull() ?: run {
+            // Keep unreadable data for support instead of overwriting it with the next save.
+            prefs.edit().putString("${KEY_MEALS}_corrupt_${System.currentTimeMillis()}", json).apply()
+            return emptyList()
         }
-        return try {
-            val type = object : TypeToken<List<MealPlanItem>>() {}.type
-            gson.fromJson(json, type) ?: de.yummify.app.data.local.SampleData.mealPlanItems
-        } catch (e: Exception) {
-            de.yummify.app.data.local.SampleData.mealPlanItems
-        }
+        val migrated = migrate(stored)
+        if (migrated != stored) prefs.edit().putString(KEY_MEALS, gson.toJson(migrated)).apply()
+        return migrated
     }
 
     private fun saveMeals(list: List<MealPlanItem>) {
-        val json = gson.toJson(list)
-        prefs.edit().putString(KEY_MEALS, json).apply()
+        prefs.edit().putString(KEY_MEALS, gson.toJson(list)).apply()
         _plannedMeals.value = list
-        de.yummify.app.widget.MealPlannerWidgetProvider.sendUpdateNotice(context)
+        de.yummify.app.widget.MealPlannerWidgetProvider.updateAllWidgets(context)
         de.yummify.app.widget.ShoppingListWidgetProvider.updateAllWidgets(context)
     }
 
     fun addMealPlan(recipe: Recipe, date: LocalDate, mealType: MealType): MealPlanItem {
-        val dayNames = listOf("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
-        val dayOfWeekStr = dayNames.getOrElse(date.dayOfWeek.value - 1) { "Mo" }
-
         val newItem = MealPlanItem(
             id = UUID.randomUUID().toString(),
-            dayOfWeek = dayOfWeekStr,
+            dayOfWeek = DAY_CODES[date.dayOfWeek.value - 1],
             dayOfMonth = date.dayOfMonth,
             mealType = mealType,
             recipeId = recipe.id,
@@ -63,11 +57,7 @@ class MealPlanRepository private constructor(private val context: Context) {
             isCooked = false,
             plannedDate = date.toString()
         )
-
-        val current = _plannedMeals.value.toMutableList()
-        current.removeAll { it.matchesDate(date) && it.mealType == mealType }
-        current.add(newItem)
-        saveMeals(current)
+        saveMeals(_plannedMeals.value.filterNot { it.matchesDate(date) && it.mealType == mealType } + newItem)
         return newItem
     }
 
@@ -76,12 +66,32 @@ class MealPlanRepository private constructor(private val context: Context) {
     }
 
     fun removeMealPlan(id: String) {
-        val current = _plannedMeals.value.filterNot { it.id == id }
-        saveMeals(current)
+        saveMeals(_plannedMeals.value.filterNot { it.id == id })
     }
+
+    /** The date to show in Notion's single "Geplant am" column for a recipe planned zero or more times. */
+    fun plannedDateFor(recipeId: String, today: LocalDate = LocalDate.now()): LocalDate? =
+        nextPlannedDate(_plannedMeals.value, recipeId, today)
 
     companion object {
         private const val KEY_MEALS = "planned_meals_json"
+        private val DAY_CODES = listOf("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
+        /** Demo entries that earlier versions wrote on first start. */
+        private val SAMPLE_IDS = (1..11).map { "m$it" }.toSet()
+
+        internal fun migrate(stored: List<MealPlanItem>): List<MealPlanItem> = stored
+            .filterNot { it.id in SAMPLE_IDS && it.plannedDate == null }
+            .map { meal ->
+                // Earlier versions stored the same placeholder nutrition for every Notion recipe.
+                if (meal.calories == 450 && meal.proteinGrams == 25 && meal.cookTimeMinutes == 25)
+                    meal.copy(calories = null, proteinGrams = null, cookTimeMinutes = null) else meal
+            }
+
+        /** Earliest upcoming date; otherwise the most recent past one; null when the recipe is no longer planned. */
+        internal fun nextPlannedDate(meals: List<MealPlanItem>, recipeId: String, today: LocalDate): LocalDate? {
+            val dates = meals.filter { it.recipeId == recipeId }.mapNotNull { meal -> meal.plannedDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } }
+            return dates.filter { !it.isBefore(today) }.minOrNull() ?: dates.maxOrNull()
+        }
 
         @Volatile
         private var INSTANCE: MealPlanRepository? = null

@@ -8,3 +8,6 @@
 *.apk
 *.jks
 *.keystore
+# Release artifacts (scripts/release.sh writes the APK and its checksum to releases/)
+releases/*.apk
+releases/*.aab

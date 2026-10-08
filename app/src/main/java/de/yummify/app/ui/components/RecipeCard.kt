@@ -34,7 +34,7 @@ fun RecipeHeroCard(
     onFavoriteToggle: (Recipe) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isFav by remember { mutableStateOf(recipe.isFavorite) }
+    val isFav = recipe.isFavorite
     val scale by animateFloatAsState(
         targetValue = if (isFav) 1.2f else 1.0f,
         animationSpec = tween(200),
@@ -56,11 +56,7 @@ fun RecipeHeroCard(
                     .fillMaxWidth()
                     .height(210.dp)
             ) {
-                AsyncImage(
-                    model = recipe.imageUrl,
-                    contentDescription = recipe.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                de.yummify.app.ui.components.RecipeImage(url = recipe.imageUrl, contentDescription = recipe.title, modifier = Modifier.fillMaxSize()
                 )
                 // Gradient overlay
                 Box(
@@ -96,7 +92,7 @@ fun RecipeHeroCard(
                     }
                 }
                 // Rating badge (bottom left)
-                Surface(
+                if (recipe.score > 0.0) Surface(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(12.dp),
@@ -115,7 +111,7 @@ fun RecipeHeroCard(
                         )
                         Spacer(Modifier.width(3.dp))
                         Text(
-                            "${recipe.score} Notion Score",
+                            "${recipe.score.toInt()} / 5",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.inverseOnSurface,
                             fontWeight = FontWeight.SemiBold
@@ -149,15 +145,12 @@ fun RecipeHeroCard(
                         )
                     }
                     IconButton(
-                        onClick = {
-                            isFav = !isFav
-                            onFavoriteToggle(recipe)
-                        },
+                        onClick = { onFavoriteToggle(recipe) },
                         modifier = Modifier.scale(scale)
                     ) {
                         Icon(
                             imageVector = if (isFav) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = "Favorit",
+                            contentDescription = if (isFav) "Aus Favoriten entfernen" else "Als Favorit merken",
                             tint = if (isFav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                         )
                     }
@@ -196,7 +189,8 @@ fun RecipeHeroCard(
 fun RecipeListCard(
     recipe: Recipe,
     onCardClick: (Recipe) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onFavoriteToggle: ((Recipe) -> Unit)? = null
 ) {
     Card(
         modifier = modifier
@@ -215,11 +209,7 @@ fun RecipeListCard(
                     .size(110.dp)
                     .clip(RoundedCornerShape(14.dp))
             ) {
-                AsyncImage(
-                    model = recipe.imageUrl,
-                    contentDescription = recipe.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                de.yummify.app.ui.components.RecipeImage(url = recipe.imageUrl, contentDescription = recipe.title, modifier = Modifier.fillMaxSize()
                 )
             }
 
@@ -230,13 +220,24 @@ fun RecipeListCard(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
+                    Row(verticalAlignment = Alignment.Top) {
                     Text(
                         text = recipe.title,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+                    if (onFavoriteToggle != null) IconButton(onClick = { onFavoriteToggle(recipe) }, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            if (recipe.isFavorite) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                            contentDescription = if (recipe.isFavorite) "Aus Favoriten entfernen" else "Als Favorit merken",
+                            tint = if (recipe.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    }
                     Spacer(Modifier.height(4.dp))
                     // Star rating from Notion
                     if (recipe.score > 0.0) {

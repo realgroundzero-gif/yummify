@@ -8,8 +8,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import de.yummify.app.share.RecipeSharer
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,10 +50,30 @@ fun RecipeDetailScreen(
     var showPlanDialog by remember { mutableStateOf(false) }
 
     if (recipe == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding(), contentAlignment = Alignment.Center) {
+            IconButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zurück")
+            }
+            val error = state.loadError
+            if (error == null) CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            else Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Filled.CloudOff, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
+                Text("Rezept konnte nicht geladen werden", style = MaterialTheme.typography.titleMedium)
+                Text(error, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(onClick = { viewModel.loadRecipe(recipeId, force = true) }, enabled = !state.isLoading) { Text("Erneut versuchen") }
+            }
         }
         return
+    }
+    val snackbar = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    var sharing by remember { mutableStateOf(false) }
+    LaunchedEffect(state.inventoryMessage) {
+        state.inventoryMessage?.let { snackbar.showSnackbar(it, withDismissAction = true); viewModel.messageShown() }
+    }
+    LaunchedEffect(state.isPlannedSaved) {
+        if (state.isPlannedSaved) snackbar.showSnackbar("Eingeplant für ${state.plannedDateText}")
     }
 
     if (showPlanDialog) {
@@ -71,6 +94,7 @@ fun RecipeDetailScreen(
     val defaultServings = (recipe.defaultServings).coerceAtLeast(1).toDouble()
     val multiplier = state.servings.toDouble() / defaultServings
 
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -84,11 +108,7 @@ fun RecipeDetailScreen(
                     .fillMaxWidth()
                     .height(300.dp)
             ) {
-                AsyncImage(
-                    model = recipe.imageUrl,
-                    contentDescription = recipe.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                de.yummify.app.ui.components.RecipeImage(url = recipe.imageUrl, contentDescription = recipe.title, modifier = Modifier.fillMaxSize()
                 )
                 Box(
                     modifier = Modifier
@@ -110,6 +130,26 @@ fun RecipeDetailScreen(
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IconButton(
+                            onClick = {
+                                if (!sharing) scope.launch {
+                                    sharing = true
+                                    try { RecipeSharer.share(context, recipe, state.servings) }
+                                    catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                                    catch (_: Exception) { snackbar.showSnackbar("Teilen ist nicht möglich. Bitte erneut versuchen.") }
+                                    finally { sharing = false }
+                                }
+                            },
+                            enabled = !sharing,
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
+                        ) {
+                            if (sharing) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                            else Icon(
+                                Icons.Filled.Share,
+                                contentDescription = "Rezept teilen",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        IconButton(
                             onClick = { showPlanDialog = true },
                             modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
                         ) {
@@ -124,8 +164,8 @@ fun RecipeDetailScreen(
                             modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
                         ) {
                             Icon(
-                                if (state.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                contentDescription = "Favorit",
+                                if (state.isFavorite) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                                contentDescription = if (state.isFavorite) "Aus Favoriten entfernen" else "Als Favorit merken",
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -168,9 +208,10 @@ fun RecipeDetailScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                QuickInfoBadge(icon = "⏱", label = "${recipe.cookTimeMinutes} Min.")
-                QuickInfoBadge(icon = "👤", label = recipe.difficulty)
-                QuickInfoBadge(icon = "💶", label = recipe.estimatedCost, containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                recipe.cookTimeMinutes?.let { QuickInfoBadge(icon = "⏱", label = "$it Min.") }
+                recipe.calories?.let { QuickInfoBadge(icon = "🔥", label = "$it kcal") }
+                recipe.difficulty?.let { QuickInfoBadge(icon = "👤", label = it) }
+                recipe.estimatedCost?.let { QuickInfoBadge(icon = "💶", label = it, containerColor = MaterialTheme.colorScheme.secondaryContainer) }
             }
         }
 
@@ -366,7 +407,6 @@ fun RecipeDetailScreen(
                 OutlinedButton(onClick = { showConsumeDialog = true }, enabled = !state.consuming, modifier = Modifier.fillMaxWidth()) {
                     Text(if (state.consuming) "Bucht ab …" else "Gekocht · Zutaten vom Vorrat abbuchen")
                 }
-                state.inventoryMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 8.dp)) }
             }
         }
         itemsIndexed(recipe.ingredients) { _, ingredient ->
@@ -451,6 +491,8 @@ fun RecipeDetailScreen(
             }
         }
     }
+    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp))
+    }
 }
 
 @Composable
@@ -509,9 +551,10 @@ private fun PlanRecipeDialog(
     onConfirm: (java.time.LocalDate, de.yummify.app.data.model.MealType) -> Unit
 ) {
     var selectedMealType by remember { mutableStateOf(de.yummify.app.data.model.MealType.DINNER) }
+    // Material 3 DatePicker works with UTC midnight; local time zones would shift the day.
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = java.time.LocalDate.now()
-            .atStartOfDay(java.time.ZoneId.systemDefault())
+            .atStartOfDay(java.time.ZoneOffset.UTC)
             .toInstant().toEpochMilli()
     )
 
@@ -519,7 +562,7 @@ private fun PlanRecipeDialog(
     val selectedDate: java.time.LocalDate = remember(datePickerState.selectedDateMillis) {
         datePickerState.selectedDateMillis?.let { millis ->
             java.time.Instant.ofEpochMilli(millis)
-                .atZone(java.time.ZoneId.systemDefault())
+                .atZone(java.time.ZoneOffset.UTC)
                 .toLocalDate()
         } ?: java.time.LocalDate.now()
     }
@@ -579,7 +622,7 @@ private fun PlanRecipeDialog(
                     "Übermorgen" to today.plusDays(2)
                 )
                 presets.forEach { (label, date) ->
-                    val dateMillis = date.atStartOfDay(java.time.ZoneId.systemDefault())
+                    val dateMillis = date.atStartOfDay(java.time.ZoneOffset.UTC)
                         .toInstant().toEpochMilli()
                     FilterChip(
                         selected = selectedDate == date,

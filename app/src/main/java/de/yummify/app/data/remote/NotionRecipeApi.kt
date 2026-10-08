@@ -10,16 +10,15 @@ import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 /** Creates a complete recipe in one page request after checking the existing schema. */
 class NotionRecipeApi(private val token: String,
-    private val client: OkHttpClient = OkHttpClient.Builder().retryOnConnectionFailure(false).callTimeout(30, TimeUnit.SECONDS).build(),
-    private val baseUrl: String = "https://api.notion.com/v1") {
+    private val client: OkHttpClient = NotionHttp.client,
+    private val baseUrl: String = NotionHttp.BASE_URL) {
     private val gson = Gson()
     private fun request(path: String, body: Any? = null): JsonObject {
         val request = Request.Builder().url("$baseUrl/$path")
-            .header("Authorization", "Bearer ${token.trim()}").header("Notion-Version", "2025-09-03")
+            .header("Authorization", "Bearer ${token.trim()}").header("Notion-Version", NotionHttp.VERSION)
         if (body != null) request.post(gson.toJson(body).toRequestBody("application/json".toMediaType()))
         return client.newCall(request.build()).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Notion konnte das Rezept nicht speichern (${response.code}). Bitte Verbindung und Integrationsrechte prüfen.")

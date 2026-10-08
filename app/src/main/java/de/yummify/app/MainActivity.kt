@@ -4,18 +4,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.unit.Dp
+import de.yummify.app.ui.components.HideOnScrollState
+import de.yummify.app.ui.components.LocalBottomBarScroll
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -45,7 +49,7 @@ import de.yummify.app.ui.screens.shopping_list.ShoppingListScreen
 import de.yummify.app.ui.theme.YummifyTheme
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector, val iconOutlined: ImageVector) {
-    object Recipes : Screen("recipes", "Rezepte", Icons.Filled.MenuBook, Icons.Outlined.MenuBook)
+    object Recipes : Screen("recipes", "Rezepte", Icons.AutoMirrored.Filled.MenuBook, Icons.AutoMirrored.Outlined.MenuBook)
     object Planner : Screen("planner", "Wochenplaner", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth)
     object Shopping : Screen("shopping", "Einkaufsliste", Icons.Filled.ShoppingCart, Icons.Outlined.ShoppingCart)
     object Inventory : Screen("inventory", "Inventar", Icons.Filled.Inventory2, Icons.Outlined.Inventory2)
@@ -62,7 +66,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        handleIntent(intent)
+        // After rotation or a theme change the navigation state is restored; replaying the intent would open screens twice.
+        if (savedInstanceState == null) handleIntent(intent)
 
         val prefsRepo = de.yummify.app.data.repository.UserPreferencesRepository.getInstance(applicationContext)
         setContent {
@@ -83,7 +88,7 @@ class MainActivity : ComponentActivity() {
         de.yummify.app.widget.ShoppingListWidgetProvider.updateAllWidgets(applicationContext)
     }
 
-    override fun onNewIntent(intent: android.content.Intent?) {
+    override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
     }
@@ -91,11 +96,7 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: android.content.Intent?) {
         launchRequestState.intValue++
         launchRouteState.value = intent?.getStringExtra("route")
-        val recipeId = intent?.getStringExtra("recipeId")
-        launchRecipeIdState.value = recipeId
-        if (!recipeId.isNullOrEmpty()) {
-            launchRecipeIdState.value = recipeId
-        }
+        launchRecipeIdState.value = intent?.getStringExtra("recipeId")
     }
 }
 
@@ -117,18 +118,15 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
     val currentRoute = currentDestination?.route ?: ""
 
     val showBottomBar = bottomNavItems.any { currentRoute == it.route }
-    var isBarsVisible by remember { mutableStateOf(true) }
-
-    LaunchedEffect(currentRoute) { isBarsVisible = true }
     var recipeOverviewRequest by remember { mutableIntStateOf(0) }
 
     val density = LocalDensity.current
-    var bottomBarHeight by remember { mutableStateOf((88 * density.fontScale.coerceAtLeast(1f) + 0.5f).dp) }
-    val bottomBarOffsetPx by animateDpAsState(
-        targetValue = if (showBottomBar && (currentRoute != Screen.Recipes.route || isBarsVisible)) 0.dp else bottomBarHeight + 8.dp,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-        label = "bottomBarAnim"
-    )
+    // The bar follows the scrolling of the screens (see hideBottomBarOnScroll); the estimate is replaced by the measured height.
+    val bottomBar = remember { HideOnScrollState(with(density) { (88 * density.fontScale.coerceAtLeast(1f)).dp.toPx() }) }
+    val barScope = rememberCoroutineScope()
+    // Every screen starts with a visible bar.
+    LaunchedEffect(currentRoute) { bottomBar.show() }
+    val bottomBarInset: () -> Dp = { with(density) { bottomBar.visiblePx.toDp() } }
 
     Scaffold(
         modifier = Modifier,
@@ -139,6 +137,7 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            CompositionLocalProvider(LocalBottomBarScroll provides bottomBar) {
             NavHost(
                 navController = navController,
                 startDestination = Screen.Recipes.route,
@@ -149,8 +148,7 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
                 composable(Screen.Recipes.route) {
                     RecipeListScreen(
                         overviewRequest = recipeOverviewRequest,
-                        bottomBarInset = (bottomBarHeight - bottomBarOffsetPx).coerceAtLeast(0.dp),
-                        onChromeVisibilityChanged = { if (navController.currentDestination?.route == Screen.Recipes.route) isBarsVisible = it },
+                        bottomBarInset = bottomBarInset,
                         onRecipeClick = { recipeId ->
                             navController.navigate("recipe_detail/$recipeId")
                         }
@@ -167,7 +165,7 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
                     ShoppingListScreen()
                 }
                 composable(Screen.Inventory.route) {
-                    InventoryScreen(onSettings = { navController.navigate(Screen.Settings.route) }, bottomBarInset = bottomBarHeight)
+                    InventoryScreen(onSettings = { navController.navigate(Screen.Settings.route) }, bottomBarInset = bottomBarInset)
                 }
                 composable(Screen.Settings.route) {
                     SettingsScreen()
@@ -183,19 +181,21 @@ fun YummifyApp(initialRecipeId: String? = null, initialRoute: String? = null, la
                     )
                 }
             }
+            }
 
             if (showBottomBar) {
                 // Bottom Bar overlay
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .onSizeChanged { bottomBarHeight = with(density) { it.height.toDp() } }
-                        .graphicsLayer { translationY = bottomBarOffsetPx.toPx() }
+                        .onSizeChanged { bottomBar.updateHeight(it.height.toFloat()) }
+                        // The extra 8 dp keep the bar's shadow from peeking out at the bottom edge while it is hidden.
+                        .graphicsLayer { translationY = bottomBar.offsetPx + bottomBar.hiddenFraction * 8.dp.toPx() }
                 ) {
                     YummifyBottomBar(
                         currentRoute = currentRoute,
                         onNavigate = { screen ->
-                            isBarsVisible = true
+                            barScope.launch { bottomBar.show() }
                             if (screen == Screen.Recipes) {
                                 recipeOverviewRequest++
                                 if (!navController.popBackStack(Screen.Recipes.route, false)) {

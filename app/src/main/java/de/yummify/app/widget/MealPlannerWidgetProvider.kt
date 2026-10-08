@@ -40,7 +40,6 @@ class MealPlannerWidgetProvider : AppWidgetProvider() {
             manager.getAppWidgetIds(ComponentName(context, MealPlannerWidgetProvider::class.java))
                 .forEach { updateAppWidget(context, manager, it) }
         }
-        fun sendUpdateNotice(context: Context) = updateAllWidgets(context)
         fun updateAppWidget(context: Context, manager: AppWidgetManager, id: Int) {
             manager.updateAppWidget(id, buildViews(context, id))
         }

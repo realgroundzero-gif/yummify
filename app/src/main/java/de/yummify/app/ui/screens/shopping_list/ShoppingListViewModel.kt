@@ -3,9 +3,21 @@ package de.yummify.app.ui.screens.shopping_list
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import de.yummify.app.data.model.CoveredItem
 import de.yummify.app.data.model.ShoppingItem
+import de.yummify.app.data.model.StockSuggestion
+import de.yummify.app.data.model.StockSuggestions
+import de.yummify.app.data.model.WeekShoppingPlanner
+import de.yummify.app.data.model.summary
+import de.yummify.app.data.repository.InventoryRepository
+import de.yummify.app.data.repository.MealPlanRepository
+import de.yummify.app.data.repository.RecipeRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import de.yummify.app.data.repository.ShoppingListRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -15,11 +27,27 @@ data class ShoppingListUiState(
     val visibleItems: List<ShoppingItem> = emptyList(),
     val groupedItems: Map<String, List<ShoppingItem>> = emptyMap(),
     val filter: String = "missing",
-    val isSyncing: Boolean = false,
     val openItems: Int = 0,
     val transferring: Boolean = false,
+    val planning: Boolean = false,
+    val covered: List<CoveredItem> = emptyList(),
+    val suggestions: List<StockSuggestion> = emptyList(),
     val message: String? = null
 )
+
+/** Which planned meals feed the shopping list. Past days are never included. */
+enum class PlanRange(val title: String) {
+    NEXT_7_DAYS("Nächste 7 Tage"), THIS_WEEK("Rest dieser Woche"), NEXT_WEEK("Nächste Woche");
+
+    fun dates(today: LocalDate): Pair<LocalDate, LocalDate> {
+        val monday = today.minusDays((today.dayOfWeek.value - 1).toLong())
+        return when (this) {
+            NEXT_7_DAYS -> today to today.plusDays(6)
+            THIS_WEEK -> today to monday.plusDays(6)
+            NEXT_WEEK -> monday.plusDays(7) to monday.plusDays(13)
+        }
+    }
+}
 
 class ShoppingListViewModel(application: Application) : AndroidViewModel(application) {
     private val shoppingRepo = ShoppingListRepository.getInstance(application)
@@ -32,7 +60,44 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
                 updateState(items, _uiState.value.filter)
             }
         }
+        viewModelScope.launch {
+            shoppingRepo.covered.collect { covered -> _uiState.value = _uiState.value.copy(covered = covered) }
+        }
+        viewModelScope.launch {
+            combine(shoppingRepo.items, InventoryRepository.getInstance(application).items, shoppingRepo.dismissedSuggestions) { list, stock, dismissed ->
+                StockSuggestions.find(list, stock, dismissed)
+            }.collect { suggestions -> _uiState.value = _uiState.value.copy(suggestions = suggestions) }
+        }
     }
+
+    /** Puts what the planned meals need on the list, minus inventory and what is already listed. */
+    fun generateFromPlan(range: PlanRange) {
+        if (_uiState.value.planning) return
+        _uiState.value = _uiState.value.copy(planning = true, message = null)
+        viewModelScope.launch {
+            val message = try {
+                withContext(Dispatchers.Default) {
+                    val (from, to) = range.dates(LocalDate.now())
+                    val recipes = RecipeRepository.getInstance(getApplication()).state.value.recipes
+                    val result = WeekShoppingPlanner.plan(
+                        MealPlanRepository.getInstance(getApplication()).plannedMeals.value, recipes,
+                        InventoryRepository.getInstance(getApplication()).items.value, shoppingRepo.items.value, from, to)
+                    when {
+                        result.mealCount == 0 -> "Für „${range.title}“ ist kein offenes Gericht im Wochenplan."
+                        recipes.isEmpty() -> "Die Rezepte sind noch nicht geladen. Bitte kurz warten oder in den Optionen synchronisieren."
+                        else -> { shoppingRepo.applyPlan(result); "${range.title}: ${result.mealCount} Gerichte. ${result.summary()}" }
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e
+            } catch (e: Exception) { e.message ?: "Die Einkaufsliste konnte nicht erstellt werden." }
+            _uiState.value = _uiState.value.copy(planning = false, message = message)
+        }
+    }
+
+    fun confirmSuggestion(suggestion: StockSuggestion) = shoppingRepo.acceptSuggestion(suggestion)
+    fun rejectSuggestion(suggestion: StockSuggestion) = shoppingRepo.dismissSuggestion(suggestion.key)
+    fun restoreCovered(id: String) = shoppingRepo.restoreCovered(id)
+    fun dismissCovered() = shoppingRepo.dismissCovered()
 
     private fun updateState(items: List<ShoppingItem>, filter: String) {
         val visible = when (filter) {
@@ -84,14 +149,6 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
             } catch (e: kotlinx.coroutines.CancellationException) { throw e
             } catch (e: Exception) { _uiState.value = _uiState.value.copy(message = e.message) }
             finally { _uiState.value = _uiState.value.copy(transferring = false) }
-        }
-    }
-
-    fun triggerSync() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isSyncing = true)
-            kotlinx.coroutines.delay(1500)
-            _uiState.value = _uiState.value.copy(isSyncing = false)
         }
     }
 }

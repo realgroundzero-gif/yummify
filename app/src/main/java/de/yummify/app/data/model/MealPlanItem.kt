@@ -15,9 +15,9 @@ data class MealPlanItem(
     val recipeId: String?,
     val recipeTitle: String,
     val imageUrl: String,
-    val calories: Int,
-    val proteinGrams: Int,
-    val cookTimeMinutes: Int,
+    val calories: Int?,
+    val proteinGrams: Int?,
+    val cookTimeMinutes: Int?,
     val isCooked: Boolean = false,
     val plannedDate: String? = null
 )

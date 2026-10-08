@@ -1,599 +1,228 @@
 package de.yummify.app.data.repository
 
-import android.util.Log
+import android.content.Context
 import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
 import de.yummify.app.data.local.SampleData
 import de.yummify.app.data.model.Ingredient
-import de.yummify.app.data.model.MealPlanItem
 import de.yummify.app.data.model.Recipe
-import de.yummify.app.data.model.ShoppingItem
+import de.yummify.app.data.remote.NotionRecipeReader
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.logging.HttpLoggingInterceptor
+import java.time.LocalDate
+import java.time.LocalDateTime
+
+data class RecipeState(
+    val recipes: List<Recipe> = emptyList(),
+    val loading: Boolean = false,
+    /** Set when the last refresh failed; [recipes] then still holds the last good list. */
+    val error: String? = null,
+    val fromNotion: Boolean = false,
+    val lastSync: LocalDateTime? = null
+)
 
 /**
- * Repository for all data operations. Uses Notion API when configured,
- * otherwise falls back to built-in offline sample data.
+ * Single source of recipes for all screens. Loads once per Notion connection, keeps the last
+ * good list on disk for offline starts, and stores favorites locally.
  */
-class RecipeRepository(
-    private val notionToken: String = "",
-    private val recipeDatabaseId: String = ""
+class RecipeRepository internal constructor(
+    context: Context,
+    private val readerFactory: (token: String, databaseId: String) -> NotionRecipeReader = { t, d -> NotionRecipeReader(t, d) }
 ) {
+    private val prefs = context.getSharedPreferences("yummify_recipes", Context.MODE_PRIVATE)
+    private val config = UserPreferencesRepository.getInstance(context)
     private val gson = Gson()
-    private val client: OkHttpClient by lazy {
-        val logging = HttpLoggingInterceptor()
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY)
-        OkHttpClient.Builder()
-            .addInterceptor(logging)
-            .build()
-    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val loadMutex = Mutex()
 
-    private val formattedDbId: String
-        get() = formatNotionId(recipeDatabaseId)
+    private val _favorites = MutableStateFlow(prefs.getStringSet(KEY_FAVORITES, emptySet()).orEmpty().toSet())
+    val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
 
-    val isNotionConfigured: Boolean
-        get() = notionToken.isNotBlank() && formattedDbId.isNotBlank()
+    private var raw: List<Recipe> = emptyList()
+    private val _state = MutableStateFlow(RecipeState())
+    val state: StateFlow<RecipeState> = _state.asStateFlow()
 
-    // ─────── Recipes ──────────────────────────────────────────────────────────
+    private val configured get() = config.preferences.value.let { it.tokenInput.isNotBlank() && it.databaseIdInput.isNotBlank() }
+    private fun reader() = config.preferences.value.let { readerFactory(it.tokenInput, it.databaseIdInput) }
+    private fun cacheKey() = "recipes_${formatNotionId(config.preferences.value.databaseIdInput)}"
 
-    suspend fun getAllRecipes(): List<Recipe> {
-        if (!isNotionConfigured) return SampleData.recipes
-        return try {
-            // Always run blocking OkHttp calls on IO dispatcher
-            withContext(Dispatchers.IO) {
-                fetchRecipesFromNotion()
+    init {
+        scope.launch {
+            config.preferences.map { it.tokenInput.trim() to formatNotionId(it.databaseIdInput) }.distinctUntilChanged().collect {
+                loadCached()
+                refresh()
             }
-        } catch (e: Exception) {
-            Log.e("RecipeRepository", "Notion fetch failed", e)
-            emptyList()
         }
     }
 
-    suspend fun getRecipeById(id: String): Recipe? {
-        if (!isNotionConfigured) return SampleData.recipes.find { it.id == id }
-        return try {
-            withContext(Dispatchers.IO) {
-                fetchSingleRecipeFromNotion(id)
+    private fun loadCached() {
+        raw = if (!configured) SampleData.recipes else runCatching {
+            prefs.getString(cacheKey(), null)?.let { gson.fromJson<List<Recipe>>(it, object : TypeToken<List<Recipe>>() {}.type) }
+        }.getOrNull().orEmpty().map { it.normalized() }
+        _state.value = RecipeState(withFavorites(raw), fromNotion = configured,
+            lastSync = prefs.getString("${cacheKey()}_time", null)?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() })
+    }
+
+    private fun withFavorites(list: List<Recipe>) = _favorites.value.let { favs -> list.map { it.copy(isFavorite = it.id in favs) } }
+
+    /** Reloads from Notion. Returns null on success, otherwise the error message (which is also put into [state]). */
+    suspend fun refresh(): String? = withContext(Dispatchers.IO) {
+        loadMutex.withLock {
+            if (!configured) {
+                raw = SampleData.recipes
+                _state.value = RecipeState(withFavorites(raw))
+                return@withLock null
             }
-        } catch (e: Exception) {
-            Log.e("RecipeRepository", "Failed to fetch single recipe $id", e)
-            null
-        }
-    }
-
-    private fun fetchSingleRecipeFromNotion(pageId: String): Recipe? {
-        val request = Request.Builder()
-            .url("https://api.notion.com/v1/pages/$pageId")
-            .addHeader("Authorization", "Bearer ${notionToken.trim()}")
-            .addHeader("Notion-Version", "2022-06-28")
-            .get()
-            .build()
-
-        return try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Log.e("RecipeRepository", "Single page fetch failed ${response.code}")
-                    return null
-                }
-                val json = response.body?.string() ?: return null
-                val page = gson.fromJson(json, NotionPage::class.java)
-                val recipe = page.toRecipe() ?: return null
-
-                // Fetch page body blocks (instructions) preserving Markdown
-                val pageBlocks = fetchPageBlocksAsMarkdown(pageId)
-                if (pageBlocks.isNotEmpty()) {
-                    recipe.copy(instructions = pageBlocks)
-                } else {
-                    recipe
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("RecipeRepository", "Error fetching single recipe $pageId", e)
-            null
-        }
-    }
-
-    private fun fetchPageBlocksAsMarkdown(pageId: String): List<String> {
-        val request = Request.Builder()
-            .url("https://api.notion.com/v1/blocks/$pageId/children?page_size=100")
-            .addHeader("Authorization", "Bearer ${notionToken.trim()}")
-            .addHeader("Notion-Version", "2022-06-28")
-            .get()
-            .build()
-
-        return try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Log.e("RecipeRepository", "Blocks query failed ${response.code}")
-                    return emptyList()
-                }
-                val json = response.body?.string() ?: return emptyList()
-                val blockResponse = gson.fromJson(json, NotionBlockListResponse::class.java)
-                blockResponse.results.mapNotNull { block -> block.toMarkdown() }
-            }
-        } catch (e: Exception) {
-            Log.e("RecipeRepository", "Failed to fetch page blocks for $pageId", e)
-            emptyList()
-        }
-    }
-
-    suspend fun searchRecipes(query: String, category: String? = null): List<Recipe> {
-        val all = getAllRecipes()
-        return all.filter { recipe ->
-            val matchesQuery = query.isBlank() ||
-                    recipe.title.contains(query, ignoreCase = true) ||
-                    recipe.description.contains(query, ignoreCase = true) ||
-                    recipe.tags.any { it.contains(query, ignoreCase = true) } ||
-                    recipe.ingredients.any { it.name.contains(query, ignoreCase = true) }
-            val matchesCategory = category == null || category == "all" ||
-                    recipe.category == category
-            matchesQuery && matchesCategory
-        }
-    }
-
-    // ─────── Meal Plan ────────────────────────────────────────────────────────
-
-    suspend fun getMealPlan(): List<MealPlanItem> {
-        if (isNotionConfigured) return emptyList()
-        return SampleData.mealPlanItems
-    }
-
-    // ─────── Shopping List ────────────────────────────────────────────────────
-
-    suspend fun getShoppingItems(): List<ShoppingItem> {
-        if (isNotionConfigured) return emptyList()
-        return SampleData.shoppingItems
-    }
-
-    // ─────── Notion API ───────────────────────────────────────────────────────
-
-    private fun fetchRecipesFromNotion(): List<Recipe> {
-        val dbId = formattedDbId
-        if (dbId.isBlank()) return emptyList()
-
-        val allPages = mutableListOf<NotionPage>()
-        var startCursor: String? = null
-
-        do {
-            val bodyMap = mutableMapOf<String, Any>("page_size" to 100)
-            startCursor?.let { bodyMap["start_cursor"] = it }
-            val body = gson.toJson(bodyMap)
-
-            val request = Request.Builder()
-                .url("https://api.notion.com/v1/databases/$dbId/query")
-                .addHeader("Authorization", "Bearer ${notionToken.trim()}")
-                .addHeader("Notion-Version", "2022-06-28")
-                .addHeader("Content-Type", "application/json")
-                .post(body.toRequestBody("application/json".toMediaType()))
-                .build()
-
+            _state.value = _state.value.copy(loading = true, error = null)
             try {
-                val notionResponse = client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        val errorBody = response.body?.string() ?: "no body"
-                        Log.e("RecipeRepository", "Notion query failed ${response.code}: $errorBody")
-                        null
-                    } else {
-                        val json = response.body?.string()
-                        if (json != null) {
-                            gson.fromJson(json, NotionQueryResponse::class.java)
-                        } else null
-                    }
-                }
-
-                if (notionResponse == null) {
-                    break
-                }
-
-                allPages.addAll(notionResponse.results)
-
-                if (notionResponse.hasMore && !notionResponse.nextCursor.isNullOrEmpty()) {
-                    startCursor = notionResponse.nextCursor
-                } else {
-                    startCursor = null
-                }
+                val loaded = reader().fetchAll()
+                val now = LocalDateTime.now()
+                raw = loaded
+                prefs.edit().putString(cacheKey(), gson.toJson(loaded)).putString("${cacheKey()}_time", now.toString()).apply()
+                _state.value = RecipeState(withFavorites(raw), fromNotion = true, lastSync = now)
+                null
+            } catch (e: CancellationException) { throw e
             } catch (e: Exception) {
-                Log.e("RecipeRepository", "Error fetching Notion recipes", e)
-                break
-            }
-        } while (startCursor != null)
-
-        val recipes = allPages.mapNotNull { page -> page.toRecipe() }
-        Log.d("RecipeRepository", "Fetched ${recipes.size} recipes from Notion (${allPages.size} total pages)")
-        return recipes
-    }
-
-    fun testNotionConnection(token: String, databaseId: String): Boolean {
-        val dbId = formatNotionId(databaseId)
-        if (token.isBlank() || dbId.isBlank()) return false
-        return try {
-            val request = Request.Builder()
-                .url("https://api.notion.com/v1/databases/$dbId")
-                .addHeader("Authorization", "Bearer ${token.trim()}")
-                .addHeader("Notion-Version", "2022-06-28")
-                .get()
-                .build()
-            client.newCall(request).execute().use { it.isSuccessful }
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    suspend fun updatePlannedDate(pageId: String, date: java.time.LocalDate?): Boolean {
-        if (!isNotionConfigured) return false
-        return try {
-            withContext(Dispatchers.IO) {
-                val dateVal = if (date != null) {
-                    """{"start":"$date"}"""
-                } else {
-                    "null"
-                }
-                val body = """{"properties":{"Geplant am":{"date":$dateVal}}}"""
-                val request = Request.Builder()
-                    .url("https://api.notion.com/v1/pages/$pageId")
-                    .addHeader("Authorization", "Bearer ${notionToken.trim()}")
-                    .addHeader("Notion-Version", "2022-06-28")
-                    .addHeader("Content-Type", "application/json")
-                    .patch(body.toRequestBody("application/json".toMediaType()))
-                    .build()
-                client.newCall(request).execute().use { response ->
-                    Log.d("RecipeRepository", "updatePlannedDate status ${response.code} for page $pageId date=$date")
-                    response.isSuccessful
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("RecipeRepository", "Failed to update planned date in Notion for $pageId", e)
-            false
-        }
-    }
-
-    suspend fun updateRating(pageId: String, rating: Int): Boolean {
-        if (!isNotionConfigured) return false
-        return try {
-            withContext(Dispatchers.IO) {
-                // Notion Bewertung uses a SELECT with star emoji options: ★, ★★, ★★★, ★★★★, ★★★★★
-                val stars = "★".repeat(rating.coerceIn(1, 5))
-                val body = """{"properties":{"Bewertung":{"select":{"name":"$stars"}}}}"""
-                val request = Request.Builder()
-                    .url("https://api.notion.com/v1/pages/$pageId")
-                    .addHeader("Authorization", "Bearer ${notionToken.trim()}")
-                    .addHeader("Notion-Version", "2022-06-28")
-                    .addHeader("Content-Type", "application/json")
-                    .patch(body.toRequestBody("application/json".toMediaType()))
-                    .build()
-                client.newCall(request).execute().use { response ->
-                    Log.d("RecipeRepository", "updateRating select status ${response.code} for page $pageId stars=$stars")
-                    if (!response.isSuccessful) {
-                        val numberBody = """{"properties":{"Bewertung":{"number":$rating}}}"""
-                        val req2 = Request.Builder()
-                            .url("https://api.notion.com/v1/pages/$pageId")
-                            .addHeader("Authorization", "Bearer ${notionToken.trim()}")
-                            .addHeader("Notion-Version", "2022-06-28")
-                            .addHeader("Content-Type", "application/json")
-                            .patch(numberBody.toRequestBody("application/json".toMediaType()))
-                            .build()
-                        client.newCall(req2).execute().use { res2 ->
-                            Log.d("RecipeRepository", "updateRating number fallback status ${res2.code}")
-                            res2.isSuccessful
-                        }
-                    } else {
-                        true
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("RecipeRepository", "updateRating failed", e)
-            false
-        }
-    }
-
-    // ─────── Notion JSON Models ───────────────────────────────────────────────
-
-    private data class NotionQueryResponse(
-        @SerializedName("results") val results: List<NotionPage> = emptyList(),
-        @SerializedName("has_more") val hasMore: Boolean = false,
-        @SerializedName("next_cursor") val nextCursor: String? = null
-    )
-
-    private data class NotionPage(
-        @SerializedName("id") val id: String = "",
-        @SerializedName("cover") val cover: NotionCover? = null,
-        @SerializedName("properties") val properties: Map<String, NotionProperty> = emptyMap()
-    ) {
-        fun toRecipe(): Recipe? {
-            val title = properties["Name"]?.title?.firstOrNull()?.plainText
-                ?: properties.values.firstOrNull { it.type == "title" }?.title?.firstOrNull()?.plainText
-                ?: properties["Titel"]?.title?.firstOrNull()?.plainText
-                ?: properties["Title"]?.title?.firstOrNull()?.plainText
-                ?: return null
-
-            // Cover header image from Notion page, fallback to Bild/URL properties
-            val imageUrl = cover?.url
-                ?: properties["Bild"]?.url
-                ?: properties["URL"]?.url
-                ?: properties.values.firstOrNull { it.type == "url" }?.url
-                ?: "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=500&q=80"
-
-            val descriptionText = properties["Beschreibung"]?.richTextText
-                ?: properties["Rezepterstellung"]?.richTextText
-                ?: ""
-
-            // Portionen
-            val servings = properties["Portionen"]?.number?.toInt()
-                ?: properties.values.firstOrNull { it.type == "number" }?.number?.toInt()
-                ?: 2
-
-            // Categories & Cuisine
-            val categoryTags = mutableListOf<String>()
-            properties["Kategorie"]?.let { prop ->
-                if (prop.type == "rich_text" && prop.richTextText.isNotBlank()) categoryTags.add(prop.richTextText)
-                prop.select?.name?.let { if (it.isNotBlank()) categoryTags.add(it) }
-                prop.multiSelect?.forEach { if (it.name.isNotBlank()) categoryTags.add(it.name) }
-            }
-            properties["Küche"]?.let { prop ->
-                prop.select?.name?.let { if (it.isNotBlank()) categoryTags.add(it) }
-                prop.multiSelect?.forEach { if (it.name.isNotBlank()) categoryTags.add(it.name) }
-            }
-            properties["Tags"]?.multiSelect?.forEach { if (it.name.isNotBlank()) categoryTags.add(it.name) }
-
-            if (categoryTags.isEmpty()) categoryTags.add("Hauptgericht")
-
-            // Parse Ingredients from "Zutaten" or "Lebensmittel"
-            val zutatenText = properties["Zutaten"]?.richTextText
-                ?.ifBlank { properties["Lebensmittel"]?.richTextText }
-                ?: ""
-
-            val ingredientList = if (zutatenText.isNotBlank()) {
-                zutatenText.split(Regex("\n|,(?![0-9])")).mapNotNull { line ->
-                    val trimmed = line.trim().removePrefix("-").removePrefix("•").removePrefix("*").trim()
-                    if (trimmed.isNotBlank()) {
-                        parseIngredientLine(trimmed)
-                    } else null
-                }
-            } else {
-                emptyList()
-            }
-
-            // Parse Instructions from "Rezepterstellung"
-            val rezepterstellungText = properties["Rezepterstellung"]?.richTextText ?: ""
-            val instructionList = if (rezepterstellungText.isNotBlank()) {
-                rezepterstellungText.split("\n").mapNotNull { line ->
-                    val trimmed = line.trim()
-                    if (trimmed.isNotBlank()) trimmed else null
-                }
-            } else {
-                emptyList()
-            }
-
-            // Score / rating from "Bewertung" SELECT (star emoji options: ★=1, ★★=2, ..., ★★★★★=5)
-            val parsedScore = run {
-                val selectName = properties["Bewertung"]?.select?.name ?: ""
-                if (selectName.contains("★")) {
-                    // Count the star characters to get the numeric rating
-                    selectName.count { it == '★' }.toDouble()
-                } else {
-                    // Fallback: try number property or plain text
-                    properties["Bewertung"]?.number
-                        ?: selectName.filter { it.isDigit() || it == '.' }.toDoubleOrNull()
-                        ?: properties["Bewertung"]?.richTextText
-                            ?.filter { it.isDigit() || it == '.' }?.toDoubleOrNull()
-                        ?: 0.0
-                }
-            }
-
-            val url = properties["URL"]?.url ?: "https://notion.so"
-
-            return Recipe(
-                id = id,
-                title = title,
-                description = descriptionText.ifBlank { "Köstliches Rezept aus deiner Notion-Datenbank." },
-                imageUrl = imageUrl,
-                cookTimeMinutes = 25,
-                calories = 450,
-                proteinGrams = 25,
-                carbsGrams = 40,
-                fatGrams = 15,
-                category = categoryTags.firstOrNull()?.lowercase() ?: "all",
-                tags = categoryTags,
-                score = parsedScore,
-                defaultServings = servings,
-                ingredients = ingredientList,
-                instructions = instructionList,
-                notionPageId = id,
-                notionUrl = url
-            )
-        }
-    }
-
-    private data class NotionCover(
-        @SerializedName("type") val type: String = "",
-        @SerializedName("external") val external: NotionFileUrl? = null,
-        @SerializedName("file") val file: NotionFileUrl? = null
-    ) {
-        val url: String?
-            get() = external?.url ?: file?.url
-    }
-
-    private data class NotionFileUrl(
-        @SerializedName("url") val url: String = ""
-    )
-
-    private data class NotionProperty(
-        @SerializedName("type") val type: String = "",
-        @SerializedName("title") val title: List<NotionRichText>? = null,
-        @SerializedName("rich_text") val richText: List<NotionRichText>? = null,
-        @SerializedName("number") val number: Double? = null,
-        @SerializedName("url") val url: String? = null,
-        @SerializedName("select") val select: NotionSelectOption? = null,
-        @SerializedName("multi_select") val multiSelect: List<NotionSelectOption>? = null,
-        @SerializedName("date") val date: NotionDate? = null
-    ) {
-        val richTextText: String
-            get() = richText?.joinToString("") { it.plainText } ?: ""
-    }
-
-    private data class NotionSelectOption(
-        @SerializedName("name") val name: String = ""
-    )
-
-    private data class NotionDate(
-        @SerializedName("start") val start: String = ""
-    )
-
-    private data class NotionRichText(
-        @SerializedName("plain_text") val plainText: String = "",
-        @SerializedName("annotations") val annotations: NotionAnnotations? = null
-    )
-
-    private data class NotionAnnotations(
-        @SerializedName("bold") val bold: Boolean = false,
-        @SerializedName("italic") val italic: Boolean = false,
-        @SerializedName("strikethrough") val strikethrough: Boolean = false,
-        @SerializedName("code") val code: Boolean = false
-    )
-
-    private data class NotionBlockContent(
-        @SerializedName("rich_text") val richText: List<NotionRichText>? = null
-    ) {
-        fun toMarkdown(): String {
-            if (richText == null) return ""
-            return richText.joinToString("") { item ->
-                var text = item.plainText
-                val ann = item.annotations
-                if (ann != null) {
-                    if (ann.bold) text = "**$text**"
-                    if (ann.italic) text = "*$text*"
-                    if (ann.code) text = "`$text`"
-                    if (ann.strikethrough) text = "~~$text~~"
-                }
-                text
+                val message = e.message ?: "Notion ist nicht erreichbar."
+                _state.value = _state.value.copy(loading = false, error = message)
+                message
             }
         }
     }
 
-    private data class NotionBlockListResponse(
-        @SerializedName("results") val results: List<NotionBlock> = emptyList()
-    )
+    fun refreshAsync() { scope.launch { refresh() } }
 
-    private data class NotionBlock(
-        @SerializedName("id") val id: String = "",
-        @SerializedName("type") val type: String = "",
-        @SerializedName("paragraph") val paragraph: NotionBlockContent? = null,
-        @SerializedName("heading_1") val heading1: NotionBlockContent? = null,
-        @SerializedName("heading_2") val heading2: NotionBlockContent? = null,
-        @SerializedName("heading_3") val heading3: NotionBlockContent? = null,
-        @SerializedName("bulleted_list_item") val bulletedListItem: NotionBlockContent? = null,
-        @SerializedName("numbered_list_item") val numberedListItem: NotionBlockContent? = null,
-        @SerializedName("to_do") val toDo: NotionBlockContent? = null,
-        @SerializedName("quote") val quote: NotionBlockContent? = null,
-        @SerializedName("callout") val callout: NotionBlockContent? = null
-    ) {
-        fun toMarkdown(): String? {
-            val content = when (type) {
-                "paragraph" -> paragraph
-                "heading_1" -> heading1
-                "heading_2" -> heading2
-                "heading_3" -> heading3
-                "bulleted_list_item" -> bulletedListItem
-                "numbered_list_item" -> numberedListItem
-                "to_do" -> toDo
-                "quote" -> quote
-                "callout" -> callout
-                else -> null
-            } ?: return null
+    /** Full recipe including the page body. Falls back to the cached list entry when offline. */
+    suspend fun recipe(id: String): Recipe = withContext(Dispatchers.IO) {
+        // Right after start the cache may not be loaded yet; demo recipes are always available.
+        val cached = raw.firstOrNull { it.id == id } ?: if (!configured) SampleData.recipes.firstOrNull { it.id == id } else null
+        val result = if (!configured) cached ?: throw IllegalArgumentException("Rezept nicht gefunden.")
+        else try { reader().fetchRecipe(id) } catch (e: CancellationException) { throw e
+        } catch (e: Exception) { cached ?: throw e }
+        result.copy(isFavorite = id in _favorites.value)
+    }
 
-            val text = content.toMarkdown()
-            if (text.isBlank()) return null
+    fun addCreated(recipe: Recipe) {
+        raw = listOf(recipe) + raw.filterNot { it.id == recipe.id }
+        prefs.edit().putString(cacheKey(), gson.toJson(raw)).apply()
+        _state.value = _state.value.copy(recipes = withFavorites(raw))
+    }
 
-            return when (type) {
-                "heading_1" -> "# $text"
-                "heading_2" -> "## $text"
-                "heading_3" -> "### $text"
-                "bulleted_list_item" -> "• $text"
-                "numbered_list_item" -> text
-                "to_do" -> "[ ] $text"
-                "quote" -> "> $text"
-                "callout" -> "💡 $text"
-                else -> text
-            }
-        }
+    fun toggleFavorite(id: String) {
+        val updated = if (id in _favorites.value) _favorites.value - id else _favorites.value + id
+        prefs.edit().putStringSet(KEY_FAVORITES, updated).apply()
+        _favorites.value = updated
+        _state.value = _state.value.copy(recipes = withFavorites(raw))
+    }
+
+    /** Returns false when the recipe is not from Notion or the database has no "Geplant am" column. */
+    suspend fun setPlannedDate(recipeId: String, date: LocalDate?): Boolean = withContext(Dispatchers.IO) {
+        if (!configured || raw.none { it.id == recipeId && it.notionPageId != null }) false
+        else reader().updatePlannedDate(recipeId, date)
+    }
+
+    suspend fun setRating(recipeId: String, rating: Int) = withContext(Dispatchers.IO) {
+        require(configured) { "Bewertungen werden in Notion gespeichert. Bitte zuerst Notion einrichten." }
+        reader().updateRating(recipeId, rating)
+        raw = raw.map { if (it.id == recipeId) it.copy(score = rating.toDouble()) else it }
+        _state.value = _state.value.copy(recipes = withFavorites(raw))
     }
 
     companion object {
+        private const val KEY_FAVORITES = "favorites"
+
+        @Volatile private var instance: RecipeRepository? = null
+        fun getInstance(context: Context) = instance ?: synchronized(this) {
+            instance ?: RecipeRepository(context.applicationContext).also { instance = it }
+        }
+
+        /**
+         * Accepts a raw ID (with or without dashes) or any Notion link, including
+         * "notion.so/workspace/Rezepte-<id>?v=…". Unrecognized input is returned trimmed.
+         */
         fun formatNotionId(rawInput: String): String {
-            var cleaned = rawInput.trim()
-            if (cleaned.contains("notion.so")) {
-                cleaned = cleaned.substringBefore("?").substringAfterLast("/")
-            }
-            cleaned = cleaned.replace("-", "")
-            return if (cleaned.length == 32) {
-                "${cleaned.substring(0, 8)}-${cleaned.substring(8, 12)}-${cleaned.substring(12, 16)}-${cleaned.substring(16, 20)}-${cleaned.substring(20)}"
-            } else {
-                cleaned
-            }
+            val trimmed = rawInput.trim()
+            if (trimmed.isEmpty()) return ""
+            val segment = trimmed.substringBefore('?').substringBefore('#').trimEnd('/').substringAfterLast('/')
+            val hex = Regex("[0-9a-fA-F]{32}")
+            val compact = segment.replace("-", "")
+            val id = when {
+                compact.matches(hex) -> compact
+                segment.takeLast(32).matches(hex) -> segment.takeLast(32)
+                else -> return trimmed
+            }.lowercase()
+            return "${id.substring(0, 8)}-${id.substring(8, 12)}-${id.substring(12, 16)}-${id.substring(16, 20)}-${id.substring(20)}"
         }
 
+        /** One ingredient per line. A single line may also list ingredients separated by commas. */
+        fun parseIngredients(text: String): List<Ingredient> {
+            val parts = if (text.contains('\n')) text.lines() else text.split(Regex(""",(?!\d)"""))
+            return parts.map { it.trim() }.filter { it.isNotEmpty() }.map { parseIngredientLine(it) }.filter { it.name.isNotBlank() }
+        }
+
+        private val unicodeFractions = mapOf('½' to 0.5, '⅓' to 1.0 / 3, '⅔' to 2.0 / 3, '¼' to 0.25, '¾' to 0.75, '⅛' to 0.125)
+
+        private const val NUMBER = """\d+(?:[.,]\d+)?"""
+        private val mixedFraction = Regex("""^(\d+)\s+(\d+)/(\d+)\s*(.*)$""")
+        private val simpleFraction = Regex("""^(\d+)/(\d+)\s*(.*)$""")
+        private val unicodeFraction = Regex("""^(\d+)?\s*([½⅓⅔¼¾⅛])\s*(.*)$""")
+        private val range = Regex("""^($NUMBER)\s*[-–]\s*($NUMBER)\s*(.*)$""")
+        private val plainNumber = Regex("""^($NUMBER)\s*(.*)$""")
+        private fun decimal(value: String) = value.replace(',', '.').toDouble()
+
+        /** Understands "200 g", "1,5 kg", "1/2 TL", "1 1/2 EL", "½ Bund", "1½ Tassen" and "2-3 Zehen" (ranges use the larger amount). */
         fun parseIngredientLine(line: String): Ingredient {
-            val trimmed = line.trim()
-                .removePrefix("-")
-                .removePrefix("•")
-                .removePrefix("*")
-                .trim()
+            val trimmed = line.trim().removePrefix("-").removePrefix("•").removePrefix("*").trim()
             if (trimmed.isBlank()) return Ingredient(name = "", amount = 0.0, unit = "")
-
-            // Fraction e.g. 1/2 or 1/4
-            val fractionRegex = Regex("""^(\d+)/(\d+)\s*(.*)$""")
-            val fractionMatch = fractionRegex.find(trimmed)
-            if (fractionMatch != null) {
-                val num = fractionMatch.groupValues[1].toDoubleOrNull() ?: 1.0
-                val den = fractionMatch.groupValues[2].toDoubleOrNull() ?: 2.0
-                val amount = num / den
-                val rest = fractionMatch.groupValues[3].trim()
-                val (unit, name) = extractUnitAndName(rest)
-                return Ingredient(name = name, amount = amount, unit = unit)
-            }
-
-            // Number e.g. 200, 1.5, 1,5
-            val numberRegex = Regex("""^(\d+(?:[.,]\d+)?)\s*(.*)$""")
-            val numberMatch = numberRegex.find(trimmed)
-            if (numberMatch != null) {
-                val amountStr = numberMatch.groupValues[1].replace(",", ".")
-                val amount = amountStr.toDoubleOrNull() ?: 0.0
-                val rest = numberMatch.groupValues[2].trim()
-                val (unit, name) = extractUnitAndName(rest)
-                return Ingredient(name = name, amount = amount, unit = unit)
-            }
-
-            return Ingredient(name = trimmed, amount = 0.0, unit = "")
+            val (amount, rest) = mixedFraction.find(trimmed)?.destructured?.let { (whole, num, den, rest) ->
+                if (den.toDouble() == 0.0) return Ingredient(name = trimmed, amount = 0.0, unit = "")
+                whole.toDouble() + num.toDouble() / den.toDouble() to rest
+            } ?: simpleFraction.find(trimmed)?.destructured?.let { (num, den, rest) ->
+                if (den.toDouble() == 0.0) return Ingredient(name = trimmed, amount = 0.0, unit = "")
+                num.toDouble() / den.toDouble() to rest
+            } ?: unicodeFraction.find(trimmed)?.destructured?.let { (whole, fraction, rest) ->
+                (whole.toDoubleOrNull() ?: 0.0) + unicodeFractions.getValue(fraction.first()) to rest
+            } ?: range.find(trimmed)?.destructured?.let { (low, high, rest) ->
+                maxOf(decimal(low), decimal(high)) to rest
+            } ?: plainNumber.find(trimmed)?.destructured?.let { (value, rest) ->
+                decimal(value) to rest
+            } ?: return Ingredient(name = trimmed, amount = 0.0, unit = "")
+            val (unit, name) = extractUnitAndName(rest.trim())
+            return Ingredient(name = name, amount = amount, unit = unit)
         }
+
+        private val commonUnits = setOf(
+            "g", "kg", "ml", "l", "dl", "cl",
+            "el", "tl", "esslöffel", "teelöffel",
+            "prise", "prisen", "pck", "packung", "packungen", "päckchen",
+            "dosen", "dose", "becher", "glas", "gläser", "zehe", "zehen",
+            "stk", "stück", "scheibe", "scheiben", "bund", "kästchen", "handvoll",
+            "tbsp", "tsp", "cup", "cups", "oz", "lb"
+        )
 
         private fun extractUnitAndName(rest: String): Pair<String, String> {
             if (rest.isBlank()) return "" to ""
-
-            val commonUnits = setOf(
-                "g", "kg", "ml", "l", "dl", "cl",
-                "el", "tl", "esslöffel", "teelöffel",
-                "prise", "prisen", "pck.", "pck", "packung", "packungen", "päckchen",
-                "dosen", "dose", "becher", "glas", "gläser", "zehe", "zehen",
-                "stk", "stk.", "stück", "scheibe", "scheiben", "bund", "kästchen",
-                "tbsp", "tsp", "cup", "cups", "oz", "lb"
-            )
-
             val parts = rest.split(Regex("""\s+"""), limit = 2)
             val firstWord = parts[0].lowercase().removeSuffix(".")
-
-            if (firstWord in commonUnits) {
-                val unit = parts[0]
-                val name = parts.getOrNull(1) ?: ""
-                return unit to name
-            }
-
-            return "" to rest
+            return if (firstWord in commonUnits) parts[0] to parts.getOrNull(1).orEmpty() else "" to rest
         }
     }
 }
+
+/** Gson ignores Kotlin defaults, so cached entries from older versions may hold nulls in non-null fields. */
+@Suppress("SENSELESS_COMPARISON", "USELESS_ELVIS")
+internal fun Recipe.normalized(): Recipe = copy(
+    title = title ?: "", description = description ?: "", imageUrl = imageUrl ?: "", category = category ?: "all",
+    tags = tags ?: emptyList(), ingredients = ingredients ?: emptyList(), instructions = instructions ?: emptyList()
+)

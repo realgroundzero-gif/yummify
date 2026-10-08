@@ -15,11 +15,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,8 +34,7 @@ import de.yummify.app.ui.components.*
 fun RecipeListScreen(
     onRecipeClick: (String) -> Unit,
     overviewRequest: Int = 0,
-    bottomBarInset: Dp = 0.dp,
-    onChromeVisibilityChanged: (Boolean) -> Unit = {},
+    bottomBarInset: () -> Dp = NoBottomInset,
     viewModel: RecipeListViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -40,62 +42,63 @@ fun RecipeListScreen(
     val scope = rememberCoroutineScope()
 
     val listState = rememberLazyListState()
-    LaunchedEffect(overviewRequest) { if (overviewRequest > 0) listState.scrollToItem(0) }
-    val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 } }
-    LaunchedEffect(atTop) { onChromeVisibilityChanged(atTop) }
+    // Logo and search move with the finger and give their space to the list; the category chips stay.
+    val headerBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    KeepHeaderReachable(headerBehavior, listState)
+    LaunchedEffect(overviewRequest) {
+        if (overviewRequest > 0) { headerBehavior.state.heightOffset = 0f; listState.scrollToItem(0) }
+    }
     Scaffold(
-        modifier = Modifier.fillMaxSize().padding(bottom = bottomBarInset),
+        modifier = Modifier.fillMaxSize().bottomInset(bottomBarInset),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             FloatingActionButton(onClick = { viewModel.beginCreation(); creating = true }) { Icon(Icons.Default.Add, "Rezept hinzufügen") }
         }
     ) { padding ->
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(bottom = 96.dp),
-            modifier = Modifier
+        Column(
+            Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()
+                .nestedScroll(headerBehavior.nestedScrollConnection)
         ) {
-            item(key = "header") {
-            Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary
-                ) {
-                    Image(
-                        painter = androidx.compose.ui.res.painterResource(id = de.yummify.app.R.drawable.ic_launcher_foreground),
-                        contentDescription = "Yummify Logo",
-                        modifier = Modifier.size(36.dp)
+            CollapsingHeader(headerBehavior) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary
+                        ) {
+                            Image(
+                                painter = androidx.compose.ui.res.painterResource(id = de.yummify.app.R.drawable.ic_launcher_foreground),
+                                contentDescription = "Yummify Logo",
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                        Text(
+                            text = "yummify",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    SearchBarRow(
+                        query = state.searchQuery,
+                        onQueryChange = viewModel::onSearchQueryChanged,
+                        favoritesOnly = state.favoritesOnly,
+                        onFavoritesToggle = viewModel::onFavoritesOnlyToggled,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
+                    RecipeStatusRow(state, onRetry = viewModel::onSyncClicked, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 }
-                Text(
-                    text = "yummify",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
             }
-
-            // Search Bar (Fixed at top - retained while scrolling)
-            SearchBarRow(
-                query = state.searchQuery,
-                onQueryChange = viewModel::onSearchQueryChanged,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-
-            }
-            }
-            stickyHeader(key = "filters") {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -110,9 +113,11 @@ fun RecipeListScreen(
                     )
                 }
             }
-
-            }
-
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(bottom = 96.dp),
+                modifier = Modifier.weight(1f).fillMaxWidth().hideBottomBarOnScroll(listState)
+            ) {
                 // Hero Recipe Card
                 state.heroRecipe?.let { hero ->
                     item {
@@ -165,10 +170,17 @@ fun RecipeListScreen(
                                 Text("🔍", style = MaterialTheme.typography.headlineLarge)
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    "Keine Rezepte gefunden",
+                                    when {
+                                        state.favoritesOnly -> "Noch keine Favoriten"
+                                        state.recipes.isEmpty() && state.error != null -> "Rezepte konnten nicht geladen werden"
+                                        state.recipes.isEmpty() -> "Noch keine Rezepte in Notion"
+                                        else -> "Keine Rezepte gefunden"
+                                    },
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                if (state.favoritesOnly) Text("Tippe auf das Lesezeichen eines Rezepts, um es zu merken.",
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -177,11 +189,13 @@ fun RecipeListScreen(
                         RecipeListCard(
                             recipe = recipe,
                             onCardClick = { onRecipeClick(it.id) },
+                            onFavoriteToggle = viewModel::onFavoriteToggled,
                             modifier = Modifier
                                 .padding(horizontal = 16.dp, vertical = 5.dp)
                         )
                     }
                 }
+            }
         }
     }
     if (creating) RecipeCreateScreen(state.isCreating, state.creationError, onDismiss = { creating = false }, onSave = { draft ->
@@ -194,9 +208,35 @@ fun RecipeListScreen(
 }
 
 @Composable
+private fun RecipeStatusRow(state: RecipeListUiState, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    val error = state.error
+    if (error != null) {
+        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.errorContainer, modifier = modifier.fillMaxWidth()) {
+            Row(Modifier.padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.CloudOff, null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (state.recipes.isEmpty()) error else "Offline · gespeicherte Rezepte. $error",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.weight(1f), maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                TextButton(onClick = onRetry, enabled = !state.isSyncing && !state.isLoading) { Text("Erneut versuchen") }
+            }
+        }
+    } else if (!state.fromNotion) {
+        Text("Beispielrezepte · Verbinde Notion unter „Optionen“, um deine eigenen Rezepte zu sehen.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier)
+    } else if (state.isSyncing) {
+        LinearProgressIndicator(modifier = modifier.fillMaxWidth())
+    }
+}
+
+@Composable
 private fun SearchBarRow(
     query: String,
     onQueryChange: (String) -> Unit,
+    favoritesOnly: Boolean,
+    onFavoritesToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -248,15 +288,14 @@ private fun SearchBarRow(
                         modifier = Modifier.size(16.dp)
                     )
                 }
-            } else {
-                IconButton(onClick = {}, modifier = Modifier.size(28.dp)) {
-                    Icon(
-                        Icons.Filled.Tune,
-                        contentDescription = "Filter",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+            }
+            IconButton(onClick = onFavoritesToggle, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    if (favoritesOnly) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                    contentDescription = if (favoritesOnly) "Alle Rezepte zeigen" else "Nur Favoriten zeigen",
+                    tint = if (favoritesOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

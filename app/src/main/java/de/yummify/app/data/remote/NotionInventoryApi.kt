@@ -13,12 +13,10 @@ import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 /** Version-pinned API: database containers are resolved to their data source. */
-class NotionInventoryApi(private val token: String, private val client: OkHttpClient = OkHttpClient.Builder()
-    .retryOnConnectionFailure(false).connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build(),
-    private val baseUrl: String = "https://api.notion.com/v1") {
+class NotionInventoryApi(private val token: String, private val client: OkHttpClient = NotionHttp.client,
+    private val baseUrl: String = NotionHttp.BASE_URL) {
     private val mappings = mutableMapOf<String, Map<String, Field>>()
     private val choices = mutableMapOf<String, InventoryChoices>()
     private val savedCovers = mutableMapOf<String, String?>()
@@ -29,7 +27,7 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
     private fun request(path: String, method: String = "GET", body: Any? = null): JsonObject {
         val builder = Request.Builder().url("$baseUrl/$path")
             .header("Authorization", "Bearer ${token.trim()}")
-            .header("Notion-Version", "2025-09-03")
+            .header("Notion-Version", NotionHttp.VERSION)
         if (method != "GET") builder.method(method, gson.toJson(body ?: emptyMap<String, Any>()).toRequestBody("application/json".toMediaType()))
         return client.newCall(builder.build()).execute().use { response ->
             val raw = response.body?.string() ?: throw IOException("Notion liefert keine Antwort.")
@@ -103,7 +101,7 @@ class NotionInventoryApi(private val token: String, private val client: OkHttpCl
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("file", file.name, file.asRequestBody("image/jpeg".toMediaType())).build()
         val req = Request.Builder().url("$baseUrl/file_uploads/$uploadId/send")
-            .header("Authorization", "Bearer ${token.trim()}").header("Notion-Version", "2025-09-03").post(body).build()
+            .header("Authorization", "Bearer ${token.trim()}").header("Notion-Version", NotionHttp.VERSION).post(body).build()
         client.newCall(req).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Notion-Bildupload fehlgeschlagen (${response.code}).")
             val result = gson.fromJson(response.body?.string(), JsonObject::class.java)

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <files-path name="inventory_camera" path="inventory_images/" />
+    <!-- Recipe cards for the share sheet; RecipeSharer empties this folder before every new share. -->
+    <cache-path name="shared_recipes" path="shares/" />
 </paths>

@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -18,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import de.yummify.app.ui.components.*
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -33,7 +36,7 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: Dp = 0.dp, viewModel: InventoryViewModel = viewModel()) {
+fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomInset, viewModel: InventoryViewModel = viewModel()) {
     val stock by viewModel.items.collectAsState()
     val sync by viewModel.sync.collectAsState()
     val message by viewModel.message.collectAsState()
@@ -58,15 +61,20 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: Dp = 0.dp, viewModel
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); viewModel.message.value = null } }
     Scaffold(
-        modifier = Modifier.fillMaxSize().padding(bottom = bottomBarInset),
+        modifier = Modifier.fillMaxSize().bottomInset(bottomBarInset),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = { FloatingActionButton(onClick = { editing = "new:${java.util.UUID.randomUUID()}" }) {
             Icon(Icons.Default.Add, "Artikel hinzufügen")
         } }
     ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item {
+        val listState = rememberLazyListState()
+        val headerBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+        KeepHeaderReachable(headerBehavior, listState)
+        Column(Modifier.fillMaxSize().padding(padding).nestedScroll(headerBehavior.nestedScrollConnection)) {
+          // Search and status scroll away with the finger; the filter chips stay.
+          CollapsingHeader(headerBehavior, Modifier.padding(horizontal = 16.dp)) {
+            Column(Modifier.padding(top = 8.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Surface(Modifier.weight(1f), shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                         BasicTextField(
@@ -93,8 +101,6 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: Dp = 0.dp, viewModel
                         else Icon(Icons.Default.Sync, "Inventar synchronisieren")
                     }
                 }
-            }
-            item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("${visible.size} Artikel", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(12.dp))
@@ -108,7 +114,10 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: Dp = 0.dp, viewModel
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            }
+          }
+          run {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), modifier = Modifier.padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     item {
                         Box {
                             AssistChip(onClick = { showLocations = true }, label = { Text(if (location == "Alle Lagerorte") "Lagerort" else location) },
@@ -128,6 +137,7 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: Dp = 0.dp, viewModel
                     }
                 }
             }
+          LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth().hideBottomBarOnScroll(listState), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (stock.any { it.isLow }) item {
                 TextButton(onClick = { viewModel.toShopping(stock.filter { it.isLow }) }, contentPadding = PaddingValues(horizontal = 8.dp)) {
                     Icon(Icons.Default.AddShoppingCart, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
@@ -218,6 +228,7 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: Dp = 0.dp, viewModel
                     }
                 }
             }
+        }
         }
     }
     if (showSyncDetails) AlertDialog(onDismissRequest = { showSyncDetails = false },

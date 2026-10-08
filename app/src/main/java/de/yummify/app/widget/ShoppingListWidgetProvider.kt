@@ -61,8 +61,9 @@ class ShoppingListWidgetProvider : AppWidgetProvider() {
         }
         internal fun todayRecipes(meals: List<MealPlanItem>, today: LocalDate): Set<String> = meals
             .filter { it.matchesDate(today) && !it.isCooked }.map { InventoryMath.normalizedName(it.recipeTitle) }.toSet()
+        /** Merged entries list several recipes as "A · B"; any of them planned today counts. */
         internal fun isToday(item: ShoppingItem, recipes: Set<String>) = !item.isChecked &&
-            item.recipeName?.let { InventoryMath.normalizedName(it) in recipes } == true
+            item.recipeName?.split(" · ")?.any { InventoryMath.normalizedName(it) in recipes } == true
         internal fun sortedItems(items: List<ShoppingItem>, recipes: Set<String>) = items.sortedWith(
             compareBy<ShoppingItem> { it.isChecked }.thenBy { !isToday(it, recipes) }
                 .thenBy { it.category.lowercase() }.thenBy { it.recipeName.orEmpty().lowercase() }.thenBy { it.name.lowercase() })
