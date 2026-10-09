@@ -50,6 +50,7 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomI
     var location by rememberSaveable { mutableStateOf("Alle Lagerorte") }
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var scanOnOpen by rememberSaveable { mutableStateOf(false) }
+    var fabMenu by remember { mutableStateOf(false) }
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     val newItem = remember(editing) { InventoryItem(id = editing?.removePrefix("new:") ?: java.util.UUID.randomUUID().toString()) }
     var deleting by remember { mutableStateOf<InventoryItem?>(null) }
@@ -70,19 +71,24 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomI
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
-            // Tap: new article by hand. Long press: new article and straight into the barcode scanner.
+            // Tap: new article by hand. Long press: small menu with "Barcode scannen".
             // A FloatingActionButton has no long-click, so the same look is built from a Surface.
-            Surface(
-                modifier = Modifier.size(56.dp).combinedClickable(
-                    role = Role.Button, onClickLabel = "Artikel hinzufügen", onLongClickLabel = "Neuen Artikel per Barcode-Scan aufnehmen",
-                    onClick = { scanOnOpen = false; editing = "new:${java.util.UUID.randomUUID()}" },
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        scanOnOpen = true; editing = "new:${java.util.UUID.randomUUID()}"
-                    }),
-                shape = FloatingActionButtonDefaults.shape, color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shadowElevation = 6.dp
-            ) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, "Artikel hinzufügen (gedrückt halten: Barcode scannen)") } }
+            Box {
+                Surface(
+                    modifier = Modifier.size(56.dp).combinedClickable(
+                        role = Role.Button, onClickLabel = "Artikel hinzufügen", onLongClickLabel = "Weitere Aktionen",
+                        onClick = { scanOnOpen = false; editing = "new:${java.util.UUID.randomUUID()}" },
+                        onLongClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); fabMenu = true }),
+                    shape = FloatingActionButtonDefaults.shape, color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shadowElevation = 6.dp
+                ) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, "Artikel hinzufügen (gedrückt halten für weitere Aktionen)") } }
+                DropdownMenu(expanded = fabMenu, onDismissRequest = { fabMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Barcode scannen") },
+                        leadingIcon = { Icon(Icons.Default.QrCodeScanner, null) },
+                        onClick = { fabMenu = false; scanOnOpen = true; editing = "new:${java.util.UUID.randomUUID()}" })
+                }
+            }
         }
     ) { padding ->
         val listState = rememberLazyListState()
@@ -262,7 +268,7 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomI
         val item = if (id.startsWith("new:")) newItem else stock.firstOrNull { it.id == id }
         item?.let { current ->
             val snapshot = remember(id) { current }
-            InventoryDetailScreen(snapshot.copy(coverUrl = current.coverUrl), choices, saving, onDismiss = { if (!saving) editing = null }, onSave = { value -> viewModel.save(value) { editing = null } }, saveError = message, stock = stock, onOpenExisting = { scanOnOpen = false; editing = it }, startScan = scanOnOpen && id.startsWith("new:")) }
+            InventoryDetailScreen(snapshot.copy(coverUrl = current.coverUrl), choices, saving, onDismiss = { if (!saving) editing = null }, onSave = { value -> viewModel.save(value) { editing = null } }, saveError = message, stock = stock, onOpenExisting = { scanOnOpen = false; editing = it }, onAdjust = { delta -> viewModel.adjust(id, delta) }, startScan = scanOnOpen && id.startsWith("new:")) }
     }
     deleting?.let { item -> AlertDialog(onDismissRequest = { deleting = null }, title = { Text("Artikel löschen?") },
         text = { Text("„${item.name}“ wird aus deinem Inventar und beim nächsten Abgleich aus Notion entfernt.") },

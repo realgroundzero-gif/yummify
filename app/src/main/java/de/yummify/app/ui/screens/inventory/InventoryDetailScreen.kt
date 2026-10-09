@@ -60,13 +60,17 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                           onDismiss: () -> Unit, onSave: (InventoryItem) -> Unit, saveError: String? = null,
                           stock: List<InventoryItem> = emptyList(), onOpenExisting: (String) -> Unit = {},
                           /** Opens the barcode scanner right away; used for a new article started with a long press. */
-                          startScan: Boolean = false) {
+                          startScan: Boolean = false,
+                          /** Changes the stock of the saved article right away; used by the stepper in the read-only view. */
+                          onAdjust: (Double) -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var name by rememberSaveable(item.id) { mutableStateOf(item.name) }
     // Existing articles open read-only; a tap on the title switches to editing. New articles start in edit mode.
     var editing by rememberSaveable(item.id) { mutableStateOf(item.name.isBlank()) }
     var quantity by rememberSaveable(item.id) { mutableDoubleStateOf(item.quantity) }
+    // Stock the repository already holds; quick adjustments in the read-only view are saved at once and are no pending edit.
+    var storedQuantity by rememberSaveable(item.id) { mutableDoubleStateOf(item.quantity) }
     var unit by rememberSaveable(item.id) { mutableStateOf(if (item.name.isBlank()) "" else item.unit) }
     var categories by rememberSaveable(item.id) { mutableStateOf(ArrayList(item.categoryOptions.ifEmpty { listOf(item.category).filter { it.isNotBlank() && item.name.isNotBlank() } })) }
     var location by rememberSaveable(item.id) { mutableStateOf(if (item.name.isBlank()) "" else item.location) }
@@ -106,7 +110,7 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
         calories = calories, fat = fat, carbohydrates = carbohydrates, protein = protein,
         ingredients = ingredients, productUrl = productSource,
         coverPending = item.coverPending || photo != item.localCoverPath || productCover != item.coverUrl)
-    val changed = name != item.name || quantity != item.quantity || unit != item.unit ||
+    val changed = name != item.name || quantity != storedQuantity || unit != item.unit ||
         categories.joinToString(", ") != item.category || location != item.location || minimum != InventoryMath.number(item.minimum) ||
         expiry != item.expiry || barcode != item.barcode || notes != item.notes || photo != item.localCoverPath || productCover != item.coverUrl ||
         calories != item.calories || fat != item.fat || carbohydrates != item.carbohydrates || protein != item.protein ||
@@ -281,7 +285,11 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                     error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error) }
                     if (photo != item.localCoverPath || item.coverPending) Text("Das Foto wird beim nächsten Abgleich als Notion-Headerbild gespeichert.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (!editing) DetailSection("Bestand", Icons.Default.Inventory2) {
-                        ReadOnlyValue("Menge", "${InventoryMath.number(quantity)} $unit".trim())
+                        QuantityStepper(quantity, unit, onChange = { value ->
+                            val delta = value - quantity
+                            quantity = value
+                            if (item.name.isNotBlank() && delta != 0.0) { storedQuantity = value; onAdjust(delta) }
+                        })
                         if (item.minimum > 0) ReadOnlyValue("Mindestbestand", "${InventoryMath.number(item.minimum)} $unit".trim())
                     }
                     if (editing) DetailSection("Bestand", Icons.Default.Inventory2) {
