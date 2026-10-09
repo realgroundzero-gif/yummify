@@ -46,6 +46,20 @@ fun ShoppingListScreen(
     var showPlanDialog by remember { mutableStateOf(false) }
     var planRange by rememberSaveable { mutableStateOf(PlanRange.NEXT_7_DAYS) }
     var coveredExpanded by rememberSaveable { mutableStateOf(false) }
+    var showSendDialog by remember { mutableStateOf(false) }
+    var sendAgain by remember { mutableStateOf(false) }
+    if (showSendDialog) AlertDialog(onDismissRequest = { showSendDialog = false }, title = { Text("An Home Assistant senden") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val count = if (sendAgain) state.homeAssistantOpen else state.homeAssistantNew
+            Text(if (count == 0) "Es gibt nichts Neues zu senden." else "$count ${if (count == 1) "offener Artikel geht" else "offene Artikel gehen"} an die Liste „${state.homeAssistantList}“ (Bring). Abgehakte Artikel bleiben hier.")
+            if (state.homeAssistantOpen > state.homeAssistantNew) Row(Modifier.fillMaxWidth().clickable { sendAgain = !sendAgain }, verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(sendAgain, { sendAgain = it })
+                Text("Auch bereits gesendete erneut senden (${state.homeAssistantOpen - state.homeAssistantNew})", style = MaterialTheme.typography.bodyMedium)
+            }
+        } },
+        confirmButton = { TextButton(onClick = { showSendDialog = false; viewModel.sendToHomeAssistant(sendAgain) },
+            enabled = (if (sendAgain) state.homeAssistantOpen else state.homeAssistantNew) > 0) { Text("Senden") } },
+        dismissButton = { TextButton(onClick = { showSendDialog = false }) { Text("Abbrechen") } })
     if (showPlanDialog) AlertDialog(onDismissRequest = { showPlanDialog = false }, title = { Text("Aus Wochenplan hinzufügen") },
         text = { Column {
             Text("Zutaten der noch nicht gekochten Gerichte, abzüglich Vorrat und dem, was schon auf der Liste steht. Mengen gelten für die im Rezept angegebenen Portionen.",
@@ -148,6 +162,15 @@ fun ShoppingListScreen(
                 else Icon(Icons.Filled.CalendarMonth, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(if (state.planning) "Wird erstellt …" else "Aus Wochenplan hinzufügen")
+            }
+        }
+        if (state.homeAssistantReady) item {
+            OutlinedButton(onClick = { sendAgain = false; showSendDialog = true }, enabled = !state.sendingToHomeAssistant && state.homeAssistantOpen > 0,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                if (state.sendingToHomeAssistant) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Icon(Icons.Filled.Send, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (state.sendingToHomeAssistant) "Wird gesendet …" else "An Home Assistant senden")
             }
         }
         if (state.allItems.any { it.isChecked }) item {

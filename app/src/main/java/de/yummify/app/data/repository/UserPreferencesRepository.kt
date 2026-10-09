@@ -20,8 +20,14 @@ data class UserPreferences(
     val tokenInput: String = "",
     val databaseIdInput: String = "",
     val inventoryDatabaseIdInput: String = "",
-    val profileName: String = ""
-)
+    val profileName: String = "",
+    val homeAssistantUrl: String = "",
+    val homeAssistantToken: String = "",
+    /** Entity of the Home Assistant to-do list (for Bring: `todo.<list>`) that receives the shopping list. */
+    val homeAssistantTodo: String = ""
+) {
+    val homeAssistantConfigured get() = homeAssistantUrl.isNotBlank() && homeAssistantToken.isNotBlank() && homeAssistantTodo.isNotBlank()
+}
 
 class UserPreferencesRepository(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("yummify_user_prefs", Context.MODE_PRIVATE)
@@ -36,7 +42,10 @@ class UserPreferencesRepository(context: Context) {
             tokenInput = prefs.getString(KEY_TOKEN, "") ?: "",
             databaseIdInput = prefs.getString(KEY_DATABASE_ID, "") ?: "",
             inventoryDatabaseIdInput = prefs.getString("notion_inventory_db_id", "") ?: "",
-            profileName = prefs.getString(KEY_PROFILE_NAME, "") ?: ""
+            profileName = prefs.getString(KEY_PROFILE_NAME, "") ?: "",
+            homeAssistantUrl = prefs.getString(KEY_HA_URL, "") ?: "",
+            homeAssistantToken = prefs.getString(KEY_HA_TOKEN, "") ?: "",
+            homeAssistantTodo = prefs.getString(KEY_HA_TODO, "") ?: ""
     )
 
     private val _preferences = MutableStateFlow(readFromStorage())
@@ -89,6 +98,11 @@ class UserPreferencesRepository(context: Context) {
         _preferences.value = _preferences.value.copy(profileName = trimmed)
     }
 
+    fun saveHomeAssistant(url: String, token: String, todoEntity: String) {
+        prefs.edit().putString(KEY_HA_URL, url.trim()).putString(KEY_HA_TOKEN, token.trim()).putString(KEY_HA_TODO, todoEntity.trim()).apply()
+        _preferences.value = _preferences.value.copy(homeAssistantUrl = url.trim(), homeAssistantToken = token.trim(), homeAssistantTodo = todoEntity.trim())
+    }
+
     fun saveNotionConfig(token: String, databaseId: String, inventoryDatabaseId: String = _preferences.value.inventoryDatabaseIdInput) {
         prefs.edit()
             .putString(KEY_TOKEN, token)
@@ -103,6 +117,9 @@ class UserPreferencesRepository(context: Context) {
     }
 
     companion object {
+        private const val KEY_HA_URL = "home_assistant_url"
+        private const val KEY_HA_TOKEN = "home_assistant_token"
+        private const val KEY_HA_TODO = "home_assistant_todo"
         private const val KEY_PROFILE_NAME = "profile_name"
         private const val KEY_DARK_MODE = "dark_mode"
         private const val KEY_THEME_MODE = "theme_mode"

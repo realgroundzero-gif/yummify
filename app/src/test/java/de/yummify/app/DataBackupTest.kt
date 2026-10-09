@@ -460,7 +460,11 @@ class DataBackupTest {
     }
 
     @Test fun tokenKeyMatchesWhatTheRepositoryWrites() {
-        UserPreferencesRepository(context).saveNotionConfig("tok", "d", "i")
+        UserPreferencesRepository(context).apply {
+            saveNotionConfig("tok", "d", "i")
+            saveHomeAssistant("http://homeassistant.local:8123", "ha-tok", "todo.bring")
+        }
+        assertEquals("ha-tok", prefs(StorageLayout.PREFS_USER).getString("home_assistant_token", null))
         assertTrue(StorageLayout.secretUserKeys.all { prefs(StorageLayout.PREFS_USER).contains(it) })
         assertEquals("tok", prefs(StorageLayout.PREFS_USER).getString("notion_token", null))
         assertTrue(StorageLayout.connectionUserKeys.all { prefs(StorageLayout.PREFS_USER).contains(it) })

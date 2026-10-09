@@ -370,7 +370,7 @@ fun ConnectionsSection(onBack: () -> Unit, viewModel: SettingsViewModel = viewMo
                 }
             }
         }
-
+        HomeAssistantCard()
     }
 }
 

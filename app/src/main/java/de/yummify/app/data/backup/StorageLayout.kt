@@ -24,9 +24,9 @@ object StorageLayout {
     const val IMAGES_DIR = "inventory_images"
 
     /** Schlüssel in [PREFS_USER] mit Zugangsdaten: kommen nur auf ausdrücklichen Wunsch in einen Export. */
-    val secretUserKeys = setOf("notion_token")
+    val secretUserKeys = setOf("notion_token", "home_assistant_token")
     /** Verbindungsdaten: bleiben beim Import erhalten, solange sie lokal gesetzt sind. */
-    val connectionUserKeys = setOf("notion_db_id", "notion_inventory_db_id")
+    val connectionUserKeys = setOf("notion_db_id", "notion_inventory_db_id", "home_assistant_url", "home_assistant_todo")
     const val KEY_INVENTORY_DB = "notion_inventory_db_id"
 
     // Schlüssel in den Fach-Preferences (müssen zu den Repositories passen)

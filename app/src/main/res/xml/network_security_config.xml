@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Home Assistant is usually reached by plain HTTP inside the home network (http://homeassistant.local:8123).
+  Android blocks HTTP by default, so it is allowed here; HomeAssistantApi only accepts HTTP for hosts of the
+  home network and requires HTTPS for everything else. Notion, Open Food Facts and image sources use HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
