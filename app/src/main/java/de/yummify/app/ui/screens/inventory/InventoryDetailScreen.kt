@@ -227,7 +227,6 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                     else Text(name, Modifier.clickable(onClickLabel = "Artikel bearbeiten") { editing = true }, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 },
-                navigationIcon = { IconButton(onClick = close, enabled = !saving && !photoBusy && !scanBusy && !lookupBusy) { Icon(Icons.Default.Close, "Schließen") } },
                 actions = {
                     if (item.name.isNotBlank()) {
                         if (!editing) IconButton(onClick = { editing = true }) { Icon(Icons.Default.Edit, "Artikel bearbeiten") }

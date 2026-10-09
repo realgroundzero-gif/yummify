@@ -33,6 +33,4 @@
     <string name="appearance_language_english">English</string>
     <string name="appearance_language_hint">Not every screen is translated yet. Screens without a translation stay in German.</string>
 
-    <string name="recipe_card_favorite_add">Save as favorite</string>
-    <string name="recipe_card_favorite_remove">Remove from favorites</string>
 </resources>

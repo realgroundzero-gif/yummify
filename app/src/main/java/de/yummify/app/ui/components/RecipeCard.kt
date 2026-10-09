@@ -1,6 +1,5 @@
 package de.yummify.app.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -36,8 +34,7 @@ import de.yummify.app.ui.theme.YummifyTheme
 fun RecipeGridCard(
     recipe: Recipe,
     onCardClick: (Recipe) -> Unit,
-    modifier: Modifier = Modifier,
-    onFavoriteToggle: ((Recipe) -> Unit)? = null
+    modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
@@ -50,20 +47,6 @@ fun RecipeGridCard(
         Column {
             Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f)) {
                 RecipeImage(url = recipe.imageUrl, contentDescription = recipe.title, modifier = Modifier.fillMaxSize())
-                if (onFavoriteToggle != null) Surface(
-                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-                ) {
-                    IconButton(onClick = { onFavoriteToggle(recipe) }, modifier = Modifier.size(48.dp)) {
-                        Icon(
-                            if (recipe.isFavorite) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = stringResource(if (recipe.isFavorite) R.string.recipe_card_favorite_remove else R.string.recipe_card_favorite_add),
-                            tint = if (recipe.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
             }
             Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
@@ -99,7 +82,7 @@ private fun RecipeGridCardPreviewBody(dark: Boolean) {
                     proteinGrams = null, carbsGrams = null, fatGrams = null, category = "veggie", tags = listOf("Vegan", "Curry"), score = 4.0,
                     ingredients = emptyList(), instructions = emptyList()
                 ),
-                onCardClick = {}, onFavoriteToggle = {}
+                onCardClick = {}
             )
         }
     }
@@ -121,15 +104,8 @@ private fun RecipeGridCardLargeFontPreview() = RecipeGridCardPreviewBody(dark = 
 fun RecipeHeroCard(
     recipe: Recipe,
     onCardClick: (Recipe) -> Unit,
-    onFavoriteToggle: (Recipe) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isFav = recipe.isFavorite
-    val scale by animateFloatAsState(
-        targetValue = if (isFav) 1.2f else 1.0f,
-        animationSpec = tween(200),
-        label = "fav_scale"
-    )
 
     Card(
         modifier = modifier
@@ -234,16 +210,6 @@ fun RecipeHeroCard(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    IconButton(
-                        onClick = { onFavoriteToggle(recipe) },
-                        modifier = Modifier.scale(scale)
-                    ) {
-                        Icon(
-                            imageVector = if (isFav) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = if (isFav) "Aus Favoriten entfernen" else "Als Favorit merken",
-                            tint = if (isFav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                        )
-                    }
                 }
 
                 // Footer
@@ -279,8 +245,7 @@ fun RecipeHeroCard(
 fun RecipeListCard(
     recipe: Recipe,
     onCardClick: (Recipe) -> Unit,
-    modifier: Modifier = Modifier,
-    onFavoriteToggle: ((Recipe) -> Unit)? = null
+    modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
@@ -319,14 +284,6 @@ fun RecipeListCard(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    if (onFavoriteToggle != null) IconButton(onClick = { onFavoriteToggle(recipe) }, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            if (recipe.isFavorite) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = if (recipe.isFavorite) "Aus Favoriten entfernen" else "Als Favorit merken",
-                            tint = if (recipe.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
                     }
                     Spacer(Modifier.height(4.dp))
                     // Star rating from Notion

@@ -33,6 +33,4 @@
     <string name="appearance_language_english">English</string>
     <string name="appearance_language_hint">Noch nicht alle Bildschirme sind übersetzt. Bildschirme ohne Übersetzung bleiben Deutsch.</string>
 
-    <string name="recipe_card_favorite_add">Als Favorit merken</string>
-    <string name="recipe_card_favorite_remove">Aus Favoriten entfernen</string>
 </resources>

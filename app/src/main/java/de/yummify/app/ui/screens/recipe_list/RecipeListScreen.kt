@@ -100,8 +100,6 @@ fun RecipeListScreen(
                     SearchBarRow(
                         query = state.searchQuery,
                         onQueryChange = viewModel::onSearchQueryChanged,
-                        favoritesOnly = state.favoritesOnly,
-                        onFavoritesToggle = viewModel::onFavoritesOnlyToggled,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
                     RecipeStatusRow(state, onRetry = viewModel::onSyncClicked, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
@@ -113,6 +111,20 @@ fun RecipeListScreen(
                 modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(vertical = 6.dp)
             ) {
                 item {
+                    // Saved recipes (the bookmark in the recipe detail) as a filter; it combines with the categories.
+                    FilterChip(
+                        selected = state.favoritesOnly, onClick = viewModel::onFavoritesOnlyToggled,
+                        label = { Text("Gespeichert", style = MaterialTheme.typography.labelLarge) },
+                        leadingIcon = { Icon(if (state.favoritesOnly) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder, null, Modifier.size(18.dp)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+                item {
                     CategoryFilterChips(
                         selectedCategory = state.selectedCategory,
                         categories = state.categories,
@@ -121,7 +133,6 @@ fun RecipeListScreen(
                     )
                 }
             }
-            val onFavorite: (Recipe) -> Unit = viewModel::onFavoriteToggled
             val hero = state.heroRecipe
             if (state.layout == RecipeLayout.GRID) {
                 LazyVerticalGrid(
@@ -133,11 +144,11 @@ fun RecipeListScreen(
                     modifier = Modifier.weight(1f).fillMaxWidth().hideBottomBarOnScroll(gridState)
                 ) {
                     // Hero card, loading and empty state use the full width above and between the cards.
-                    if (hero != null) item(span = { GridItemSpan(maxLineSpan) }) { RecipeHeroSection(hero, onRecipeClick, onFavorite) }
+                    if (hero != null) item(span = { GridItemSpan(maxLineSpan) }) { RecipeHeroSection(hero, onRecipeClick) }
                     if (state.isLoading) item(span = { GridItemSpan(maxLineSpan) }) { RecipeLoadingPlaceholder() }
                     else if (state.filteredRecipes.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) { RecipeEmptyPlaceholder(state) }
                     else items(state.filteredRecipes, key = { it.id }) { recipe ->
-                        RecipeGridCard(recipe = recipe, onCardClick = { onRecipeClick(it.id) }, onFavoriteToggle = onFavorite)
+                        RecipeGridCard(recipe = recipe, onCardClick = { onRecipeClick(it.id) })
                     }
                 }
             } else {
@@ -146,14 +157,13 @@ fun RecipeListScreen(
                     contentPadding = PaddingValues(bottom = 96.dp),
                     modifier = Modifier.weight(1f).fillMaxWidth().hideBottomBarOnScroll(listState)
                 ) {
-                    if (hero != null) item { RecipeHeroSection(hero, onRecipeClick, onFavorite, Modifier.padding(horizontal = 16.dp)) }
+                    if (hero != null) item { RecipeHeroSection(hero, onRecipeClick, Modifier.padding(horizontal = 16.dp)) }
                     if (state.isLoading) item { RecipeLoadingPlaceholder() }
                     else if (state.filteredRecipes.isEmpty()) item { RecipeEmptyPlaceholder(state) }
                     else items(state.filteredRecipes, key = { it.id }) { recipe ->
                         RecipeListCard(
                             recipe = recipe,
                             onCardClick = { onRecipeClick(it.id) },
-                            onFavoriteToggle = onFavorite,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)
                         )
                     }
@@ -171,7 +181,7 @@ fun RecipeListScreen(
 }
 
 @Composable
-private fun RecipeHeroSection(hero: Recipe, onRecipeClick: (String) -> Unit, onFavoriteToggle: (Recipe) -> Unit, modifier: Modifier = Modifier) {
+private fun RecipeHeroSection(hero: Recipe, onRecipeClick: (String) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Row(
             modifier = Modifier
@@ -194,8 +204,7 @@ private fun RecipeHeroSection(hero: Recipe, onRecipeClick: (String) -> Unit, onF
         }
         RecipeHeroCard(
             recipe = hero,
-            onCardClick = { onRecipeClick(it.id) },
-            onFavoriteToggle = onFavoriteToggle
+            onCardClick = { onRecipeClick(it.id) }
         )
     }
 }
@@ -229,7 +238,7 @@ private fun RecipeEmptyPlaceholder(state: RecipeListUiState) {
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (state.favoritesOnly) Text("Tippe auf das Lesezeichen eines Rezepts, um es zu merken.",
+            if (state.favoritesOnly) Text("Öffne ein Rezept und tippe oben auf das Lesezeichen, um es zu speichern.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -263,8 +272,6 @@ private fun RecipeStatusRow(state: RecipeListUiState, onRetry: () -> Unit, modif
 private fun SearchBarRow(
     query: String,
     onQueryChange: (String) -> Unit,
-    favoritesOnly: Boolean,
-    onFavoritesToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -316,14 +323,6 @@ private fun SearchBarRow(
                         modifier = Modifier.size(16.dp)
                     )
                 }
-            }
-            IconButton(onClick = onFavoritesToggle, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    if (favoritesOnly) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                    contentDescription = if (favoritesOnly) "Alle Rezepte zeigen" else "Nur Favoriten zeigen",
-                    tint = if (favoritesOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
             }
         }
     }
