@@ -94,7 +94,12 @@ object WeekShoppingPlanner {
             }
             remaining -= listedAmount
             if (remaining <= EPSILON) { alreadyListed++; return@forEach }
-            val note = if (stockAmount > EPSILON) "Vorrat deckt ${label(stockAmount, need.unit)}" else null
+            val otherUnit = InventoryMath.cover(Ingredient(need.name, need.amount, need.unit), 1.0, stock, today).otherUnit
+            val note = when {
+                stockAmount > EPSILON -> "Vorrat deckt ${label(stockAmount, need.unit)}"
+                otherUnit != null -> "Vorrat in anderer Einheit: $otherUnit"   // cannot be compared, so the full amount stays on the list
+                else -> null
+            }
             toBuy += PlannedPurchase(Ingredient(need.name, remaining, need.unit), recipeNames, note)
         }
         return WeekShoppingResult(toBuy, covered, alreadyListed, missingRecipes.distinct(), planned.size)

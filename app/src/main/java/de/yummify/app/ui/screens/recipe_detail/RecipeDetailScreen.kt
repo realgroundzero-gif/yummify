@@ -448,14 +448,25 @@ fun RecipeDetailScreen(
                         textDecoration = if (isChecked) TextDecoration.LineThrough else TextDecoration.None,
                         modifier = Modifier.weight(1f)
                     )
+                    val cover = de.yummify.app.data.model.InventoryMath.cover(ingredient, multiplier, stock)
+                    val unit = ingredient.unit
+                    val label = when (cover.state) {
+                        de.yummify.app.data.model.InventoryMath.Coverage.ENOUGH -> "Im Vorrat"
+                        de.yummify.app.data.model.InventoryMath.Coverage.PARTIAL -> "Fehlt ${de.yummify.app.data.model.InventoryMath.number(cover.shortfall)} $unit".trim()
+                        de.yummify.app.data.model.InventoryMath.Coverage.OTHER_UNIT -> "Vorrat: ${cover.otherUnit}"
+                        de.yummify.app.data.model.InventoryMath.Coverage.SIMILAR -> "Ähnlich im Vorrat: ${cover.otherUnit}"
+                        de.yummify.app.data.model.InventoryMath.Coverage.MISSING -> "Kaufen"
+                    }
+                    val covered = cover.state == de.yummify.app.data.model.InventoryMath.Coverage.ENOUGH
+                    val hint = cover.state in setOf(de.yummify.app.data.model.InventoryMath.Coverage.OTHER_UNIT, de.yummify.app.data.model.InventoryMath.Coverage.PARTIAL, de.yummify.app.data.model.InventoryMath.Coverage.SIMILAR)
                     Surface(
                         shape = CircleShape,
-                        color = if ((de.yummify.app.data.model.InventoryMath.missing(ingredient, multiplier, stock) <= 0.0)) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                        color = when { covered -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f); hint -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f); else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) }
                     ) {
                         Text(
-                            text = if ((de.yummify.app.data.model.InventoryMath.missing(ingredient, multiplier, stock) <= 0.0)) "Im Vorrat" else "Kaufen",
+                            text = label,
                             style = MaterialTheme.typography.labelSmall,
-                            color = if ((de.yummify.app.data.model.InventoryMath.missing(ingredient, multiplier, stock) <= 0.0)) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                            color = when { covered -> MaterialTheme.colorScheme.secondary; hint -> MaterialTheme.colorScheme.onTertiaryContainer; else -> MaterialTheme.colorScheme.primary },
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
