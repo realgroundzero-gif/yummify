@@ -50,7 +50,7 @@ A second home screen widget displays the current shopping list in the dark Yummi
 - Swipe left or right and confirm to delete an item. The delete action is also available to screen readers.
 - Plus buttons in the inventory and recipe list account for the actual bottom navigation height, including larger font sizes. While scrolling, the header (logo, search, status) and the bottom navigation follow your finger: they slide away when you scroll down and return as soon as you scroll back; when you let go they snap to shown or hidden. Category chips stay put; with a screen reader running, or when the list is short, everything stays visible.
 
-**Item details:** An existing item opens read-only: the name is the heading at the very top, followed by image, the stock with plus/minus (quantity changes are saved immediately, even outside edit mode), the selected categories and storage location (no choice lists), best-before date, product information and notes. Barcode fields only appear while editing. Tapping the heading (or the pencil) switches to editing with all fields; new items start there directly.
+**Item details:** An existing item opens read-only: the name is the heading at the very top, followed by the image with the selected categories and the best-before date as chips, the stock with plus/minus (quantity changes are saved immediately, even outside edit mode), the storage location (no choice lists), product information and notes; the Open Food Facts licence note is at the very bottom, and the link to the source is gone. Barcode fields only appear while editing. Tapping the heading (or the pencil) switches to editing with all fields; new items start there directly.
 
 ### Barcodes and automatic product data
 

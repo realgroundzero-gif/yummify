@@ -261,6 +261,19 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                             }
                         }
                     }
+                    if (!editing && (categories.isNotEmpty() || expiry != null)) FlowRow(
+                        Modifier.align(Alignment.BottomStart).padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        categories.forEach { ImageChip(it, null, MaterialTheme.colorScheme.surface.copy(alpha = 0.88f), MaterialTheme.colorScheme.onSurface) }
+                        expiry?.let { date ->
+                            val parsed = runCatching { LocalDate.parse(date) }.getOrNull()
+                            val expired = parsed?.isBefore(LocalDate.now()) == true
+                            ImageChip("MHD · ${parsed?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) ?: date}", Icons.Default.Event,
+                                if (expired) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                                if (expired) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
                     if (editing) FilledTonalIconButton(onClick = { imageMenu = true }, enabled = !photoBusy && !saving, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
                         if (photoBusy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Icon(Icons.Default.PhotoLibrary, "Bild auswählen oder aufnehmen")
                     }
@@ -297,13 +310,8 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                         OutlinedTextField(minimum, { minimum = it }, label = { Text("Mindestbestand") }, supportingText = { Text("Ab dieser Menge erinnert dich Yummify ans Nachkaufen.") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), singleLine = true)
                     }
-                    if (!editing && (categories.isNotEmpty() || location.isNotBlank())) DetailSection("Einordnung", Icons.AutoMirrored.Filled.Label) {
-                        // Read-only: only what is selected, no choice lists.
-                        if (categories.isNotEmpty()) {
-                            Text("Kategorie", style = MaterialTheme.typography.labelLarge)
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { categories.forEach { SuggestionChip(onClick = {}, label = { Text(it) }, enabled = false) } }
-                        }
-                        if (location.isNotBlank()) ReadOnlyValue("Lagerort", location)
+                    if (!editing && location.isNotBlank()) DetailSection("Einordnung", Icons.AutoMirrored.Filled.Label) {
+                        ReadOnlyValue("Lagerort", location)   // category and best-before date are chips on the image
                     }
                     if (editing) DetailSection("Einordnung", Icons.AutoMirrored.Filled.Label) {
                         if (choices.categoryMultiSelect) {
@@ -325,9 +333,6 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                         }
                         ChoiceField("Lagerort", location, choices.locations, choices.locationType == "rich_text") { location = it }
                     }
-                    if (!editing && expiry != null) DetailSection("Haltbarkeit", Icons.Default.Event) {
-                        ReadOnlyValue("Mindesthaltbar bis", LocalDate.parse(expiry).format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
-                    }
                     if (editing) DetailSection("Haltbarkeit", Icons.Default.Event) {
                         Surface(onClick = { showDate = true }, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                             ListItem(headlineContent = { Text(expiry?.let { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) } ?: "MHD auswählen") },
@@ -343,14 +348,12 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                                 value?.let { Text("$label: ${InventoryMath.number(it)} ${if (label == "Kalorien") "kcal" else "g"}") }
                             }
                             ingredients?.takeIf { it.isNotBlank() }?.let { Text("Zutaten: $it", style = MaterialTheme.typography.bodyMedium) }
-                            productSource?.let { source ->
-                                TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source))) }) { Text("Quelle bei Open Food Facts öffnen") }
-                                Text("Produktdaten: Open Food Facts (ODbL), Bilder: CC BY-SA", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
                         }
                     }
                     if (editing) OutlinedTextField(notes, { notes = it }, label = { Text("Notizen") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
                     else if (notes.isNotBlank()) DetailSection("Notizen", Icons.Default.Notes) { Text(notes, style = MaterialTheme.typography.bodyMedium) }
+                    // Source note of the product data (Open Food Facts licence), kept at the very end.
+                    if (productSource != null) Text("Produktdaten: Open Food Facts (ODbL), Bilder: CC BY-SA", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -418,6 +421,16 @@ private fun QuantityStepper(value: Double, unit: String, onChange: (Double) -> U
                         onClick = { step = amount; expanded = false }, trailingIcon = { if (step == amount) Icon(Icons.Default.Check, null) })
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ImageChip(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, container: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color) {
+    Surface(shape = androidx.compose.foundation.shape.CircleShape, color = container, contentColor = content) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            icon?.let { Icon(it, null, Modifier.size(16.dp)) }
+            Text(text, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
