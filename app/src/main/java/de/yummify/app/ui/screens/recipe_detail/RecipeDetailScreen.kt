@@ -45,6 +45,7 @@ fun RecipeDetailScreen(
     LaunchedEffect(recipeId) { viewModel.loadRecipe(recipeId) }
     val state by viewModel.uiState.collectAsState()
     val stock by viewModel.stock.collectAsState()
+    val shoppingItems by viewModel.shoppingItems.collectAsState()
     var showConsumeDialog by remember { mutableStateOf(false) }
     val recipe = state.recipe
     var showPlanDialog by remember { mutableStateOf(false) }
@@ -437,6 +438,25 @@ fun RecipeDetailScreen(
                             Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(16.dp))
                         }
                     }
+                    val cover = de.yummify.app.data.model.InventoryMath.cover(ingredient, multiplier, stock)
+                    val unit = ingredient.unit
+                    val label = when (cover.state) {
+                        de.yummify.app.data.model.InventoryMath.Coverage.ENOUGH -> "Im Vorrat"
+                        de.yummify.app.data.model.InventoryMath.Coverage.PARTIAL -> "Fehlt ${de.yummify.app.data.model.InventoryMath.number(cover.shortfall)} $unit".trim()
+                        de.yummify.app.data.model.InventoryMath.Coverage.OTHER_UNIT -> "Andere Einheit"
+                        de.yummify.app.data.model.InventoryMath.Coverage.SIMILAR -> "Ähnlich"
+                        de.yummify.app.data.model.InventoryMath.Coverage.MISSING -> "Kaufen"
+                    }
+                    val covered = cover.state == de.yummify.app.data.model.InventoryMath.Coverage.ENOUGH
+                    val hint = cover.state in setOf(de.yummify.app.data.model.InventoryMath.Coverage.OTHER_UNIT, de.yummify.app.data.model.InventoryMath.Coverage.PARTIAL, de.yummify.app.data.model.InventoryMath.Coverage.SIMILAR)
+                    // Long explanations go under the name, so the chip stays short and the name keeps its width.
+                    val detail = when (cover.state) {
+                        de.yummify.app.data.model.InventoryMath.Coverage.PARTIAL -> "Vorrat deckt nur ${de.yummify.app.data.model.InventoryMath.number(cover.available)} $unit".trim()
+                        de.yummify.app.data.model.InventoryMath.Coverage.OTHER_UNIT -> "Vorrat: ${cover.otherUnit} (Einheit nicht vergleichbar)"
+                        de.yummify.app.data.model.InventoryMath.Coverage.SIMILAR -> "Ähnlich im Vorrat: ${cover.otherUnit}"
+                        else -> null
+                    }
+                    Column(Modifier.weight(1f)) {
                     Text(
                         text = if (ingredient.amount > 0.0) {
                             "${ingredient.getFormattedAmount(multiplier)} ${ingredient.name}"
@@ -446,17 +466,29 @@ fun RecipeDetailScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                         textDecoration = if (isChecked) TextDecoration.LineThrough else TextDecoration.None,
-                        modifier = Modifier.weight(1f)
                     )
+                    detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
                     Surface(
                         shape = CircleShape,
-                        color = if ((de.yummify.app.data.model.InventoryMath.missing(ingredient, multiplier, stock) <= 0.0)) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                        color = when { covered -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f); hint -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f); else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) }
                     ) {
                         Text(
-                            text = if ((de.yummify.app.data.model.InventoryMath.missing(ingredient, multiplier, stock) <= 0.0)) "Im Vorrat" else "Kaufen",
+                            text = label,
                             style = MaterialTheme.typography.labelSmall,
-                            color = if ((de.yummify.app.data.model.InventoryMath.missing(ingredient, multiplier, stock) <= 0.0)) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                            color = when { covered -> MaterialTheme.colorScheme.secondary; hint -> MaterialTheme.colorScheme.onTertiaryContainer; else -> MaterialTheme.colorScheme.primary },
+                            maxLines = 1, softWrap = false,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                    // One tap puts just this ingredient on the shopping list; afterwards it shows that it is there.
+                    val onList = shoppingItems.any { de.yummify.app.data.model.IngredientMatcher.same(it.name, ingredient.name) }
+                    IconButton(onClick = { viewModel.addIngredientToShoppingList(ingredient) }, enabled = !onList, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            if (onList) Icons.Filled.Check else Icons.Filled.AddShoppingCart,
+                            if (onList) "${ingredient.name} steht auf der Einkaufsliste" else "${ingredient.name} zur Einkaufsliste",
+                            tint = if (onList) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }

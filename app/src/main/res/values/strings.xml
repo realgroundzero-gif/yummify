@@ -1,4 +1,5 @@
-<resources>
+<!-- Die App ist erst teilweise übersetzt (values-en/): Texte ohne englische Fassung bleiben Deutsch, siehe README. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="app_name">Yummify</string>
     <string name="nav_recipes">Rezepte</string>
     <string name="nav_meal_planner">Wochenplaner</string>
@@ -8,4 +9,70 @@
     <string name="widget_description">Schlanke Wochenliste von Montag bis Sonntag mit Heute-Markierung</string>
     <string name="shopping_widget_name">yummify Einkaufsliste Widget</string>
     <string name="shopping_widget_description">Scrollbare Einkaufsliste mit Mengen, Abhaken und Zutaten für heute</string>
+
+    <!-- Einstellungen: Daten und Backup -->
+    <string name="backup_menu_title">Daten und Backup</string>
+    <string name="backup_menu_subtitle">Exportieren, importieren, Speicher, lokale Daten löschen</string>
+    <string name="backup_back">Zurück</string>
+    <string name="backup_export_title">Daten exportieren</string>
+    <string name="backup_export_description">Speichert Rezepte-Cache, Favoriten, Wochenplan, Einkaufsliste, Inventar, Einstellungen und lokale Produktbilder in einer ZIP-Datei. Der Notion-Token ist standardmäßig nicht enthalten.</string>
+    <string name="backup_export_button">Daten exportieren</string>
+    <string name="backup_token_switch">Notion-Token in Export aufnehmen</string>
+    <string name="backup_token_switch_hint">Aus. Nur einschalten, wenn die Datei sicher aufbewahrt wird.</string>
+    <string name="backup_token_warning_title">Notion-Token exportieren?</string>
+    <string name="backup_token_warning_text">Der Token gibt Zugriff auf deine Notion-Daten. Die Datei ist nicht verschlüsselt: Wer sie bekommt, kann den Token lesen. Gib sie nicht weiter und speichere sie nicht in geteilten Ordnern oder Clouds, denen du nicht vertraust.</string>
+    <string name="backup_token_warning_confirm">Token aufnehmen</string>
+    <string name="backup_export_success">%1$d Elemente gesichert (%2$d Rezepte, %3$d Favoriten, %4$d Wochenplan-Einträge, %5$d Einkaufsartikel, %6$d Inventar-Artikel, %7$d Bilder).</string>
+    <string name="backup_export_success_token"> Die Datei enthält deinen Notion-Token.</string>
+    <string name="backup_export_cancelled">Export abgebrochen. Es wurde keine Datei gespeichert.</string>
+    <string name="backup_export_failed">Export fehlgeschlagen: %1$s</string>
+    <string name="backup_export_partial_removed"> Die unvollständige Datei wurde wieder gelöscht.</string>
+    <string name="backup_export_partial_kept"> Die unvollständige Datei konnte nicht gelöscht werden und darf nicht verwendet werden.</string>
+    <string name="backup_import_title">Daten importieren</string>
+    <string name="backup_import_description">Liest eine Yummify-Export-Datei. Vorher siehst du eine Zusammenfassung, erst nach deiner Bestätigung wird etwas geändert.</string>
+    <string name="backup_import_button">Daten importieren</string>
+    <string name="backup_import_cancelled">Import abgebrochen. Es wurde nichts geändert.</string>
+    <string name="backup_import_failed">Import nicht möglich: %1$s Deine vorhandenen Daten wurden nicht verändert.</string>
+    <string name="backup_import_summary_title">Datei prüfen</string>
+    <string name="backup_import_summary_text">Exportiert am %1$s mit Yummify %2$s.
+
+%3$d Rezepte, %4$d Favoriten, %5$d Wochenplan-Einträge, %6$d Einkaufsartikel, %7$d Inventar-Artikel, %8$d Bilder.</string>
+    <string name="backup_import_summary_token"> Die Datei enthält einen Notion-Token.</string>
+    <string name="backup_import_mode_merge">Zusammenführen</string>
+    <string name="backup_import_mode_merge_hint">Vorhandene Daten bleiben, neue kommen dazu. Bei Konflikten gewinnt der neuere Stand, bei Gleichstand der lokale.</string>
+    <string name="backup_import_mode_replace">Vorhandene Daten ersetzen</string>
+    <string name="backup_import_mode_replace_hint">Löscht die lokalen Daten und nimmt den Inhalt der Datei. Notion bleibt unberührt.</string>
+    <string name="backup_import_confirm">Importieren</string>
+    <string name="backup_replace_title">Vorhandene Daten ersetzen?</string>
+    <string name="backup_replace_text">Rezepte-Cache, Favoriten, Wochenplan, Einkaufsliste und Inventar auf diesem Gerät werden durch den Dateiinhalt ersetzt. Nicht synchronisierte Inventar-Änderungen gehen dabei verloren. Das lässt sich nicht rückgängig machen.</string>
+    <string name="backup_replace_confirm">Ersetzen</string>
+    <string name="backup_token_import_title">Notion-Token übernehmen?</string>
+    <string name="backup_token_import_text">Die Datei enthält einen Notion-Token. Soll er den aktuellen Token ersetzen?</string>
+    <string name="backup_token_import_yes">Token übernehmen</string>
+    <string name="backup_token_import_no">Aktuellen Token behalten</string>
+    <string name="backup_import_success_merge">Import abgeschlossen: Daten zusammengeführt. Geänderte Inventar-Einträge werden beim nächsten Abgleich zu Notion übertragen.</string>
+    <string name="backup_import_success_replace">Import abgeschlossen: Lokale Daten wurden ersetzt.</string>
+    <string name="backup_auto_title">Automatisches Backup</string>
+    <string name="backup_auto_on">Android sichert die App-Daten (ohne Notion-Token) in dein Google-Backup.</string>
+    <string name="backup_auto_off">Android sichert keine App-Daten. Bereits vorhandene Backups bleiben bestehen und lassen sich über die Android-Einstellungen löschen.</string>
+    <string name="backup_auto_failed">Schalter konnte nicht gespeichert werden: %1$s</string>
+    <string name="backup_storage_title">Speicher</string>
+    <string name="backup_storage_data">Daten (Rezepte, Plan, Listen, Inventar)</string>
+    <string name="backup_storage_images">Lokale Produktbilder</string>
+    <string name="backup_storage_cache">Cache (Bilder aus dem Netz)</string>
+    <string name="backup_storage_clear_cache">Bildcache leeren</string>
+    <string name="backup_storage_cache_cleared">Cache geleert. Rezepte, Inventar und Produktbilder sind unverändert.</string>
+    <string name="backup_storage_failed">Der Cache konnte nicht geleert werden: %1$s</string>
+    <string name="backup_delete_title">Alle lokalen Daten löschen</string>
+    <string name="backup_delete_description">Entfernt Rezepte-Cache, Favoriten, Wochenplan, Einkaufsliste, Inventar, lokale Produktbilder und Cache von diesem Gerät.</string>
+    <string name="backup_delete_button">Alle lokalen Daten löschen</string>
+    <string name="backup_delete_dialog_text">Löscht nur die Daten auf diesem Gerät. Deine Notion-Datenbanken bleiben unberührt.</string>
+    <string name="backup_delete_dirty">Achtung: %1$d Inventar-Änderungen sind noch nicht mit Notion abgeglichen und gehen verloren.</string>
+    <string name="backup_delete_word">LÖSCHEN</string>
+    <string name="backup_delete_word_label">Zur Bestätigung %1$s eintippen</string>
+    <string name="backup_delete_confirm">Endgültig löschen</string>
+    <string name="backup_delete_success">Alle lokalen Daten wurden gelöscht. Token und Datenbank-IDs bleiben erhalten; Rezepte und Inventar kommen beim nächsten Abgleich wieder aus Notion.</string>
+    <string name="backup_delete_failed">Löschen fehlgeschlagen: %1$s</string>
+    <string name="backup_cancel">Abbrechen</string>
+    <string name="backup_ok">OK</string>
 </resources>

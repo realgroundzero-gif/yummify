@@ -74,13 +74,25 @@ object InventoryMath {
     fun normalizedName(value: String) = value.trim().lowercase(Locale.GERMAN).replace(Regex("\\s+"), " ")
     /** Same ingredient despite different spelling, word order or additions like "(Dose)"; see [IngredientMatcher]. */
     fun sameIngredient(a: String, b: String) = IngredientMatcher.same(a, b)
-    private fun unit(value: String): Pair<String, Double> = when (value.trim().lowercase(Locale.GERMAN).removeSuffix(".")) {
-        "g" -> "mass" to 1.0
-        "kg" -> "mass" to 1000.0
-        "ml" -> "volume" to 1.0
-        "l" -> "volume" to 1000.0
-        "", "stk", "stück", "stueck" -> "piece" to 1.0
-        else -> value.trim().lowercase(Locale.GERMAN) to 1.0
+    /** Spelling variants of the same unit ("Dosen", "Packungen", "Stk.") map to one key so they can be compared. */
+    private val unitAliases: Map<String, String> = mapOf(
+        "stk" to "stück", "stueck" to "stück", "st" to "stück", "x" to "stück", "stücke" to "stück",
+        "dosen" to "dose", "pck" to "packung", "packungen" to "packung", "päckchen" to "packung", "päckchen." to "packung", "packchen" to "packung", "pkg" to "packung",
+        "beutel" to "beutel", "becher" to "becher", "gläser" to "glas", "glaeser" to "glas",
+        "zehen" to "zehe", "scheiben" to "scheibe", "prisen" to "prise", "bunde" to "bund", "flaschen" to "flasche",
+        "esslöffel" to "el", "essloeffel" to "el", "teelöffel" to "tl", "teeloeffel" to "tl", "tassen" to "tasse",
+        "gramm" to "g", "kilogramm" to "kg", "liter" to "l", "milliliter" to "ml"
+    )
+    private fun unit(value: String): Pair<String, Double> {
+        val raw = value.trim().lowercase(Locale.GERMAN).removeSuffix(".")
+        return when (val key = unitAliases[raw] ?: raw) {
+            "g" -> "mass" to 1.0
+            "kg" -> "mass" to 1000.0
+            "ml" -> "volume" to 1.0
+            "l" -> "volume" to 1000.0
+            "", "stück" -> "piece" to 1.0
+            else -> key to 1.0
+        }
     }
     fun convert(amount: Double, from: String, to: String): Double? {
         val a = unit(from); val b = unit(to)
@@ -113,6 +125,45 @@ object InventoryMath {
             .sumOf { convert(it.quantity, it.unit, ingredient.unit) ?: 0.0 }
     fun missing(ingredient: Ingredient, multiplier: Double, stock: List<InventoryItem>, today: LocalDate = LocalDate.now()): Double =
         (ingredient.amount * multiplier - available(ingredient, stock, today)).coerceAtLeast(0.0)
+    enum class Coverage { ENOUGH, PARTIAL, OTHER_UNIT, SIMILAR, MISSING }
+
+    /**
+     * How well the inventory covers [ingredient]: [shortfall] is what is still missing in the recipe's unit.
+     * [otherUnit] describes stock of the same product that cannot be compared with the recipe's unit
+     * (500 g needed, "3 Stück" in stock); it is a hint for the user, never counted as available.
+     */
+    data class Cover(val state: Coverage, val needed: Double, val available: Double, val shortfall: Double, val otherUnit: String?)
+
+    /** Amount that goes on the shopping list for one ingredient: what is missing, otherwise the full recipe amount; 0 without an amount. */
+    fun shoppingAmount(ingredient: Ingredient, multiplier: Double, stock: List<InventoryItem>, today: LocalDate = LocalDate.now()): Double {
+        if (ingredient.amount <= 0.0) return 0.0
+        val cover = cover(ingredient, multiplier, stock, today)
+        return if (cover.shortfall > 0.0) cover.shortfall else ingredient.amount * multiplier
+    }
+
+    fun cover(ingredient: Ingredient, multiplier: Double, stock: List<InventoryItem>, today: LocalDate = LocalDate.now()): Cover {
+        val same = stock.filter { !it.deleted && !it.isExpired(today) && it.quantity > 0.0 && sameIngredient(it.name, ingredient.name) }
+        val needed = ingredient.amount * multiplier
+        val comparable = same.filter { convert(it.quantity, it.unit, ingredient.unit) != null }
+        val available = comparable.sumOf { convert(it.quantity, it.unit, ingredient.unit) ?: 0.0 }
+        val other = same.filter { it !in comparable }.joinToString(", ") { "${number(it.quantity)} ${it.unit}".trim() }.ifBlank { null }
+        // No rule match: a similar article ("Kartoffeln" for "festkochende Kartoffeln") is only a hint, never counted.
+        val similar = if (same.isEmpty()) stock.firstOrNull {
+            !it.deleted && !it.isExpired(today) && it.quantity > 0.0 && IngredientMatcher.similar(it.name, ingredient.name)
+        } else null
+        val notFound = if (similar != null) Cover(Coverage.SIMILAR, needed, 0.0, needed, similar.name) else Cover(Coverage.MISSING, needed, 0.0, needed, null)
+        // Without an amount in the recipe ("Salz") any stock of the product is enough.
+        if (ingredient.amount <= 0.0) return if (same.isNotEmpty()) Cover(Coverage.ENOUGH, 0.0, available, 0.0, null) else notFound.copy(needed = 0.0, shortfall = 0.0)
+        if (same.isEmpty()) return notFound
+        val shortfall = (needed - available).coerceAtLeast(0.0)
+        val state = when {
+            shortfall <= 0.000001 -> Coverage.ENOUGH
+            available > 0.0 -> Coverage.PARTIAL
+            other != null -> Coverage.OTHER_UNIT
+            else -> Coverage.MISSING
+        }
+        return Cover(state, needed, available, shortfall, other)
+    }
 }
 
 /** Persisted schema options, including values that are not used by any item yet. */

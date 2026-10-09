@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Texte der Darstellungs-Einstellungen (Story #11). values/ ist Deutsch, die englische Fassung steht in values-en/. -->
+<resources>
+    <string name="settings_appearance_title">Darstellung</string>
+    <string name="settings_appearance_subtitle">Farbschema, Startseite, Rezeptansicht und Sprache</string>
+
+    <string name="appearance_theme_title">Farbschema</string>
+    <string name="appearance_theme_light">Hell</string>
+    <string name="appearance_theme_dark">Dunkel</string>
+    <string name="appearance_theme_system">System</string>
+    <string name="appearance_theme_system_hint">Folgt dem Hell/Dunkel-Modus deines Geräts.</string>
+
+    <string name="appearance_dynamic_title">Dynamische Farben</string>
+    <string name="appearance_dynamic_on">Farben passend zu deinem Hintergrundbild (Material You)</string>
+    <string name="appearance_dynamic_off">Feste Yummify-Farben</string>
+    <string name="appearance_dynamic_unavailable">Erst ab Android 12 verfügbar</string>
+
+    <string name="appearance_start_title">Startseite</string>
+    <string name="appearance_start_hint">Diese Seite öffnet sich, wenn du die App aus dem Launcher startest. Widgets und Links öffnen weiterhin ihr eigenes Ziel.</string>
+    <string name="appearance_start_recipes">Rezepte</string>
+    <string name="appearance_start_planner">Wochenplan</string>
+    <string name="appearance_start_shopping">Einkaufsliste</string>
+    <string name="appearance_start_inventory">Inventar</string>
+
+    <string name="appearance_recipe_view_title">Rezeptansicht</string>
+    <string name="appearance_recipe_view_hint">Gilt für die Rezeptübersicht, nicht für das Inventar.</string>
+    <string name="appearance_recipe_view_list">Liste</string>
+    <string name="appearance_recipe_view_grid">Raster</string>
+
+    <string name="appearance_language_title">Sprache</string>
+    <string name="appearance_language_system">System</string>
+    <string name="appearance_language_german">Deutsch</string>
+    <string name="appearance_language_english">English</string>
+    <string name="appearance_language_hint">Noch nicht alle Bildschirme sind übersetzt. Bildschirme ohne Übersetzung bleiben Deutsch.</string>
+
+</resources>

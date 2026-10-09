@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.util.Locale
 import java.util.UUID
 
-class ShoppingListRepository private constructor(private val context: Context) {
+class ShoppingListRepository internal constructor(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("yummify_shopping_list", Context.MODE_PRIVATE)
     private val gson = Gson()
     private val lock = Any()
@@ -101,6 +101,30 @@ class ShoppingListRepository private constructor(private val context: Context) {
 
     fun dismissCovered() = setCovered(emptyList())
 
+    /** Reads list, covered items and dismissed suggestions again, e.g. after a data import or deletion. */
+    fun reloadFromStorage() {
+        synchronized(lock) {
+            _items.value = loadItems()
+            _covered.value = loadCovered()
+            _dismissed.value = loadDismissed()
+        }
+    }
+
+    private val _sentToHomeAssistant = MutableStateFlow(loadSent())
+    /** Item id to what was sent (name and amount); keeps a second send from adding the same article again. */
+    val sentToHomeAssistant: StateFlow<Map<String, String>> = _sentToHomeAssistant.asStateFlow()
+
+    private fun loadSent(): Map<String, String> = runCatching {
+        gson.fromJson<Map<String, String>>(prefs.getString(KEY_HA_SENT, null), object : TypeToken<Map<String, String>>() {}.type)
+    }.getOrNull().orEmpty()
+
+    fun markSentToHomeAssistant(sent: Map<String, String>) {
+        // Forget entries of articles that are no longer on the list.
+        val updated = (_sentToHomeAssistant.value + sent).filterKeys { id -> _items.value.any { it.id == id } }
+        prefs.edit().putString(KEY_HA_SENT, gson.toJson(updated)).apply()
+        _sentToHomeAssistant.value = updated
+    }
+
     private val _dismissed = MutableStateFlow(loadDismissed())
     /** Name pairs for which the user answered "Nein, kaufen"; the suggestion does not come back for them. */
     val dismissedSuggestions: StateFlow<Set<String>> = _dismissed.asStateFlow()
@@ -138,6 +162,7 @@ class ShoppingListRepository private constructor(private val context: Context) {
     companion object {
         private const val KEY_ITEMS = "shopping_items_json"
         private const val KEY_COVERED = "covered_items_json"
+        private const val KEY_HA_SENT = "home_assistant_sent_json"
         private const val KEY_DISMISSED = "dismissed_suggestions_json"
         private val SAMPLE_IDS = (1..14).map { "s$it" }.toSet()
 

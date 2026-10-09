@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import de.yummify.app.data.model.ShoppingItem
@@ -46,6 +47,20 @@ fun ShoppingListScreen(
     var showPlanDialog by remember { mutableStateOf(false) }
     var planRange by rememberSaveable { mutableStateOf(PlanRange.NEXT_7_DAYS) }
     var coveredExpanded by rememberSaveable { mutableStateOf(false) }
+    var showSendDialog by remember { mutableStateOf(false) }
+    var sendAgain by remember { mutableStateOf(false) }
+    if (showSendDialog) AlertDialog(onDismissRequest = { showSendDialog = false }, title = { Text("An Home Assistant senden") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val count = if (sendAgain) state.homeAssistantOpen else state.homeAssistantNew
+            Text(if (count == 0) "Es gibt nichts Neues zu senden." else "$count ${if (count == 1) "offener Artikel geht" else "offene Artikel gehen"} an die Liste „${state.homeAssistantList}“ (Bring). Abgehakte Artikel bleiben hier.")
+            if (state.homeAssistantOpen > state.homeAssistantNew) Row(Modifier.fillMaxWidth().clickable { sendAgain = !sendAgain }, verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(sendAgain, { sendAgain = it })
+                Text("Auch bereits gesendete erneut senden (${state.homeAssistantOpen - state.homeAssistantNew})", style = MaterialTheme.typography.bodyMedium)
+            }
+        } },
+        confirmButton = { TextButton(onClick = { showSendDialog = false; viewModel.sendToHomeAssistant(sendAgain) },
+            enabled = (if (sendAgain) state.homeAssistantOpen else state.homeAssistantNew) > 0) { Text("Senden") } },
+        dismissButton = { TextButton(onClick = { showSendDialog = false }) { Text("Abbrechen") } })
     if (showPlanDialog) AlertDialog(onDismissRequest = { showPlanDialog = false }, title = { Text("Aus Wochenplan hinzufügen") },
         text = { Column {
             Text("Zutaten der noch nicht gekochten Gerichte, abzüglich Vorrat und dem, was schon auf der Liste steht. Mengen gelten für die im Rezept angegebenen Portionen.",
@@ -150,6 +165,15 @@ fun ShoppingListScreen(
                 Text(if (state.planning) "Wird erstellt …" else "Aus Wochenplan hinzufügen")
             }
         }
+        if (state.homeAssistantReady) item {
+            OutlinedButton(onClick = { sendAgain = false; showSendDialog = true }, enabled = !state.sendingToHomeAssistant && state.homeAssistantOpen > 0,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                if (state.sendingToHomeAssistant) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Icon(Icons.Filled.Send, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (state.sendingToHomeAssistant) "Wird gesendet …" else "An Home Assistant senden")
+            }
+        }
         if (state.allItems.any { it.isChecked }) item {
             Button(onClick = { confirmTransfer = true }, enabled = !state.transferring, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Icon(Icons.Default.Inventory2, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
@@ -206,7 +230,8 @@ fun ShoppingListScreen(
                     emoji = CategoryEmoji[category] ?: "🛒",
                     openCount = items.count { !it.isChecked },
                     items = items,
-                    onToggle = viewModel::toggleItem
+                    onToggle = viewModel::toggleItem,
+                    swipe = ItemSwipeActions(state.homeAssistantReady, viewModel::moveToInventory, viewModel::deleteItem, viewModel::sendItemToHomeAssistant)
                 )
             }
         }
@@ -219,7 +244,8 @@ private fun CollapsibleSection(
     emoji: String,
     openCount: Int,
     items: List<ShoppingItem>,
-    onToggle: (String) -> Unit
+    onToggle: (String) -> Unit,
+    swipe: ItemSwipeActions
 ) {
     var expanded by remember { mutableStateOf(true) }
 
@@ -273,12 +299,65 @@ private fun CollapsibleSection(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items.forEach { item ->
-                        ShoppingItemRow(item = item, onToggle = { onToggle(item.id) })
+                        key(item.id) { SwipeableShoppingItem(item, swipe) { ShoppingItemRow(item = item, onToggle = { onToggle(item.id) }) } }
                     }
                 }
             }
         }
     }
+}
+
+/** What swiping an entry can do; Home Assistant is only offered when it is set up. */
+private class ItemSwipeActions(
+    val homeAssistantReady: Boolean,
+    val toInventory: (ShoppingItem) -> Boolean,
+    val delete: (ShoppingItem) -> Unit,
+    val sendToHomeAssistant: suspend (ShoppingItem) -> Boolean
+)
+
+/**
+ * Swipe right: the entry slides away and offers "Ins Inventar" or "Löschen" (or close). Swipe left: the entry goes to
+ * Home Assistant and disappears; if that fails, it slides back and the message says why.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeableShoppingItem(item: ShoppingItem, actions: ItemSwipeActions, content: @Composable () -> Unit) {
+    val state = rememberSwipeToDismissBoxState(positionalThreshold = { distance -> distance * 0.35f })
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(state.currentValue) {
+        if (state.currentValue == SwipeToDismissBoxValue.EndToStart && !actions.sendToHomeAssistant(item)) state.reset()
+    }
+    SwipeToDismissBox(
+        state = state,
+        enableDismissFromEndToStart = actions.homeAssistantReady,
+        backgroundContent = {
+            when (state.dismissDirection) {
+                SwipeToDismissBoxValue.StartToEnd -> Row(
+                    Modifier.fillMaxSize().padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilledTonalButton(onClick = { if (!actions.toInventory(item)) scope.launch { state.reset() } }, contentPadding = PaddingValues(horizontal = 12.dp)) {
+                        Icon(Icons.Filled.Inventory2, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Ins Inventar")
+                    }
+                    FilledTonalButton(
+                        onClick = { actions.delete(item) }, contentPadding = PaddingValues(horizontal = 12.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
+                    ) { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Löschen") }
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { scope.launch { state.reset() } }) { Icon(Icons.Filled.Close, "Abbrechen") }
+                }
+                SwipeToDismissBoxValue.EndToStart -> Row(
+                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(16.dp)).padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End
+                ) {
+                    Text("An Home Assistant", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Spacer(Modifier.width(8.dp)); Icon(Icons.Filled.Send, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                }
+                else -> Spacer(Modifier.fillMaxSize())
+            }
+        },
+        content = { content() }
+    )
 }
 
 @Composable

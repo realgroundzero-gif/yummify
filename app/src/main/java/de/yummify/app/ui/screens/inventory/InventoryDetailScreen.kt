@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -57,12 +58,19 @@ import java.util.UUID
 @Composable
 fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving: Boolean,
                           onDismiss: () -> Unit, onSave: (InventoryItem) -> Unit, saveError: String? = null,
-                          stock: List<InventoryItem> = emptyList(), onOpenExisting: (String) -> Unit = {}) {
+                          stock: List<InventoryItem> = emptyList(), onOpenExisting: (String) -> Unit = {},
+                          /** Opens the barcode scanner right away; used for a new article started with a long press. */
+                          startScan: Boolean = false,
+                          /** Changes the stock of the saved article right away; used by the stepper in the read-only view. */
+                          onAdjust: (Double) -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var name by rememberSaveable(item.id) { mutableStateOf(item.name) }
-    var editName by rememberSaveable(item.id) { mutableStateOf(item.name.isBlank()) }
+    // Existing articles open read-only; a tap on the title switches to editing. New articles start in edit mode.
+    var editing by rememberSaveable(item.id) { mutableStateOf(item.name.isBlank()) }
     var quantity by rememberSaveable(item.id) { mutableDoubleStateOf(item.quantity) }
+    // Stock the repository already holds; quick adjustments in the read-only view are saved at once and are no pending edit.
+    var storedQuantity by rememberSaveable(item.id) { mutableDoubleStateOf(item.quantity) }
     var unit by rememberSaveable(item.id) { mutableStateOf(if (item.name.isBlank()) "" else item.unit) }
     var categories by rememberSaveable(item.id) { mutableStateOf(ArrayList(item.categoryOptions.ifEmpty { listOf(item.category).filter { it.isNotBlank() && item.name.isNotBlank() } })) }
     var location by rememberSaveable(item.id) { mutableStateOf(if (item.name.isBlank()) "" else item.location) }
@@ -102,7 +110,7 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
         calories = calories, fat = fat, carbohydrates = carbohydrates, protein = protein,
         ingredients = ingredients, productUrl = productSource,
         coverPending = item.coverPending || photo != item.localCoverPath || productCover != item.coverUrl)
-    val changed = name != item.name || quantity != item.quantity || unit != item.unit ||
+    val changed = name != item.name || quantity != storedQuantity || unit != item.unit ||
         categories.joinToString(", ") != item.category || location != item.location || minimum != InventoryMath.number(item.minimum) ||
         expiry != item.expiry || barcode != item.barcode || notes != item.notes || photo != item.localCoverPath || productCover != item.coverUrl ||
         calories != item.calories || fat != item.fat || carbohydrates != item.carbohydrates || protein != item.protein ||
@@ -159,7 +167,7 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                 if (barcode.trim() == code) {
                     if (product == null) lookupMessage = "Produkt nicht gefunden. Bitte die Angaben manuell ergänzen."
                     else {
-                        if (name == originalName && name.isBlank()) product.name?.let { name = it; editName = false }
+                        if (name == originalName && name.isBlank()) product.name?.let { name = it }
                         if (unit == originalUnit && unit.isBlank() && quantity == originalQuantity && quantity == item.quantity) {
                             // Count purchased packages instead of using their weight as stock.
                             unit = "Stück"
@@ -205,13 +213,28 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                     }
             }.addOnFailureListener { scanBusy = false; error = "Scanner-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen." }
     }
+    var autoScanned by rememberSaveable(item.id) { mutableStateOf(false) }
+    LaunchedEffect(startScan) {
+        if (startScan && item.name.isBlank() && !autoScanned) { autoScanned = true; scan() }
+    }
     Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         BackHandler(onBack = close)
         Scaffold(modifier = Modifier.fillMaxSize().systemBarsPadding().imePadding(),
-            topBar = { TopAppBar(title = { Text(if (item.name.isBlank()) "Neuer Artikel" else "Artikeldetails") },
-                navigationIcon = { IconButton(onClick = close, enabled = !saving && !photoBusy && !scanBusy && !lookupBusy) { Icon(Icons.Default.Close, "Schließen") } }) },
+            topBar = { TopAppBar(
+                title = {
+                    if (item.name.isBlank()) Text("Neuer Artikel")
+                    else if (editing) Text("Artikel bearbeiten")
+                    else Text(name, Modifier.clickable(onClickLabel = "Artikel bearbeiten") { editing = true }, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                },
+                actions = {
+                    if (item.name.isNotBlank()) {
+                        if (!editing) IconButton(onClick = { editing = true }) { Icon(Icons.Default.Edit, "Artikel bearbeiten") }
+                        else if (!changed) IconButton(onClick = { editing = false }) { Icon(Icons.Default.Done, "Bearbeiten beenden") }
+                    }
+                }) },
             bottomBar = {
-                Surface(tonalElevation = 3.dp) {
+                if (editing) Surface(tonalElevation = 3.dp) {
                     Button(onClick = { error = draft.validate(); if (error == null) onSave(draft) }, enabled = !saving && !photoBusy && !scanBusy && !lookupBusy,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).heightIn(min = 48.dp)) {
                         if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
@@ -222,6 +245,8 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
             }) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                if (editing) OutlinedTextField(name, { name = it }, label = { Text("Artikelname") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp))
                 val image = if (photo != item.localCoverPath || item.coverPending) photo?.let { File(it) } ?: productCover else productCover ?: photo?.let { File(it) }
                 var imageFailed by remember(image) { mutableStateOf(false) }
                 Box(Modifier.fillMaxWidth().height(220.dp).padding(horizontal = 16.dp).clip(RoundedCornerShape(28.dp))) {
@@ -229,17 +254,32 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                         if (image != null && !imageFailed) AsyncImage(onError = { imageFailed = true }, model = image, contentDescription = "Headerbild von $name", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                         else if (imageFailed && photo != null) AsyncImage(model = File(photo!!), contentDescription = "Lokal gespeichertes Artikelbild", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                         else Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                            Icon(Icons.Default.AddPhotoAlternate, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.height(12.dp)); Text("Artikelbild hinzufügen", style = MaterialTheme.typography.titleMedium)
-                            Text("Foto aufnehmen oder auswählen", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(if (editing) Icons.Default.AddPhotoAlternate else Icons.Default.Inventory2, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
+                            if (editing) {
+                                Spacer(Modifier.height(12.dp)); Text("Artikelbild hinzufügen", style = MaterialTheme.typography.titleMedium)
+                                Text("Foto aufnehmen oder auswählen", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
-                    FilledTonalIconButton(onClick = { imageMenu = true }, enabled = !photoBusy && !saving, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
+                    if (!editing && (categories.isNotEmpty() || expiry != null)) FlowRow(
+                        Modifier.align(Alignment.BottomStart).padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        categories.forEach { ImageChip(it, null, MaterialTheme.colorScheme.surface.copy(alpha = 0.88f), MaterialTheme.colorScheme.onSurface) }
+                        expiry?.let { date ->
+                            val parsed = runCatching { LocalDate.parse(date) }.getOrNull()
+                            val expired = parsed?.isBefore(LocalDate.now()) == true
+                            ImageChip("MHD · ${parsed?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) ?: date}", Icons.Default.Event,
+                                if (expired) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                                if (expired) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                    if (editing) FilledTonalIconButton(onClick = { imageMenu = true }, enabled = !photoBusy && !saving, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
                         if (photoBusy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Icon(Icons.Default.PhotoLibrary, "Bild auswählen oder aufnehmen")
                     }
                 }
                 Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                    DetailSection("Barcode", Icons.Default.QrCodeScanner) {
+                    if (editing) DetailSection("Barcode", Icons.Default.QrCodeScanner) {
                         OutlinedTextField(barcode, { barcode = it }, label = { Text("Barcode") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
                         FilledTonalButton(onClick = { scan() }, enabled = !scanBusy && !saving && !lookupBusy, modifier = Modifier.fillMaxWidth()) {
@@ -254,21 +294,26 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                             lookupMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                         }
                     }
-                    if (editName) OutlinedTextField(name, { name = it }, label = { Text("Artikelname") }, modifier = Modifier.fillMaxWidth(),
-                        trailingIcon = { IconButton(onClick = { if (name.isNotBlank()) editName = false }) { Icon(Icons.Default.Check, "Namen übernehmen") } }, singleLine = true)
-                    else Row(Modifier.fillMaxWidth().clickable { editName = true }, verticalAlignment = Alignment.CenterVertically) {
-                        Text(name, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                        Icon(Icons.Default.Edit, "Artikelname bearbeiten", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 12.dp).size(20.dp))
-                    }
                     error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error) }
                     if (photo != item.localCoverPath || item.coverPending) Text("Das Foto wird beim nächsten Abgleich als Notion-Headerbild gespeichert.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    DetailSection("Bestand", Icons.Default.Inventory2) {
+                    if (!editing) DetailSection("Bestand", Icons.Default.Inventory2) {
+                        QuantityStepper(quantity, unit, onChange = { value ->
+                            val delta = value - quantity
+                            quantity = value
+                            if (item.name.isNotBlank() && delta != 0.0) { storedQuantity = value; onAdjust(delta) }
+                        })
+                        if (item.minimum > 0) ReadOnlyValue("Mindestbestand", "${InventoryMath.number(item.minimum)} $unit".trim())
+                    }
+                    if (editing) DetailSection("Bestand", Icons.Default.Inventory2) {
                         QuantityStepper(quantity, unit, onChange = { quantity = it })
                         ChoiceField("Einheit", unit, choices.units, choices.unitType == "rich_text") { unit = it }
                         OutlinedTextField(minimum, { minimum = it }, label = { Text("Mindestbestand") }, supportingText = { Text("Ab dieser Menge erinnert dich Yummify ans Nachkaufen.") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), singleLine = true)
                     }
-                    DetailSection("Einordnung", Icons.AutoMirrored.Filled.Label) {
+                    if (!editing && location.isNotBlank()) DetailSection("Einordnung", Icons.AutoMirrored.Filled.Label) {
+                        ReadOnlyValue("Lagerort", location)   // category and best-before date are chips on the image
+                    }
+                    if (editing) DetailSection("Einordnung", Icons.AutoMirrored.Filled.Label) {
                         if (choices.categoryMultiSelect) {
                             Text("Kategorie", style = MaterialTheme.typography.labelLarge)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -288,7 +333,7 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                         }
                         ChoiceField("Lagerort", location, choices.locations, choices.locationType == "rich_text") { location = it }
                     }
-                    DetailSection("Haltbarkeit", Icons.Default.Event) {
+                    if (editing) DetailSection("Haltbarkeit", Icons.Default.Event) {
                         Surface(onClick = { showDate = true }, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                             ListItem(headlineContent = { Text(expiry?.let { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) } ?: "MHD auswählen") },
                                 supportingContent = { Text("Nächstes Mindesthaltbarkeitsdatum") }, leadingContent = { Icon(Icons.Default.CalendarMonth, null) },
@@ -303,13 +348,12 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                                 value?.let { Text("$label: ${InventoryMath.number(it)} ${if (label == "Kalorien") "kcal" else "g"}") }
                             }
                             ingredients?.takeIf { it.isNotBlank() }?.let { Text("Zutaten: $it", style = MaterialTheme.typography.bodyMedium) }
-                            productSource?.let { source ->
-                                TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source))) }) { Text("Quelle bei Open Food Facts öffnen") }
-                                Text("Produktdaten: Open Food Facts (ODbL), Bilder: CC BY-SA", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
                         }
                     }
-                    OutlinedTextField(notes, { notes = it }, label = { Text("Notizen") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+                    if (editing) OutlinedTextField(notes, { notes = it }, label = { Text("Notizen") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+                    else if (notes.isNotBlank()) DetailSection("Notizen", Icons.Default.Notes) { Text(notes, style = MaterialTheme.typography.bodyMedium) }
+                    // Source note of the product data (Open Food Facts licence), kept at the very end.
+                    if (productSource != null) Text("Produktdaten: Open Food Facts (ODbL), Bilder: CC BY-SA", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -378,6 +422,24 @@ private fun QuantityStepper(value: Double, unit: String, onChange: (Double) -> U
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ImageChip(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, container: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color) {
+    Surface(shape = androidx.compose.foundation.shape.CircleShape, color = container, contentColor = content) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            icon?.let { Icon(it, null, Modifier.size(16.dp)) }
+            Text(text, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+private fun ReadOnlyValue(label: String, value: String) {
+    Column {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyLarge)
     }
 }
 

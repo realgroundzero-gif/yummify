@@ -4,6 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.yummify.app.data.model.CoveredItem
+import de.yummify.app.data.model.HomeAssistantExport
+import de.yummify.app.data.remote.HomeAssistantApi
+import de.yummify.app.data.repository.UserPreferencesRepository
 import de.yummify.app.data.model.ShoppingItem
 import de.yummify.app.data.model.StockSuggestion
 import de.yummify.app.data.model.StockSuggestions
@@ -32,6 +35,12 @@ data class ShoppingListUiState(
     val planning: Boolean = false,
     val covered: List<CoveredItem> = emptyList(),
     val suggestions: List<StockSuggestion> = emptyList(),
+    val homeAssistantReady: Boolean = false,
+    val homeAssistantList: String = "",
+    /** Articles a send would hand over right now, and how many of the open ones were sent before. */
+    val homeAssistantNew: Int = 0,
+    val homeAssistantOpen: Int = 0,
+    val sendingToHomeAssistant: Boolean = false,
     val message: String? = null
 )
 
@@ -51,6 +60,7 @@ enum class PlanRange(val title: String) {
 
 class ShoppingListViewModel(application: Application) : AndroidViewModel(application) {
     private val shoppingRepo = ShoppingListRepository.getInstance(application)
+    private val prefsRepo = UserPreferencesRepository.getInstance(application)
     private val _uiState = MutableStateFlow(ShoppingListUiState())
     val uiState: StateFlow<ShoppingListUiState> = _uiState.asStateFlow()
 
@@ -62,6 +72,14 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
         }
         viewModelScope.launch {
             shoppingRepo.covered.collect { covered -> _uiState.value = _uiState.value.copy(covered = covered) }
+        }
+        viewModelScope.launch {
+            combine(shoppingRepo.items, shoppingRepo.sentToHomeAssistant, prefsRepo.preferences) { list, sent, prefs ->
+                Triple(HomeAssistantExport.plan(list, sent, includeSent = false).size, HomeAssistantExport.plan(list, sent, includeSent = true).size, prefs)
+            }.collect { (fresh, open, prefs) ->
+                _uiState.value = _uiState.value.copy(homeAssistantReady = prefs.homeAssistantConfigured, homeAssistantList = prefs.homeAssistantTodo.removePrefix("todo."),
+                    homeAssistantNew = fresh, homeAssistantOpen = open)
+            }
         }
         viewModelScope.launch {
             combine(shoppingRepo.items, InventoryRepository.getInstance(application).items, shoppingRepo.dismissedSuggestions) { list, stock, dismissed ->
@@ -91,6 +109,32 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
             } catch (e: kotlinx.coroutines.CancellationException) { throw e
             } catch (e: Exception) { e.message ?: "Die Einkaufsliste konnte nicht erstellt werden." }
             _uiState.value = _uiState.value.copy(planning = false, message = message)
+        }
+    }
+
+    /** Hands the open articles to the Home Assistant to-do list (Bring). Stops at the first error and keeps what was sent. */
+    fun sendToHomeAssistant(includeSent: Boolean) {
+        if (_uiState.value.sendingToHomeAssistant) return
+        val prefs = prefsRepo.preferences.value
+        if (!prefs.homeAssistantConfigured) return
+        _uiState.value = _uiState.value.copy(sendingToHomeAssistant = true, message = null)
+        viewModelScope.launch {
+            val entries = HomeAssistantExport.plan(shoppingRepo.items.value, shoppingRepo.sentToHomeAssistant.value, includeSent)
+            val sent = mutableMapOf<String, String>()
+            val message = try {
+                if (entries.isEmpty()) "Alles ist schon gesendet. Mit „Alle erneut senden“ geht es noch einmal an Home Assistant."
+                else {
+                    withContext(Dispatchers.IO) {
+                        val api = HomeAssistantApi(prefs.homeAssistantUrl, prefs.homeAssistantToken)
+                        entries.forEach { entry -> api.addItem(prefs.homeAssistantTodo, entry.name, entry.description); sent[entry.itemId] = entry.signature }
+                    }
+                    "${entries.size} Artikel an Home Assistant gesendet (${prefs.homeAssistantTodo.removePrefix("todo.")})."
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e
+            } catch (e: Exception) {
+                (if (sent.isEmpty()) "" else "${sent.size} von ${entries.size} gesendet. ") + (e.message ?: "Senden an Home Assistant fehlgeschlagen.")
+            } finally { if (sent.isNotEmpty()) shoppingRepo.markSentToHomeAssistant(sent) }
+            _uiState.value = _uiState.value.copy(sendingToHomeAssistant = false, message = message)
         }
     }
 
@@ -125,6 +169,46 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
 
     fun clearDoneItems() {
         shoppingRepo.clearDoneItems()
+    }
+
+    private fun inventoryItemFor(shopping: ShoppingItem): de.yummify.app.data.model.InventoryItem {
+        val match = Regex("^([0-9]+(?:[.,][0-9]+)?)\\s*(.*)$").find(shopping.amountWithUnit.trim())
+        val quantity = shopping.quantity ?: match?.groupValues?.get(1)?.replace(',', '.')?.toDoubleOrNull()
+        require(quantity != null && quantity.isFinite() && quantity > 0) { "Menge für '${shopping.name}' ist nicht numerisch. Bitte den Artikel im Inventar manuell erfassen." }
+        val unit = shopping.unit ?: match?.groupValues?.get(2)?.ifBlank { "Stk" } ?: "Stk"
+        return de.yummify.app.data.model.InventoryItem(name = shopping.name, quantity = quantity, unit = unit, category = shopping.category)
+    }
+
+    /** Swipe action "Ins Inventar": books one article into the inventory and takes it off the list. */
+    fun moveToInventory(item: ShoppingItem): Boolean = try {
+        val inventory = de.yummify.app.data.repository.InventoryRepository.getInstance(getApplication())
+        val entry = inventoryItemFor(item)
+        viewModelScope.launch { inventory.addPurchased(entry, item.id); shoppingRepo.removeItems(setOf(item.id)) }
+        _uiState.value = _uiState.value.copy(message = "„${item.name}“ ist im Inventar.")
+        true
+    } catch (e: IllegalArgumentException) { _uiState.value = _uiState.value.copy(message = e.message); false }
+
+    /** Swipe action "Löschen". */
+    fun deleteItem(item: ShoppingItem) {
+        shoppingRepo.removeItems(setOf(item.id))
+        _uiState.value = _uiState.value.copy(message = "„${item.name}“ gelöscht.")
+    }
+
+    /** Swipe action "An Home Assistant": sends one article; it only leaves the list when Home Assistant accepted it. */
+    suspend fun sendItemToHomeAssistant(item: ShoppingItem): Boolean {
+        val prefs = prefsRepo.preferences.value
+        if (!prefs.homeAssistantConfigured) { _uiState.value = _uiState.value.copy(message = "Home Assistant ist noch nicht eingerichtet (Einstellungen › Verbindungen)."); return false }
+        val entry = HomeAssistantExport.plan(listOf(item.copy(isChecked = false)), emptyMap(), includeSent = true).firstOrNull() ?: return false
+        return try {
+            withContext(Dispatchers.IO) { HomeAssistantApi(prefs.homeAssistantUrl, prefs.homeAssistantToken).addItem(prefs.homeAssistantTodo, entry.name, entry.description) }
+            shoppingRepo.removeItems(setOf(item.id))
+            _uiState.value = _uiState.value.copy(message = "„${item.name}“ an Home Assistant gesendet.")
+            true
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(message = e.message ?: "Senden an Home Assistant fehlgeschlagen.")
+            false
+        }
     }
 
     fun transferPurchased() {

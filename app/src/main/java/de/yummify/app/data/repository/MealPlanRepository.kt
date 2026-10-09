@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.time.LocalDate
 import java.util.UUID
 
-class MealPlanRepository private constructor(private val context: Context) {
+class MealPlanRepository internal constructor(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("yummify_meal_plan", Context.MODE_PRIVATE)
     private val gson = Gson()
 
@@ -34,6 +34,9 @@ class MealPlanRepository private constructor(private val context: Context) {
         if (migrated != stored) prefs.edit().putString(KEY_MEALS, gson.toJson(migrated)).apply()
         return migrated
     }
+
+    /** Reads the stored plan again, e.g. after a data import or "Alle lokalen Daten löschen". */
+    fun reloadFromStorage() { _plannedMeals.value = loadMeals() }
 
     private fun saveMeals(list: List<MealPlanItem>) {
         prefs.edit().putString(KEY_MEALS, gson.toJson(list)).apply()

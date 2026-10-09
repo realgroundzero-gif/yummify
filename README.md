@@ -2,7 +2,15 @@
 
 **Deutsch** · [English](README.en.md)
 
-Yummify ist eine Android-App für Rezepte, Wochenplanung, Einkaufsliste und Lebensmittelvorräte. Sie verbindet deine Notion-Rezept- und Inventardatenbanken mit einer Oberfläche aus Kotlin und Jetpack Compose. Die App-Oberfläche ist derzeit deutschsprachig.
+Yummify ist eine Android-App für Rezepte, Wochenplanung, Einkaufsliste und Lebensmittelvorräte. Sie verbindet deine Notion-Rezept- und Inventardatenbanken mit einer Oberfläche aus Kotlin und Jetpack Compose. Die Oberfläche ist überwiegend deutsch; Darstellungs-Einstellungen und Rasterkarten gibt es zusätzlich auf Englisch.
+
+## Releases
+
+| Version | Datum | Kurzbeschreibung |
+|---|---|---|
+| v1.4.0 | geplant (noch kein Tag) | Einstellungen mit Untermenüs: Darstellung, Datenpflege, Daten und Backup (Export, Import, Speicher, Löschen) |
+
+Veröffentlicht ist bisher noch kein Tag. Eine Zeile kommt mit dem Git-Tag `vX.Y.Z` und der zugehörigen APK dazu.
 
 ## Funktionen
 
@@ -14,7 +22,7 @@ Yummify ist eine Android-App für Rezepte, Wochenplanung, Einkaufsliste und Lebe
 - Zutatenmengen durch Ändern der Portionen skalieren. Der Parser versteht Dezimalzahlen („1,5 kg“), Brüche („1/2 TL“, „1 1/2 EL“, „½ Bund“), Spannen („2–3 Zehen“, es zählt der größere Wert) und übliche Einheiten. Stehen Zutaten in Notion zeilenweise, bleiben Zusätze wie „1 Zwiebel, gewürfelt“ zusammen.
 - Zubereitung aus Notion-Seiteninhalten anzeigen, mit Unterstützung für Überschriften, Listen, Zitate, Hinweise und Textformatierung. Auch lange Seiten mit mehr als 100 Blöcken werden vollständig geladen.
 - Zeit, Kalorien, Schwierigkeit und Kosten erscheinen nur, wenn die passenden Notion-Spalten gepflegt sind (siehe Tabelle unten). Fehlt ein Cover, zeigt die App ein neutrales Platzhalterbild.
-- Favoriten über das Lesezeichen merken. Sie werden auf dem Gerät gespeichert (nicht in Notion) und lassen sich über das Lesezeichen in der Suchleiste als Filter „Nur Favoriten“ anzeigen.
+- Rezepte über das Lesezeichen in der Rezeptansicht speichern. Gespeicherte Rezepte liegen auf dem Gerät (nicht in Notion); in der Rezeptübersicht zeigt der Chip „Gespeichert“ neben den Kategorien nur sie an. In den Karten und der Suchleiste gibt es kein Lesezeichen mehr.
 - Rezepte teilen: Das Teilen-Symbol auf dem Titelbild öffnet das Android-Teilen-Menü mit einer Rezeptkarte (Bild, 1080 Pixel breit mit Titel, Zeit, Portionen, Kategorie und Zutaten) und einem Text mit Zutaten und Zubereitung. Mengen entsprechen den aktuell eingestellten Portionen. Chat-Apps wie WhatsApp und Telegram zeigen den Text meist als Bildunterschrift; wie eine App Bild und Text zusammen darstellt, entscheidet die Empfänger-App. Apps, die nur Text annehmen (z. B. Notizen), erhalten den reinen Text. Angaben ohne Notion-Spalte (z. B. die Zeit) entfallen. Der Notion-Link wird nicht mitgeteilt, weil er privat ist. Die Bilddatei liegt nur im App-Cache und wird beim nächsten Teilen gelöscht.
 - Bewertungen von einem bis fünf Sternen nach Notion zurückschreiben. Schlägt das Speichern fehl, wird die vorherige Bewertung wiederhergestellt und der Grund angezeigt.
 - Über den Plus-Button neue Rezepte direkt in Notion erstellen: Name, Beschreibung, Portionen, Kategorie, Zutaten, Zubereitungsschritte und optionales HTTPS-Cover. Das Formular prüft Eingaben und Datenbankschema; bei Fehlern bleibt der Entwurf erhalten.
@@ -35,15 +43,18 @@ Ein zweites Startbildschirm-Widget zeigt die aktuelle Einkaufsliste im dunklen Y
 ### Inventar
 
 - Lebensmittel mit Menge, Einheit, Kategorie, Lagerort, Mindestbestand, Mindesthaltbarkeitsdatum (MHD), Barcode, Notizen und Bild verwalten.
+- Die Inventarliste ist bewusst aufgeräumt: Sie zeigt Suche, Artikelzahl, Filter und die Artikel. Der Abgleich mit Notion läuft über Auto-Sync (Einstellungen › Profil), Artikel mit noch nicht übertragenen Änderungen tragen ein Wolken-Symbol. Artikel mit niedrigem Bestand findest du über den Filter „Nachkaufen“, einzelne Artikel setzt du mit dem Einkaufswagen auf die Einkaufsliste.
 - Kompakte Suche, Lagerortauswahl und Filter für niedrige Bestände, bald fällige und abgelaufene Artikel.
 - Alphabetisch sortierte, ein- und ausklappbare Kategorieabschnitte mit Artikelanzahl und kontrastreichen Überschriften, die beim Scrollen sichtbar bleiben. Artikel ohne Zuordnung erscheinen unter „Ohne Kategorie“; innerhalb der Gruppen wird nach MHD und Name sortiert.
 - Artikel im Vollbild bearbeiten: Mengen-Stepper mit auswählbarer Schrittweite, Auswahlfelder aus dem Notion-Schema und Datumsauswahl. Die Standardschritte sind 1 für Stück und Packungen, 50 für g/ml und 0,1 für kg/l.
 - Durch Wischen nach links oder rechts mit anschließender Bestätigung löschen. Für Screenreader ist die Löschaktion ebenfalls verfügbar.
 - Plus-Buttons in Inventar und Rezeptübersicht berücksichtigen die tatsächliche Höhe der unteren Navigation, auch bei größerer Schrift. Beim Scrollen folgen Kopfbereich (Logo, Suche, Status) und untere Navigation dem Finger: Sie verschwinden beim Abwärtsscrollen und kommen beim Zurückscrollen sofort wieder; lässt du los, rasten sie ein. Kategorie-Chips bleiben stehen, bei laufendem Screenreader und kurzen Listen bleibt alles sichtbar.
 
+**Artikeldetails:** Ein vorhandener Artikel öffnet sich schreibgeschützt: Der Name steht als Überschrift ganz oben, darunter das Bild mit den gewählten Kategorien und dem MHD als Chips, der Bestand mit Plus/Minus (Änderungen der Menge werden sofort gespeichert, auch ohne Bearbeitungsmodus), der Lagerort (ohne Auswahllisten), Produktinformationen und Notizen; der Hinweis auf die Open-Food-Facts-Lizenz steht ganz unten, einen Link zur Quelle gibt es nicht mehr. Barcode-Felder erscheinen nur beim Bearbeiten. Ein Tipp auf die Überschrift (oder den Stift) wechselt in die Bearbeitung mit allen Feldern; neue Artikel starten direkt dort.
+
 ### Barcode und automatische Produktdaten
 
-Der Google-Code-Scanner erfasst Barcodes mit der Kamera. Dafür sind Google Play-Dienste erforderlich; das Scanner-Modul wird bei Bedarf vor dem ersten Scan heruntergeladen. Alternativ lässt sich der Barcode manuell eingeben.
+Ein langer Druck auf den Plus-Button im Inventar öffnet ein kleines Menü mit „Barcode scannen“: Es legt einen neuen Artikel an und öffnet sofort den Barcode-Scanner; ein kurzer Tipp öffnet wie bisher das leere Formular. Der Google-Code-Scanner erfasst Barcodes mit der Kamera. Dafür sind Google Play-Dienste erforderlich; das Scanner-Modul wird bei Bedarf vor dem ersten Scan heruntergeladen. Alternativ lässt sich der Barcode manuell eingeben.
 
 Beim Anlegen eines Artikels lädt ein Scan automatisch Daten von [Open Food Facts](https://world.openfoodfacts.org). Nach manueller Eingabe kann „Produktdaten laden“ gewählt werden. Die öffentliche API wird mit deutschem Sprachwunsch und einem Yummify-User-Agent aufgerufen; Notion-Zugangsdaten werden dabei nicht übertragen.
 
@@ -59,18 +70,49 @@ Vorhandene Notion-Cover werden in den Artikeldetails angezeigt. Die Bildaktion b
 
 Rezeptzutaten zeigen den verfügbaren Vorrat. Fehlende Zutaten lassen sich unter Berücksichtigung der gewählten Portionen und kompatiblen Einheiten (g/kg, ml/l, Stück) zur Einkaufsliste hinzufügen. Steht dieselbe Zutat bereits offen auf der Liste, wird die Menge addiert (z. B. 200 g + 0,3 kg Tomaten = 500 g) und das Rezept ergänzt, statt einen doppelten Eintrag anzulegen. Die Abteilung (Obst & Gemüse, Kühlregal, Fisch & Fleisch, Gewürze & Öle, Vorrat) wird aus dem Namen abgeleitet; kurze Wörter wie „Ei“ zählen nur als ganzes Wort, damit etwa „Reis“ oder „Rindfleisch“ richtig einsortiert werden. Eine neue Einkaufsliste startet leer. Abgelaufene Vorräte zählen nicht als verfügbar. Namen werden ohne Modell und ohne Netz verglichen: Groß-/Kleinschreibung, Umlaute, Mehrzahl-Endungen, Wortreihenfolge, Mengen, Einheiten, Verpackung („Dose“, „Bund“) und Zubereitungswörter („frisch“, „gehackt“, Text in Klammern) spielen keine Rolle. So gelten „Rote Paprika“ und „Paprika rot“, „Passierte Tomaten (Dose)“ und „Tomaten passiert“ sowie „Frühlingszwiebeln, gehackt“ und „Lauchzwiebeln“ (kleine Synonymliste, z. B. auch Möhre/Karotte, Sahne/Schlagsahne, Quark/Topfen) als dieselbe Zutat. Der Abgleich ist bewusst streng: „Paprika“ passt nicht zu „Rote Paprika“, „Milch“ nicht zu „Kokosmilch“, „Butter“ nicht zu „Erdnussbutter“. Eine nicht erkannte Gleichheit lässt nur eine Zeile mehr auf der Einkaufsliste; eine falsche würde eine fehlende Zutat verschwinden lassen. Dieselbe Regel gilt für Fehlmengen, Abbuchen („Gekocht“), die Einkaufsliste und die Anzeige „Im Vorrat“.
 
+In der Zutatenliste eines Rezepts zeigt jede Zutat, wie der Vorrat sie deckt: „Im Vorrat“, „Fehlt 200 g“ (teilweise gedeckt), „Andere Einheit“ mit dem Zusatz „Vorrat: 3 Stück“ unter dem Namen (derselbe Artikel liegt in einer Einheit vor, die sich nicht mit dem Rezept vergleichen lässt, etwa Stück statt Gramm; er wird nicht als vorhanden gezählt), „Ähnlich“ mit dem Artikelnamen unter der Zutat (kein sicherer Treffer, nur ein Hinweis) oder „Kaufen“. Schreibvarianten von Einheiten (Dose/Dosen, Packung/Pck./Päckchen, Stk./Stück, Zehe/Zehen) gelten als gleich. Eine Zutat ohne Mengenangabe wie „Salz“ gilt nur dann als vorrätig, wenn der Artikel auch im Vorrat liegt.
+
+**Einzelne Zutat auf die Einkaufsliste:** In der Zutatenliste eines Rezepts hat jede Zutat rechts einen Einkaufswagen. Ein Tipp setzt genau diese Zutat auf die Liste, und zwar die fehlende Menge (bei „Andere Einheit“, „Ähnlich“ und „Kaufen“ die volle Menge für die gewählten Portionen, bei ausreichendem Vorrat die Rezeptmenge). Steht die Zutat schon auf der Liste, zeigt der Knopf ein Häkchen.
+
+**Wischen in der Einkaufsliste:** Nach rechts wischen zeigt „Ins Inventar“ und „Löschen“ (mit einem Knopf zum Abbrechen). „Ins Inventar“ bucht den Artikel mit seiner Menge ins Inventar und nimmt ihn von der Liste; ist die Menge nicht numerisch, bleibt er stehen und die App sagt es. Nach links wischen schickt den Artikel an Home Assistant (Bring) und nimmt ihn von der Liste, aber erst, wenn Home Assistant ihn angenommen hat; bei einem Fehler rutscht er zurück und die Meldung nennt den Grund. Das Wischen nach links gibt es nur, wenn Home Assistant eingerichtet ist.
+
 **Einkaufsliste aus dem Wochenplan:** „Aus Wochenplan hinzufügen“ (Nächste 7 Tage, Rest dieser Woche oder Nächste Woche) sammelt die Zutaten aller noch nicht gekochten Gerichte im Zeitraum, rechnet gleiche Zutaten zusammen (auch g und kg), zieht den nicht abgelaufenen Vorrat ab und zieht ab, was schon auf der Liste steht (offen oder abgehakt). Zweimaliges Ausführen fügt deshalb nichts doppelt hinzu. Teilweise gedeckte Zutaten kommen mit der fehlenden Menge und dem Hinweis „Vorrat deckt …“ auf die Liste. Zutaten, die der Vorrat vollständig deckt, erscheinen im Abschnitt **„Bereits im Vorrat“**; mit „Doch kaufen“ wandern sie mit einem Tipp zurück auf die Liste, „Ausblenden“ räumt den Abschnitt auf. Zutaten ohne Mengenangabe („Salz“) gelten als gedeckt, wenn der Vorrat sie in beliebiger Menge enthält. Mengen gelten für die im Rezept angegebenen Portionen, weil der Wochenplan keine Portionszahl speichert. Gerichte, deren Rezept in Notion nicht mehr existiert, werden in der Meldung genannt.
 
 **„Vielleicht schon da“:** Hat die Einkaufsliste einen offenen Eintrag, den der Abgleich nicht als Vorrat erkennt, der Vorrat aber etwas Ähnliches (nicht abgelaufen, Bestand über 0) enthält, etwa „Hähnchenbrustfilet“ auf der Liste und „Hähnchenbrust“ im Vorrat, fragt die App nach. „Ist vorrätig“ nimmt den Eintrag von der Liste und legt ihn unter „Bereits im Vorrat“ ab, „Doch kaufen“ macht das rückgängig. „Nein, kaufen“ blendet den Hinweis für genau dieses Namenspaar dauerhaft aus, unabhängig von der Menge. Die App ändert die Liste nie ohne deine Antwort. Ein Embedding-Modell ist dafür nicht im Einsatz: Die Messung mit 134 Zutatenpaaren (`ingredient_pairs.tsv`) hat gezeigt, dass die getesteten Modelle deutsche Zutaten nicht sauber trennen (z. B. Öl ~ Olivenöl), während der Regelabgleich 48 von 58 gleichen Paaren erkennt und kein verschiedenes Paar verbindet.
+
+**Einkaufsliste an Home Assistant (Bring):** Unter Einstellungen › Verbindungen trägst du die Adresse deines Home Assistant (z. B. `http://homeassistant.local:8123` oder die Nabu-Casa-Adresse) und einen Langzeit-Zugriffstoken ein (in Home Assistant unter Profil › Sicherheit). „Verbinden & Listen laden“ prüft beides und zeigt die Aufgabenlisten (`todo.*`), die der Bring-Integration zuerst; nach dem Speichern erscheint in der Einkaufsliste der Button „An Home Assistant senden“. Er schickt die offenen, nicht abgehakten Artikel über den Dienst `todo.add_item`: Der Name wird der Bring-Artikel, die Menge steht in der Beschreibung (bei Bring als Zusatzinfo). Die App merkt sich, was sie gesendet hat, und schickt beim nächsten Mal nur Neues oder Geändertes; „Auch bereits gesendete erneut senden“ erzwingt alles. Es wird nur in Richtung Home Assistant gesendet, ein Abhaken in Bring kommt nicht zurück. Klartext-HTTP ist nur für Adressen im Heimnetz erlaubt (`.local`, private IP-Bereiche, Hostnamen ohne Punkt, Tailscale), alles andere braucht HTTPS. Der Token liegt wie der Notion-Token nur auf dem Gerät und ist nicht im Android-Backup; ein Export enthält ihn nur mit ausdrücklicher Zustimmung. Voraussetzung: Home Assistant 2023.11 oder neuer mit eingerichteter Bring-Integration. Nicht an einem echten Home Assistant geprüft, nur gegen einen simulierten Server.
 
 „Gekocht · Zutaten vom Vorrat abbuchen“ zieht nach Bestätigung die benötigten Mengen ab und verwendet zuerst Chargen mit dem frühesten MHD. Fehlt eine Zutat, wird nichts abgebucht. Niedrige Bestände können ohne doppelte offene Einträge auf die Einkaufsliste gesetzt werden.
 
 Abgehakte Einkaufsartikel lassen sich mit ihren Mengen ins Inventar übertragen und aus der Einkaufsliste entfernen. Eine gespeicherte Übernahme-ID verhindert Doppelbuchungen nach einem Abbruch. Nicht numerische Mengen müssen manuell erfasst werden; Lagerort und MHD lassen sich anschließend ergänzen.
 
+## Einstellungen
+
+Das Menü öffnet sieben Untermenüs:
+
+- **Profil:** Anzeigename (bleibt auf diesem Gerät) und Auto-Sync für den Inventarabgleich.
+- **Darstellung:** Farbschema, dynamische Farben, Startseite, Rezeptansicht und Sprache (siehe unten).
+- **Verbindungen:** Notion-Token, Rezept- und Inventar-Datenbank-ID, Verbindungstest und Synchronisation (siehe [Notion einrichten](#notion-einrichten)).
+- **Datenpflege:** Auswahllisten der Notion-Datenbanken erweitern (siehe unten).
+- **Daten und Backup:** Export, Import, Speicher und Löschen lokaler Daten (siehe [Daten und Backup](#daten-und-backup)).
+- **Info** und **Rechtliches:** Die Untermenüs sind angelegt, haben aber noch keinen Inhalt.
+
+**Darstellung**
+
+- **Farbschema:** Hell, Dunkel oder System (folgt dem Modus des Geräts). Die Wahl wirkt ohne Neustart. Wer vorher den Dark-Mode-Schalter genutzt hat, behält seine Wahl (an = Dunkel, aus = Hell; einmalige Übernahme). Ohne frühere Einstellung gilt Hell. Der Schalter im Profil ist entfallen.
+- **Dynamische Farben** (ab Android 12): an = Material-You-Farben passend zum Hintergrundbild, aus = die festen Yummify-Farben. Unter Android 11 und älter ist die Option deaktiviert („Erst ab Android 12 verfügbar“).
+- **Startseite:** Rezepte (Standard), Wochenplan, Einkaufsliste oder Inventar. Sie öffnet sich beim Start aus dem Launcher. Widgets und Links mit eigenem Ziel haben Vorrang; Drehen des Geräts oder Rückkehr aus dem Hintergrund springt nicht zur Startseite zurück.
+- **Rezeptansicht:** Liste (Standard) oder Raster. Das Raster zeigt die Rezepte in Spalten von mindestens 150 dp Breite unter der Karte „Rezept des Tages“. Die Wahl gilt nur für die Rezeptübersicht, nicht für das Inventar.
+- **Sprache:** System, Deutsch oder English, unabhängig von der Systemsprache. Ab Android 13 zusätzlich unter „App-Sprachen“ in den Systemeinstellungen. Übersetzt sind die Darstellungs-Einstellungen, der Menüeintrag „Darstellung“ und die Rasterkarten; alle übrigen Bildschirme bleiben Deutsch.
+
+Alle Werte bleiben nach einem Neustart erhalten. Noch nicht auf einem Gerät geprüft: Material-You-Farben und der Sprachwechsel unter Android 12 und älter.
+
+**Datenpflege:** Hier erweiterst du die Auswahllisten (Select und Multi-Select, etwa Kategorie, Küche, Lagerort oder Einheit) der verbundenen Notion-Datenbanken. Neuen Eintrag eingeben und hinzufügen; die App legt ihn sofort in Notion an und er steht danach in der App zur Wahl. Bestehende Einträge werden mit ihrer ID unverändert mitgeschickt, nichts wird umbenannt oder gelöscht. Doppelte Einträge (ohne Beachtung der Groß-/Kleinschreibung) werden nicht erneut angelegt. Einträge dürfen höchstens 100 Zeichen lang sein und kein Komma enthalten. Die Integration braucht das Recht, Inhalte zu ändern; fehlt es, zeigt die App die Meldung von Notion. Textfelder und Status-Spalten lassen sich so nicht erweitern, die App wandelt keine Spalten um. Neue Inventar-Einträge stehen danach direkt in den Auswahlfeldern des Inventars zur Verfügung.
+
 ## Notion einrichten
 
 1. Eine Notion-Integration mit Lese-, Einfüge- und Änderungsrechten einrichten und die benötigten Datenbanken beziehungsweise übergeordneten Seiten für diese Integration freigeben.
-2. Unter Einstellungen den Integration-Token und die Rezept-Datenbank-ID eintragen, speichern und die Verbindung prüfen.
+2. Unter Einstellungen › Verbindungen den Integration-Token und die Rezept-Datenbank-ID eintragen, speichern und die Verbindung prüfen.
 3. Optional eine Inventar-Datenbank-ID eintragen oder „Inventar-Datenbank in Notion anlegen“ wählen. Die App erstellt oder verwendet „Yummify Inventar“ unter der übergeordneten Seite der Rezeptdatenbank. Diese Seite muss für die Integration freigegeben sein.
 4. Die Inventar-Verbindung prüfen und synchronisieren. Das Inventar verwendet denselben Token wie die Rezepte.
 
@@ -136,6 +178,22 @@ Inventaränderungen werden zuerst lokal gespeichert. Ausstehende Änderungen, L�
 
 Das Inventar ist nach Datenbank getrennt. Ein zunächst lokal erfasstes Inventar wird bei der ersten Einrichtung übernommen. Noch nicht synchronisierte lokale Änderungen haben bei Konflikten Vorrang; Änderungen anderer Geräte werden beim nächsten Abgleich geladen. Wochenplan, Einkaufsliste und Favoriten werden lokal gespeichert.
 
+## Daten und Backup
+
+Einstellungen → „Daten und Backup“ bündelt alles rund um die lokalen Daten. Die App braucht dafür keine Speicherberechtigung (angefordert werden nur Internet und Netzwerkstatus); die Dateiauswahl übernimmt der Android-Dateiwähler.
+
+- **Daten exportieren:** Erstellt eine ZIP-Datei mit Rezepte-Cache, Favoriten, Wochenplan, Einkaufsliste (samt „Bereits im Vorrat“ und abgelehnten Vorschlägen), Inventar, Einstellungen, den lokalen Produktbildern und einem Manifest (Formatversion, App-Version, Zeitstempel, Angabe, ob ein Token enthalten ist). Die Erfolgsmeldung nennt die Zahl der gesicherten Elemente. Wird die Datei nicht vollständig geschrieben, meldet die App einen Fehler und löscht die Teildatei. Lässt sie sich nicht löschen, warnt die App, dass die Datei nicht verwendet werden darf.
+- **Notion-Token:** Standardmäßig ist der Token nicht im Export. „Notion-Token in Export aufnehmen“ steht beim Öffnen immer auf Aus und verlangt eine ausdrückliche Bestätigung. Die Datei ist nicht verschlüsselt; wer sie besitzt, kann den Token lesen.
+- **Daten importieren:** Die Datei wird zuerst vollständig geprüft (gültige ZIP, Manifest, lesbare JSON-Dateien, bekannte Formatversion). Erst nach der Zusammenfassung und deiner Bestätigung wird etwas geändert. Bei einer defekten Datei, einem fremden Format oder einer neueren Formatversion bricht der Import mit einer Meldung ab, und deine Daten bleiben unverändert. Schlägt das Übernehmen mittendrin fehl, wird der vorherige Stand wiederhergestellt. Ältere Exporte ohne neuere Felder werden beim Laden ergänzt. Stammt das Inventar aus einer anderen Notion-Datenbank, werden die Verknüpfungen zu Notion-Seiten entfernt.
+- **Zusammenführen** (Standard): Elemente werden über ihre ID zusammengelegt, nichts geht verloren. Weil einzelne Elemente keinen Änderungszeitpunkt haben, entscheidet bei Konflikten der Zeitpunkt je Bereich: Ist der Export neuer als die letzte lokale Änderung des Bereichs, gewinnt die Datei, sonst (auch bei Gleichstand) der lokale Stand. Nicht abgeglichene lokale Inventar-Änderungen haben immer Vorrang vor einem unveränderten Dateistand. Aus der Datei übernommene Inventar-Einträge werden als ausstehend markiert und beim normalen Abgleich nach Notion übertragen. Löschungen werden nicht übertragen.
+- **Vorhandene Daten ersetzen:** Ersetzt die lokalen Daten nach einer Sicherheitsabfrage durch den Dateiinhalt. Nicht synchronisierte lokale Inventar-Änderungen gehen dabei verloren. Notion wird nicht verändert.
+- **Token im Import:** Enthält die Datei einen Token, fragt die App vor der Übernahme. Ohne Zustimmung bleibt der aktuelle Token. Datenbank-IDs werden nur übernommen, wenn lokal noch keine gesetzt ist.
+- **Automatisches Backup:** Schalter, Standard an. Dann sichert Android die App-Daten gemäß den Backup-Regeln, immer ohne den Notion-Token. Aus: Android sichert keine App-Daten (Cloud-Backup und Geräteübertragung). Bereits vorhandene Backups bleiben bestehen und lassen sich in den Android-Einstellungen löschen. Der Schalter gilt pro Gerät und gehört nicht zum Export.
+- **Speicher:** Zeigt getrennt, wie viel Platz Daten (JSON/Einstellungen), lokale Produktbilder und Cache belegen. „Bildcache leeren“ leert nur den Cache; Rezepte, Inventar und Produktbilder bleiben.
+- **Alle lokalen Daten löschen:** Entfernt Rezepte-Cache, Favoriten, Wochenplan, Einkaufsliste, Inventar inklusive lokaler Produktbilder und den Cache von diesem Gerät. Nach Warnung (inklusive Hinweis auf nicht synchronisierte Inventar-Änderungen) und Eintippen von „LÖSCHEN“. Es wird nichts an Notion geschrieben oder gelöscht; Token, Datenbank-IDs und Einstellungen bleiben, Widgets werden aktualisiert.
+
+Noch nicht auf einem Gerät geprüft: der Android-Dateiwähler sowie das Verhalten des Backup-Agents im System (Cloud-Backup und Geräteübertragung).
+
 ## Datenschutz und Sicherheit
 
 - Der Notion-Token wird nur auf dem Gerät gespeichert und ist von Android-Cloud-Backups und Geräteübertragungen ausgeschlossen. Nach einem Gerätewechsel muss er neu eingegeben werden.
@@ -144,7 +202,7 @@ Das Inventar ist nach Datenbank getrennt. Ein zunächst lokal erfasstes Inventar
 
 ## Entwickeln, bauen und installieren
 
-Aktueller App-Stand: **1.3.0**, Android **8.0+ (API 26)**; Compile-/Target-SDK **36** (Android 16).
+Versionsname: `versionName` kommt aus dem letzten Git-Tag `vX.Y.Z`. Solange kein Tag existiert, greift der Fallback **1.3.0** aus `app/build.gradle.kts`. Mindestens Android **8.0 (API 26)**; Compile-/Target-SDK **36** (Android 16).
 
 Benötigt werden JDK 17 oder neuer, Android SDK 36 und die Android-Build-Werkzeuge. Android Studio kann für die Entwicklung verwendet werden. Den SDK-Pfad über `local.properties` (`sdk.dir=…`) oder `ANDROID_HOME` konfigurieren.
 
@@ -166,7 +224,7 @@ adb -d install -r app/build/outputs/apk/preview/app-preview.apk
 
 **Preview-Build:** `assemblePreview` erzeugt `app-preview.apk` mit der Paket-ID `de.yummify.app.preview` und dem Namen „Yummify Preview“. Die App wird neben der normalen Yummify-App installiert, ersetzt sie nicht und teilt keine Daten mit ihr. So lassen sich neue Versionen gefahrlos ausprobieren; Notion-Token und Datenbank-IDs müssen dort einmal eingetragen werden. Die APK ist mit dem Debug-Schlüssel signiert und nur zum Testen gedacht.
 
-Die Tests decken unter anderem Mengenrechnung, Haltbarkeit, atomare Rezept-Abbuchung, Datumsermittlung, Pagination, Notion-Feldzuordnung einschließlich `kcal`, Rezeptanlage und Rezept-Lesen, Zutaten-Parser, Notion-Links, Ratenbegrenzung, Einkaufskategorien und Zusammenführung, Fehlerbehandlung, Wiederaufnahme unterbrochener Übertragungen, beschädigten Speicher, Offline-Speicherung, Abgleich ohne Eingabe-Blockade, Einkaufs-Doppelbuchungen und Widget-Darstellung ab.
+Die Tests decken unter anderem Mengenrechnung, Haltbarkeit, atomare Rezept-Abbuchung, Datumsermittlung, Pagination, Notion-Feldzuordnung einschließlich `kcal`, Rezeptanlage und Rezept-Lesen, Zutaten-Parser, Notion-Links, Ratenbegrenzung, Einkaufskategorien und Zusammenführung, Fehlerbehandlung, Wiederaufnahme unterbrochener Übertragungen, beschädigten Speicher, Offline-Speicherung, Abgleich ohne Eingabe-Blockade, Einkaufs-Doppelbuchungen und Widget-Darstellung ab. Dazu kommen Export und Import (Prüfung, Zusammenführen, Ersetzen, Token-Behandlung), die Darstellungs-Einstellungen, die Datenpflege-Optionen und die Backup-Regeln.
 
 Ein Release-Build (`./gradlew assembleRelease`) wird nur signiert, wenn der Schlüssel und seine Passwörter lokal hinterlegt sind. Die Passwörter stehen nicht mehr im Repository, sondern in `local.properties` (nicht versioniert) oder in Umgebungsvariablen (`YUMMIFY_KEYSTORE`, `YUMMIFY_STORE_PW`, `YUMMIFY_KEY_ALIAS`, `YUMMIFY_KEY_PW`):
 

@@ -25,8 +25,8 @@ data class SettingsUiState(
     val isSyncing: Boolean = false,
     val connectionResult: String? = null,
     val isSaving: Boolean = false,
-    val darkModeEnabled: Boolean = false,
-    val autoSyncEnabled: Boolean = true
+    val autoSyncEnabled: Boolean = true,
+    val profileName: String = ""
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -48,8 +48,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 saved = prefs
                 val current = _uiState.value
                 _uiState.value = current.copy(
-                    darkModeEnabled = prefs.darkModeEnabled,
                     autoSyncEnabled = prefs.autoSyncEnabled,
+                    profileName = prefs.profileName,
                     tokenInput = if (inputsChanged) prefs.tokenInput else current.tokenInput,
                     databaseIdInput = if (inputsChanged) prefs.databaseIdInput else current.databaseIdInput,
                     inventoryDatabaseIdInput = if (inputsChanged) prefs.inventoryDatabaseIdInput else current.inventoryDatabaseIdInput,
@@ -165,9 +165,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun toggleDarkMode(enabled: Boolean) {
-        prefsRepo.setDarkModeEnabled(enabled)
-    }
+    fun saveProfileName(name: String) = prefsRepo.setProfileName(name)
 
     fun toggleAutoSync(enabled: Boolean) {
         prefsRepo.setAutoSyncEnabled(enabled)

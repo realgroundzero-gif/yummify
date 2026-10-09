@@ -101,6 +101,14 @@ class RecipeRepository internal constructor(
         }
     }
 
+    /** Reads cache and favorites from storage again (data import or deletion). Does not contact Notion. */
+    suspend fun reloadFromStorage() = withContext(Dispatchers.IO) {
+        loadMutex.withLock {
+            _favorites.value = prefs.getStringSet(KEY_FAVORITES, emptySet()).orEmpty().toSet()
+            loadCached()
+        }
+    }
+
     fun refreshAsync() { scope.launch { refresh() } }
 
     /** Full recipe including the page body. Falls back to the cached list entry when offline. */
