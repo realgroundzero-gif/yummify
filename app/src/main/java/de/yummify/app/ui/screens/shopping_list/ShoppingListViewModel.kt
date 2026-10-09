@@ -171,6 +171,46 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
         shoppingRepo.clearDoneItems()
     }
 
+    private fun inventoryItemFor(shopping: ShoppingItem): de.yummify.app.data.model.InventoryItem {
+        val match = Regex("^([0-9]+(?:[.,][0-9]+)?)\\s*(.*)$").find(shopping.amountWithUnit.trim())
+        val quantity = shopping.quantity ?: match?.groupValues?.get(1)?.replace(',', '.')?.toDoubleOrNull()
+        require(quantity != null && quantity.isFinite() && quantity > 0) { "Menge für '${shopping.name}' ist nicht numerisch. Bitte den Artikel im Inventar manuell erfassen." }
+        val unit = shopping.unit ?: match?.groupValues?.get(2)?.ifBlank { "Stk" } ?: "Stk"
+        return de.yummify.app.data.model.InventoryItem(name = shopping.name, quantity = quantity, unit = unit, category = shopping.category)
+    }
+
+    /** Swipe action "Ins Inventar": books one article into the inventory and takes it off the list. */
+    fun moveToInventory(item: ShoppingItem): Boolean = try {
+        val inventory = de.yummify.app.data.repository.InventoryRepository.getInstance(getApplication())
+        val entry = inventoryItemFor(item)
+        viewModelScope.launch { inventory.addPurchased(entry, item.id); shoppingRepo.removeItems(setOf(item.id)) }
+        _uiState.value = _uiState.value.copy(message = "„${item.name}“ ist im Inventar.")
+        true
+    } catch (e: IllegalArgumentException) { _uiState.value = _uiState.value.copy(message = e.message); false }
+
+    /** Swipe action "Löschen". */
+    fun deleteItem(item: ShoppingItem) {
+        shoppingRepo.removeItems(setOf(item.id))
+        _uiState.value = _uiState.value.copy(message = "„${item.name}“ gelöscht.")
+    }
+
+    /** Swipe action "An Home Assistant": sends one article; it only leaves the list when Home Assistant accepted it. */
+    suspend fun sendItemToHomeAssistant(item: ShoppingItem): Boolean {
+        val prefs = prefsRepo.preferences.value
+        if (!prefs.homeAssistantConfigured) { _uiState.value = _uiState.value.copy(message = "Home Assistant ist noch nicht eingerichtet (Einstellungen › Verbindungen)."); return false }
+        val entry = HomeAssistantExport.plan(listOf(item.copy(isChecked = false)), emptyMap(), includeSent = true).firstOrNull() ?: return false
+        return try {
+            withContext(Dispatchers.IO) { HomeAssistantApi(prefs.homeAssistantUrl, prefs.homeAssistantToken).addItem(prefs.homeAssistantTodo, entry.name, entry.description) }
+            shoppingRepo.removeItems(setOf(item.id))
+            _uiState.value = _uiState.value.copy(message = "„${item.name}“ an Home Assistant gesendet.")
+            true
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(message = e.message ?: "Senden an Home Assistant fehlgeschlagen.")
+            false
+        }
+    }
+
     fun transferPurchased() {
         if (_uiState.value.transferring) return
         val bought = _uiState.value.allItems.filter { it.isChecked }

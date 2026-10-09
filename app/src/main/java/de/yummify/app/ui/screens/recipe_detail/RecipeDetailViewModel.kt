@@ -44,6 +44,8 @@ class RecipeDetailViewModel(application: Application) : AndroidViewModel(applica
     private val shoppingRepo = ShoppingListRepository.getInstance(application)
     private val inventoryRepo = InventoryRepository.getInstance(application)
     val stock = inventoryRepo.items
+    /** Articles on the shopping list, so a recipe ingredient can show that it is already there. */
+    val shoppingItems = shoppingRepo.items
     private val _uiState = MutableStateFlow(RecipeDetailUiState())
     val uiState: StateFlow<RecipeDetailUiState> = _uiState.asStateFlow()
     private var loadedId: String? = null
@@ -160,6 +162,13 @@ class RecipeDetailViewModel(application: Application) : AndroidViewModel(applica
             } catch (e: Exception) { showMessage(e.message ?: "Abbuchen fehlgeschlagen.") }
             finally { _uiState.value = _uiState.value.copy(consuming = false) }
         }
+    }
+
+    /** Puts one ingredient on the shopping list: what is still missing, or the full amount if nothing usable is in stock. */
+    fun addIngredientToShoppingList(ingredient: de.yummify.app.data.model.Ingredient) {
+        val multiplier = portionMultiplier()
+        val amount = InventoryMath.shoppingAmount(ingredient, multiplier, stock.value)
+        shoppingRepo.addIngredients(_uiState.value.recipe?.title.orEmpty(), listOf(ingredient.copy(amount = amount)), 1.0)
     }
 
     fun addIngredientsToShoppingList() {

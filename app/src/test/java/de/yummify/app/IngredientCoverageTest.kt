@@ -58,4 +58,12 @@ class IngredientCoverageTest {
         assertEquals(500.0, c.shortfall, 1e-9)
         assertEquals(Coverage.MISSING, cover(Ingredient("Milch", 1.0, "l"), stock("Butter", 1.0, "Stk")).state)
     }
+
+    @Test fun shoppingAmountIsTheShortfallOrTheFullAmount() {
+        assertEquals(400.0, InventoryMath.shoppingAmount(Ingredient("Kartoffeln", 1000.0, "g"), 1.0, listOf(stock("Kartoffeln", 600.0, "g")), today), 1e-9)
+        assertEquals(1000.0, InventoryMath.shoppingAmount(Ingredient("Kartoffeln", 500.0, "g"), 2.0, emptyList(), today), 1e-9)
+        assertEquals(500.0, InventoryMath.shoppingAmount(Ingredient("Kartoffeln", 500.0, "g"), 1.0, listOf(stock("Kartoffeln", 3.0, "Stück")), today), 1e-9)   // other unit: full amount
+        assertEquals(500.0, InventoryMath.shoppingAmount(Ingredient("Kartoffeln", 500.0, "g"), 1.0, listOf(stock("Kartoffeln", 2.0, "kg")), today), 1e-9)   // enough, but the user asked for it
+        assertEquals(0.0, InventoryMath.shoppingAmount(Ingredient("Salz", 0.0, ""), 1.0, emptyList(), today), 1e-9)
+    }
 }

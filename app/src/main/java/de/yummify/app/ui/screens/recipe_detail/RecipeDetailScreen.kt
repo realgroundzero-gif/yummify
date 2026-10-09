@@ -45,6 +45,7 @@ fun RecipeDetailScreen(
     LaunchedEffect(recipeId) { viewModel.loadRecipe(recipeId) }
     val state by viewModel.uiState.collectAsState()
     val stock by viewModel.stock.collectAsState()
+    val shoppingItems by viewModel.shoppingItems.collectAsState()
     var showConsumeDialog by remember { mutableStateOf(false) }
     val recipe = state.recipe
     var showPlanDialog by remember { mutableStateOf(false) }
@@ -478,6 +479,16 @@ fun RecipeDetailScreen(
                             color = when { covered -> MaterialTheme.colorScheme.secondary; hint -> MaterialTheme.colorScheme.onTertiaryContainer; else -> MaterialTheme.colorScheme.primary },
                             maxLines = 1, softWrap = false,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                    // One tap puts just this ingredient on the shopping list; afterwards it shows that it is there.
+                    val onList = shoppingItems.any { de.yummify.app.data.model.IngredientMatcher.same(it.name, ingredient.name) }
+                    IconButton(onClick = { viewModel.addIngredientToShoppingList(ingredient) }, enabled = !onList, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            if (onList) Icons.Filled.Check else Icons.Filled.AddShoppingCart,
+                            if (onList) "${ingredient.name} steht auf der Einkaufsliste" else "${ingredient.name} zur Einkaufsliste",
+                            tint = if (onList) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }

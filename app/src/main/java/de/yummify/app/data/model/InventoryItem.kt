@@ -134,6 +134,13 @@ object InventoryMath {
      */
     data class Cover(val state: Coverage, val needed: Double, val available: Double, val shortfall: Double, val otherUnit: String?)
 
+    /** Amount that goes on the shopping list for one ingredient: what is missing, otherwise the full recipe amount; 0 without an amount. */
+    fun shoppingAmount(ingredient: Ingredient, multiplier: Double, stock: List<InventoryItem>, today: LocalDate = LocalDate.now()): Double {
+        if (ingredient.amount <= 0.0) return 0.0
+        val cover = cover(ingredient, multiplier, stock, today)
+        return if (cover.shortfall > 0.0) cover.shortfall else ingredient.amount * multiplier
+    }
+
     fun cover(ingredient: Ingredient, multiplier: Double, stock: List<InventoryItem>, today: LocalDate = LocalDate.now()): Cover {
         val same = stock.filter { !it.deleted && !it.isExpired(today) && it.quantity > 0.0 && sameIngredient(it.name, ingredient.name) }
         val needed = ingredient.amount * multiplier

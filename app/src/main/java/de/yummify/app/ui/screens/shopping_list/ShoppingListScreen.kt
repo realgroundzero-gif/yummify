@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import de.yummify.app.data.model.ShoppingItem
@@ -229,7 +230,8 @@ fun ShoppingListScreen(
                     emoji = CategoryEmoji[category] ?: "🛒",
                     openCount = items.count { !it.isChecked },
                     items = items,
-                    onToggle = viewModel::toggleItem
+                    onToggle = viewModel::toggleItem,
+                    swipe = ItemSwipeActions(state.homeAssistantReady, viewModel::moveToInventory, viewModel::deleteItem, viewModel::sendItemToHomeAssistant)
                 )
             }
         }
@@ -242,7 +244,8 @@ private fun CollapsibleSection(
     emoji: String,
     openCount: Int,
     items: List<ShoppingItem>,
-    onToggle: (String) -> Unit
+    onToggle: (String) -> Unit,
+    swipe: ItemSwipeActions
 ) {
     var expanded by remember { mutableStateOf(true) }
 
@@ -296,12 +299,65 @@ private fun CollapsibleSection(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items.forEach { item ->
-                        ShoppingItemRow(item = item, onToggle = { onToggle(item.id) })
+                        key(item.id) { SwipeableShoppingItem(item, swipe) { ShoppingItemRow(item = item, onToggle = { onToggle(item.id) }) } }
                     }
                 }
             }
         }
     }
+}
+
+/** What swiping an entry can do; Home Assistant is only offered when it is set up. */
+private class ItemSwipeActions(
+    val homeAssistantReady: Boolean,
+    val toInventory: (ShoppingItem) -> Boolean,
+    val delete: (ShoppingItem) -> Unit,
+    val sendToHomeAssistant: suspend (ShoppingItem) -> Boolean
+)
+
+/**
+ * Swipe right: the entry slides away and offers "Ins Inventar" or "Löschen" (or close). Swipe left: the entry goes to
+ * Home Assistant and disappears; if that fails, it slides back and the message says why.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeableShoppingItem(item: ShoppingItem, actions: ItemSwipeActions, content: @Composable () -> Unit) {
+    val state = rememberSwipeToDismissBoxState(positionalThreshold = { distance -> distance * 0.35f })
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(state.currentValue) {
+        if (state.currentValue == SwipeToDismissBoxValue.EndToStart && !actions.sendToHomeAssistant(item)) state.reset()
+    }
+    SwipeToDismissBox(
+        state = state,
+        enableDismissFromEndToStart = actions.homeAssistantReady,
+        backgroundContent = {
+            when (state.dismissDirection) {
+                SwipeToDismissBoxValue.StartToEnd -> Row(
+                    Modifier.fillMaxSize().padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilledTonalButton(onClick = { if (!actions.toInventory(item)) scope.launch { state.reset() } }, contentPadding = PaddingValues(horizontal = 12.dp)) {
+                        Icon(Icons.Filled.Inventory2, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Ins Inventar")
+                    }
+                    FilledTonalButton(
+                        onClick = { actions.delete(item) }, contentPadding = PaddingValues(horizontal = 12.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
+                    ) { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Löschen") }
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { scope.launch { state.reset() } }) { Icon(Icons.Filled.Close, "Abbrechen") }
+                }
+                SwipeToDismissBoxValue.EndToStart -> Row(
+                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(16.dp)).padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End
+                ) {
+                    Text("An Home Assistant", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Spacer(Modifier.width(8.dp)); Icon(Icons.Filled.Send, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                }
+                else -> Spacer(Modifier.fillMaxSize())
+            }
+        },
+        content = { content() }
+    )
 }
 
 @Composable
