@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -57,11 +58,14 @@ import java.util.UUID
 @Composable
 fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving: Boolean,
                           onDismiss: () -> Unit, onSave: (InventoryItem) -> Unit, saveError: String? = null,
-                          stock: List<InventoryItem> = emptyList(), onOpenExisting: (String) -> Unit = {}) {
+                          stock: List<InventoryItem> = emptyList(), onOpenExisting: (String) -> Unit = {},
+                          /** Opens the barcode scanner right away; used for a new article started with a long press. */
+                          startScan: Boolean = false) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var name by rememberSaveable(item.id) { mutableStateOf(item.name) }
-    var editName by rememberSaveable(item.id) { mutableStateOf(item.name.isBlank()) }
+    // Existing articles open read-only; a tap on the title switches to editing. New articles start in edit mode.
+    var editing by rememberSaveable(item.id) { mutableStateOf(item.name.isBlank()) }
     var quantity by rememberSaveable(item.id) { mutableDoubleStateOf(item.quantity) }
     var unit by rememberSaveable(item.id) { mutableStateOf(if (item.name.isBlank()) "" else item.unit) }
     var categories by rememberSaveable(item.id) { mutableStateOf(ArrayList(item.categoryOptions.ifEmpty { listOf(item.category).filter { it.isNotBlank() && item.name.isNotBlank() } })) }
@@ -159,7 +163,7 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                 if (barcode.trim() == code) {
                     if (product == null) lookupMessage = "Produkt nicht gefunden. Bitte die Angaben manuell ergänzen."
                     else {
-                        if (name == originalName && name.isBlank()) product.name?.let { name = it; editName = false }
+                        if (name == originalName && name.isBlank()) product.name?.let { name = it }
                         if (unit == originalUnit && unit.isBlank() && quantity == originalQuantity && quantity == item.quantity) {
                             // Count purchased packages instead of using their weight as stock.
                             unit = "Stück"
@@ -205,13 +209,29 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                     }
             }.addOnFailureListener { scanBusy = false; error = "Scanner-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen." }
     }
+    var autoScanned by rememberSaveable(item.id) { mutableStateOf(false) }
+    LaunchedEffect(startScan) {
+        if (startScan && item.name.isBlank() && !autoScanned) { autoScanned = true; scan() }
+    }
     Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         BackHandler(onBack = close)
         Scaffold(modifier = Modifier.fillMaxSize().systemBarsPadding().imePadding(),
-            topBar = { TopAppBar(title = { Text(if (item.name.isBlank()) "Neuer Artikel" else "Artikeldetails") },
-                navigationIcon = { IconButton(onClick = close, enabled = !saving && !photoBusy && !scanBusy && !lookupBusy) { Icon(Icons.Default.Close, "Schließen") } }) },
+            topBar = { TopAppBar(
+                title = {
+                    if (item.name.isBlank()) Text("Neuer Artikel")
+                    else if (editing) Text("Artikel bearbeiten")
+                    else Text(name, Modifier.clickable(onClickLabel = "Artikel bearbeiten") { editing = true }, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                },
+                navigationIcon = { IconButton(onClick = close, enabled = !saving && !photoBusy && !scanBusy && !lookupBusy) { Icon(Icons.Default.Close, "Schließen") } },
+                actions = {
+                    if (item.name.isNotBlank()) {
+                        if (!editing) IconButton(onClick = { editing = true }) { Icon(Icons.Default.Edit, "Artikel bearbeiten") }
+                        else if (!changed) IconButton(onClick = { editing = false }) { Icon(Icons.Default.Done, "Bearbeiten beenden") }
+                    }
+                }) },
             bottomBar = {
-                Surface(tonalElevation = 3.dp) {
+                if (editing) Surface(tonalElevation = 3.dp) {
                     Button(onClick = { error = draft.validate(); if (error == null) onSave(draft) }, enabled = !saving && !photoBusy && !scanBusy && !lookupBusy,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).heightIn(min = 48.dp)) {
                         if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
@@ -222,6 +242,8 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
             }) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                if (editing) OutlinedTextField(name, { name = it }, label = { Text("Artikelname") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp))
                 val image = if (photo != item.localCoverPath || item.coverPending) photo?.let { File(it) } ?: productCover else productCover ?: photo?.let { File(it) }
                 var imageFailed by remember(image) { mutableStateOf(false) }
                 Box(Modifier.fillMaxWidth().height(220.dp).padding(horizontal = 16.dp).clip(RoundedCornerShape(28.dp))) {
@@ -229,17 +251,19 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                         if (image != null && !imageFailed) AsyncImage(onError = { imageFailed = true }, model = image, contentDescription = "Headerbild von $name", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                         else if (imageFailed && photo != null) AsyncImage(model = File(photo!!), contentDescription = "Lokal gespeichertes Artikelbild", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                         else Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                            Icon(Icons.Default.AddPhotoAlternate, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.height(12.dp)); Text("Artikelbild hinzufügen", style = MaterialTheme.typography.titleMedium)
-                            Text("Foto aufnehmen oder auswählen", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(if (editing) Icons.Default.AddPhotoAlternate else Icons.Default.Inventory2, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
+                            if (editing) {
+                                Spacer(Modifier.height(12.dp)); Text("Artikelbild hinzufügen", style = MaterialTheme.typography.titleMedium)
+                                Text("Foto aufnehmen oder auswählen", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
-                    FilledTonalIconButton(onClick = { imageMenu = true }, enabled = !photoBusy && !saving, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
+                    if (editing) FilledTonalIconButton(onClick = { imageMenu = true }, enabled = !photoBusy && !saving, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
                         if (photoBusy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Icon(Icons.Default.PhotoLibrary, "Bild auswählen oder aufnehmen")
                     }
                 }
                 Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                    DetailSection("Barcode", Icons.Default.QrCodeScanner) {
+                    if (editing) DetailSection("Barcode", Icons.Default.QrCodeScanner) {
                         OutlinedTextField(barcode, { barcode = it }, label = { Text("Barcode") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
                         FilledTonalButton(onClick = { scan() }, enabled = !scanBusy && !saving && !lookupBusy, modifier = Modifier.fillMaxWidth()) {
@@ -254,21 +278,27 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                             lookupMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                         }
                     }
-                    if (editName) OutlinedTextField(name, { name = it }, label = { Text("Artikelname") }, modifier = Modifier.fillMaxWidth(),
-                        trailingIcon = { IconButton(onClick = { if (name.isNotBlank()) editName = false }) { Icon(Icons.Default.Check, "Namen übernehmen") } }, singleLine = true)
-                    else Row(Modifier.fillMaxWidth().clickable { editName = true }, verticalAlignment = Alignment.CenterVertically) {
-                        Text(name, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                        Icon(Icons.Default.Edit, "Artikelname bearbeiten", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 12.dp).size(20.dp))
-                    }
                     error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error) }
                     if (photo != item.localCoverPath || item.coverPending) Text("Das Foto wird beim nächsten Abgleich als Notion-Headerbild gespeichert.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    DetailSection("Bestand", Icons.Default.Inventory2) {
+                    if (!editing) DetailSection("Bestand", Icons.Default.Inventory2) {
+                        ReadOnlyValue("Menge", "${InventoryMath.number(quantity)} $unit".trim())
+                        if (item.minimum > 0) ReadOnlyValue("Mindestbestand", "${InventoryMath.number(item.minimum)} $unit".trim())
+                    }
+                    if (editing) DetailSection("Bestand", Icons.Default.Inventory2) {
                         QuantityStepper(quantity, unit, onChange = { quantity = it })
                         ChoiceField("Einheit", unit, choices.units, choices.unitType == "rich_text") { unit = it }
                         OutlinedTextField(minimum, { minimum = it }, label = { Text("Mindestbestand") }, supportingText = { Text("Ab dieser Menge erinnert dich Yummify ans Nachkaufen.") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), singleLine = true)
                     }
-                    DetailSection("Einordnung", Icons.AutoMirrored.Filled.Label) {
+                    if (!editing && (categories.isNotEmpty() || location.isNotBlank())) DetailSection("Einordnung", Icons.AutoMirrored.Filled.Label) {
+                        // Read-only: only what is selected, no choice lists.
+                        if (categories.isNotEmpty()) {
+                            Text("Kategorie", style = MaterialTheme.typography.labelLarge)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { categories.forEach { SuggestionChip(onClick = {}, label = { Text(it) }, enabled = false) } }
+                        }
+                        if (location.isNotBlank()) ReadOnlyValue("Lagerort", location)
+                    }
+                    if (editing) DetailSection("Einordnung", Icons.AutoMirrored.Filled.Label) {
                         if (choices.categoryMultiSelect) {
                             Text("Kategorie", style = MaterialTheme.typography.labelLarge)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -288,7 +318,10 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                         }
                         ChoiceField("Lagerort", location, choices.locations, choices.locationType == "rich_text") { location = it }
                     }
-                    DetailSection("Haltbarkeit", Icons.Default.Event) {
+                    if (!editing && expiry != null) DetailSection("Haltbarkeit", Icons.Default.Event) {
+                        ReadOnlyValue("Mindesthaltbar bis", LocalDate.parse(expiry).format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+                    }
+                    if (editing) DetailSection("Haltbarkeit", Icons.Default.Event) {
                         Surface(onClick = { showDate = true }, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                             ListItem(headlineContent = { Text(expiry?.let { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) } ?: "MHD auswählen") },
                                 supportingContent = { Text("Nächstes Mindesthaltbarkeitsdatum") }, leadingContent = { Icon(Icons.Default.CalendarMonth, null) },
@@ -309,7 +342,8 @@ fun InventoryDetailScreen(item: InventoryItem, choices: InventoryChoices, saving
                             }
                         }
                     }
-                    OutlinedTextField(notes, { notes = it }, label = { Text("Notizen") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+                    if (editing) OutlinedTextField(notes, { notes = it }, label = { Text("Notizen") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+                    else if (notes.isNotBlank()) DetailSection("Notizen", Icons.Default.Notes) { Text(notes, style = MaterialTheme.typography.bodyMedium) }
                 }
             }
         }
@@ -378,6 +412,14 @@ private fun QuantityStepper(value: Double, unit: String, onChange: (Double) -> U
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ReadOnlyValue(label: String, value: String) {
+    Column {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyLarge)
     }
 }
 

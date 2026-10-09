@@ -19,6 +19,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import de.yummify.app.ui.components.*
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -46,6 +49,8 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomI
     var filter by rememberSaveable { mutableStateOf(StockFilter.ALL) }
     var location by rememberSaveable { mutableStateOf("Alle Lagerorte") }
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
+    var scanOnOpen by rememberSaveable { mutableStateOf(false) }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     val newItem = remember(editing) { InventoryItem(id = editing?.removePrefix("new:") ?: java.util.UUID.randomUUID().toString()) }
     var deleting by remember { mutableStateOf<InventoryItem?>(null) }
     var showSyncDetails by remember { mutableStateOf(false) }
@@ -64,9 +69,21 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomI
         modifier = Modifier.fillMaxSize().bottomInset(bottomBarInset),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
-        floatingActionButton = { FloatingActionButton(onClick = { editing = "new:${java.util.UUID.randomUUID()}" }) {
-            Icon(Icons.Default.Add, "Artikel hinzufügen")
-        } }
+        floatingActionButton = {
+            // Tap: new article by hand. Long press: new article and straight into the barcode scanner.
+            // A FloatingActionButton has no long-click, so the same look is built from a Surface.
+            Surface(
+                modifier = Modifier.size(56.dp).combinedClickable(
+                    role = Role.Button, onClickLabel = "Artikel hinzufügen", onLongClickLabel = "Neuen Artikel per Barcode-Scan aufnehmen",
+                    onClick = { scanOnOpen = false; editing = "new:${java.util.UUID.randomUUID()}" },
+                    onLongClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        scanOnOpen = true; editing = "new:${java.util.UUID.randomUUID()}"
+                    }),
+                shape = FloatingActionButtonDefaults.shape, color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shadowElevation = 6.dp
+            ) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, "Artikel hinzufügen (gedrückt halten: Barcode scannen)") } }
+        }
     ) { padding ->
         val listState = rememberLazyListState()
         val headerBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -245,7 +262,7 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomI
         val item = if (id.startsWith("new:")) newItem else stock.firstOrNull { it.id == id }
         item?.let { current ->
             val snapshot = remember(id) { current }
-            InventoryDetailScreen(snapshot.copy(coverUrl = current.coverUrl), choices, saving, onDismiss = { if (!saving) editing = null }, onSave = { value -> viewModel.save(value) { editing = null } }, saveError = message, stock = stock, onOpenExisting = { editing = it }) }
+            InventoryDetailScreen(snapshot.copy(coverUrl = current.coverUrl), choices, saving, onDismiss = { if (!saving) editing = null }, onSave = { value -> viewModel.save(value) { editing = null } }, saveError = message, stock = stock, onOpenExisting = { scanOnOpen = false; editing = it }, startScan = scanOnOpen && id.startsWith("new:")) }
     }
     deleting?.let { item -> AlertDialog(onDismissRequest = { deleting = null }, title = { Text("Artikel löschen?") },
         text = { Text("„${item.name}“ wird aus deinem Inventar und beim nächsten Abgleich aus Notion entfernt.") },
