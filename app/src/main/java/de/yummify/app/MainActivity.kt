@@ -192,7 +192,7 @@ fun YummifyApp(
                     ShoppingListScreen()
                 }
                 composable(Screen.Inventory.route) {
-                    InventoryScreen(onSettings = { navController.navigate(Screen.Settings.route) }, bottomBarInset = bottomBarInset)
+                    InventoryScreen(bottomBarInset = bottomBarInset)
                 }
                 composable(Screen.Settings.route) {
                     SettingsScreen()

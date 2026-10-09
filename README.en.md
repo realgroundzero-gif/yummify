@@ -43,6 +43,7 @@ A second home screen widget displays the current shopping list in the dark Yummi
 ### Inventory
 
 - Manage food with quantity, unit, category, storage location, minimum stock, best-before date, barcode, notes and image.
+- The inventory list is deliberately uncluttered: search, item count, filters and the items. Synchronization with Notion runs through auto-sync (Settings › Profil); items with changes not yet transferred carry a cloud icon. Find low-stock items with the “Nachkaufen” filter, and put single items on the shopping list with the cart button.
 - Use compact search, a storage location selector and filters for low stock, approaching dates and expired items.
 - Browse alphabetically sorted, collapsible category sections with item counts and contrasting headings that stay visible while scrolling. Uncategorized items have their own section; items within each group are sorted by best-before date and name.
 - Edit items in a full-screen form with a quantity stepper, adjustable increments, selection options from the Notion schema and a date picker. Default increments are 1 for pieces and packages, 50 for g/ml and 0.1 for kg/l.

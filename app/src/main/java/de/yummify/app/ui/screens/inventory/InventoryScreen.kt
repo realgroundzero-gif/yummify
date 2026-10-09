@@ -39,7 +39,7 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomInset, viewModel: InventoryViewModel = viewModel()) {
+fun InventoryScreen(bottomBarInset: () -> Dp = NoBottomInset, viewModel: InventoryViewModel = viewModel()) {
     val stock by viewModel.items.collectAsState()
     val sync by viewModel.sync.collectAsState()
     val message by viewModel.message.collectAsState()
@@ -54,7 +54,6 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomI
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     val newItem = remember(editing) { InventoryItem(id = editing?.removePrefix("new:") ?: java.util.UUID.randomUUID().toString()) }
     var deleting by remember { mutableStateOf<InventoryItem?>(null) }
-    var showSyncDetails by remember { mutableStateOf(false) }
     var showLocations by remember { mutableStateOf(false) }
     val today = LocalDate.now()
     val visible = stock.filter { item ->
@@ -119,23 +118,9 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomI
                             }
                         )
                     }
-                    FilledTonalIconButton(onClick = viewModel::sync, enabled = !sync.busy) {
-                        if (sync.busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        else Icon(Icons.Default.Sync, "Inventar synchronisieren")
-                    }
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("${visible.size} Artikel", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(12.dp))
-                    Row(Modifier.weight(1f).clickable { showSyncDetails = true }.padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-                        Icon(if (sync.pending > 0) Icons.Default.CloudUpload else if (sync.configured) Icons.Default.CloudDone else Icons.Default.CloudOff,
-                            null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (sync.pending > 0) "${sync.pending} ausstehend" else if (sync.configured) "Notion · Status" else "Lokal · Einrichten",
-                            style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                 }
             }
           }
@@ -161,12 +146,6 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomI
                 }
             }
           LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth().hideBottomBarOnScroll(listState), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (stock.any { it.isLow }) item {
-                TextButton(onClick = { viewModel.toShopping(stock.filter { it.isLow }) }, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                    Icon(Icons.Default.AddShoppingCart, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
-                    Text("${stock.count { it.isLow }} Artikel nachkaufen")
-                }
-            }
             if (visible.isEmpty()) item {
                 Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Inventory2, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
@@ -254,15 +233,6 @@ fun InventoryScreen(onSettings: () -> Unit, bottomBarInset: () -> Dp = NoBottomI
         }
         }
     }
-    if (showSyncDetails) AlertDialog(onDismissRequest = { showSyncDetails = false },
-        title = { Text("Inventar-Synchronisation") },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(sync.message)
-            if (sync.pending > 0) Text("${sync.pending} Änderungen warten auf Notion.")
-        } },
-        confirmButton = { TextButton(onClick = { showSyncDetails = false; if (sync.configured) viewModel.sync() else onSettings() }, enabled = !sync.busy) {
-            Text(if (sync.configured) "Synchronisieren" else "Einrichten")
-        } }, dismissButton = { TextButton(onClick = { showSyncDetails = false }) { Text("Schließen") } })
     LaunchedEffect(editing) { if (editing != null) viewModel.refreshChoices(editing) }
     editing?.let { id ->
         val item = if (id.startsWith("new:")) newItem else stock.firstOrNull { it.id == id }

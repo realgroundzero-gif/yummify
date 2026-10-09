@@ -43,6 +43,7 @@ Ein zweites Startbildschirm-Widget zeigt die aktuelle Einkaufsliste im dunklen Y
 ### Inventar
 
 - Lebensmittel mit Menge, Einheit, Kategorie, Lagerort, Mindestbestand, Mindesthaltbarkeitsdatum (MHD), Barcode, Notizen und Bild verwalten.
+- Die Inventarliste ist bewusst aufgeräumt: Sie zeigt Suche, Artikelzahl, Filter und die Artikel. Der Abgleich mit Notion läuft über Auto-Sync (Einstellungen › Profil), Artikel mit noch nicht übertragenen Änderungen tragen ein Wolken-Symbol. Artikel mit niedrigem Bestand findest du über den Filter „Nachkaufen“, einzelne Artikel setzt du mit dem Einkaufswagen auf die Einkaufsliste.
 - Kompakte Suche, Lagerortauswahl und Filter für niedrige Bestände, bald fällige und abgelaufene Artikel.
 - Alphabetisch sortierte, ein- und ausklappbare Kategorieabschnitte mit Artikelanzahl und kontrastreichen Überschriften, die beim Scrollen sichtbar bleiben. Artikel ohne Zuordnung erscheinen unter „Ohne Kategorie“; innerhalb der Gruppen wird nach MHD und Name sortiert.
 - Artikel im Vollbild bearbeiten: Mengen-Stepper mit auswählbarer Schrittweite, Auswahlfelder aus dem Notion-Schema und Datumsauswahl. Die Standardschritte sind 1 für Stück und Packungen, 50 für g/ml und 0,1 für kg/l.
