@@ -437,6 +437,25 @@ fun RecipeDetailScreen(
                             Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(16.dp))
                         }
                     }
+                    val cover = de.yummify.app.data.model.InventoryMath.cover(ingredient, multiplier, stock)
+                    val unit = ingredient.unit
+                    val label = when (cover.state) {
+                        de.yummify.app.data.model.InventoryMath.Coverage.ENOUGH -> "Im Vorrat"
+                        de.yummify.app.data.model.InventoryMath.Coverage.PARTIAL -> "Fehlt ${de.yummify.app.data.model.InventoryMath.number(cover.shortfall)} $unit".trim()
+                        de.yummify.app.data.model.InventoryMath.Coverage.OTHER_UNIT -> "Andere Einheit"
+                        de.yummify.app.data.model.InventoryMath.Coverage.SIMILAR -> "Ähnlich"
+                        de.yummify.app.data.model.InventoryMath.Coverage.MISSING -> "Kaufen"
+                    }
+                    val covered = cover.state == de.yummify.app.data.model.InventoryMath.Coverage.ENOUGH
+                    val hint = cover.state in setOf(de.yummify.app.data.model.InventoryMath.Coverage.OTHER_UNIT, de.yummify.app.data.model.InventoryMath.Coverage.PARTIAL, de.yummify.app.data.model.InventoryMath.Coverage.SIMILAR)
+                    // Long explanations go under the name, so the chip stays short and the name keeps its width.
+                    val detail = when (cover.state) {
+                        de.yummify.app.data.model.InventoryMath.Coverage.PARTIAL -> "Vorrat deckt nur ${de.yummify.app.data.model.InventoryMath.number(cover.available)} $unit".trim()
+                        de.yummify.app.data.model.InventoryMath.Coverage.OTHER_UNIT -> "Vorrat: ${cover.otherUnit} (Einheit nicht vergleichbar)"
+                        de.yummify.app.data.model.InventoryMath.Coverage.SIMILAR -> "Ähnlich im Vorrat: ${cover.otherUnit}"
+                        else -> null
+                    }
+                    Column(Modifier.weight(1f)) {
                     Text(
                         text = if (ingredient.amount > 0.0) {
                             "${ingredient.getFormattedAmount(multiplier)} ${ingredient.name}"
@@ -446,19 +465,9 @@ fun RecipeDetailScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                         textDecoration = if (isChecked) TextDecoration.LineThrough else TextDecoration.None,
-                        modifier = Modifier.weight(1f)
                     )
-                    val cover = de.yummify.app.data.model.InventoryMath.cover(ingredient, multiplier, stock)
-                    val unit = ingredient.unit
-                    val label = when (cover.state) {
-                        de.yummify.app.data.model.InventoryMath.Coverage.ENOUGH -> "Im Vorrat"
-                        de.yummify.app.data.model.InventoryMath.Coverage.PARTIAL -> "Fehlt ${de.yummify.app.data.model.InventoryMath.number(cover.shortfall)} $unit".trim()
-                        de.yummify.app.data.model.InventoryMath.Coverage.OTHER_UNIT -> "Vorrat: ${cover.otherUnit}"
-                        de.yummify.app.data.model.InventoryMath.Coverage.SIMILAR -> "Ähnlich im Vorrat: ${cover.otherUnit}"
-                        de.yummify.app.data.model.InventoryMath.Coverage.MISSING -> "Kaufen"
+                    detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
-                    val covered = cover.state == de.yummify.app.data.model.InventoryMath.Coverage.ENOUGH
-                    val hint = cover.state in setOf(de.yummify.app.data.model.InventoryMath.Coverage.OTHER_UNIT, de.yummify.app.data.model.InventoryMath.Coverage.PARTIAL, de.yummify.app.data.model.InventoryMath.Coverage.SIMILAR)
                     Surface(
                         shape = CircleShape,
                         color = when { covered -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f); hint -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f); else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) }
@@ -467,6 +476,7 @@ fun RecipeDetailScreen(
                             text = label,
                             style = MaterialTheme.typography.labelSmall,
                             color = when { covered -> MaterialTheme.colorScheme.secondary; hint -> MaterialTheme.colorScheme.onTertiaryContainer; else -> MaterialTheme.colorScheme.primary },
+                            maxLines = 1, softWrap = false,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
