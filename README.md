@@ -95,7 +95,8 @@ Das Menü öffnet sieben Untermenüs:
 - **Verbindungen:** Notion-Token, Rezept- und Inventar-Datenbank-ID, Verbindungstest und Synchronisation (siehe [Notion einrichten](#notion-einrichten)).
 - **Datenpflege:** Auswahllisten der Notion-Datenbanken erweitern (siehe unten).
 - **Daten und Backup:** Export, Import, Speicher und Löschen lokaler Daten (siehe [Daten und Backup](#daten-und-backup)).
-- **Info** und **Rechtliches:** Die Untermenüs sind angelegt, haben aber noch keinen Inhalt.
+- **Info:** Das Untermenü ist angelegt, hat aber noch keinen Inhalt.
+- **Rechtliches:** Zeigt Datenschutzhinweise (welche Verbindungen die App aufbaut und welche Daten dabei übertragen werden), Lizenzen und Quellen (Open Food Facts, verwendete Bibliotheken) und Hinweise (Nährwertangaben ohne Gewähr, Marken). Der Block „Anbieter“ erscheint, sobald in `app/src/main/res/values/legal_provider.xml` Name, Anschrift und E-Mail eingetragen sind; das ist vor einer Veröffentlichung auszufüllen. Eine Checkliste für den Play Store steht in `docs/veroeffentlichung.md`.
 
 **Darstellung**
 
