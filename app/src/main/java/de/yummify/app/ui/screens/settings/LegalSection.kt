@@ -49,7 +49,7 @@ private fun LegalCard(@StringRes title: Int, content: @Composable ColumnScope.()
 /** A string resource with simple <b> tags, shown with bold parts. */
 @Composable
 private fun RichText(@StringRes id: Int) {
-    val raw = androidx.compose.ui.platform.LocalContext.current.getText(id)   // keeps the <b> spans of the resource
+    val raw = androidx.compose.ui.platform.LocalResources.current.getText(id)   // keeps the <b> spans of the resource
     val text = buildAnnotatedString {
         append(raw.toString())
         (raw as? android.text.Spanned)?.let { spanned ->
