@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_legal_title">Rechtliches</string>
+    <string name="legal_title_provider">Anbieter</string>
+    <string name="legal_title_privacy">Datenschutz</string>
+    <string name="legal_title_licenses">Lizenzen und Quellen</string>
+    <string name="legal_title_notes">Hinweise</string>
+
+    <string name="legal_privacy_intro">Yummify hat kein Benutzerkonto, keine Werbung und keine Analyse- oder Tracking-Dienste. Deine Daten (Rezepte-Cache, Wochenplan, Einkaufsliste, Inventar, Einstellungen) liegen auf deinem Gerät. Die Entwicklerin oder der Entwickler der App erhält keine dieser Daten.</string>
+    <string name="legal_privacy_notion"><b>Notion:</b> Wenn du Notion verbindest, sendet die App deinen Integrations-Token an api.notion.com und liest und schreibt deine Rezept- und Inventardatenbank. Notion verarbeitet diese Daten nach seinen eigenen Datenschutzbestimmungen.</string>
+    <string name="legal_privacy_homeassistant"><b>Home Assistant:</b> Nur wenn du es einrichtest, sendet die App Artikel deiner Einkaufsliste an die Adresse, die du eingetragen hast. Der Zugriffstoken bleibt auf dem Gerät.</string>
+    <string name="legal_privacy_openfoodfacts"><b>Open Food Facts:</b> Beim Laden von Produktdaten sendet die App den gescannten oder eingegebenen Barcode an world.openfoodfacts.org. Wie bei jedem Abruf sieht der Dienst dabei deine IP-Adresse. Weitere Daten werden nicht übertragen.</string>
+    <string name="legal_privacy_images"><b>Bilder:</b> Rezept- und Produktbilder lädt die App von ihrer jeweiligen Adresse (zum Beispiel von Notion oder Open Food Facts). Dabei erfährt der Server deine IP-Adresse.</string>
+    <string name="legal_privacy_scanner"><b>Barcode-Scanner und Fotos:</b> Der Scanner ist der Google-Code-Scanner der Google Play-Dienste; er verarbeitet das Kamerabild auf dem Gerät. Fotos nimmst du mit deiner Kamera-App auf. Die App selbst hat keine Kamera-Berechtigung.</string>
+    <string name="legal_privacy_backup"><b>Android-Backup:</b> Ist das automatische Backup eingeschaltet, sichert Android App-Daten über dein Google-Konto, ohne Zugriffstokens. Du kannst es unter „Daten und Backup“ ausschalten.</string>
+    <string name="legal_privacy_delete"><b>Löschen:</b> Unter „Daten und Backup“ löschst du alle lokalen Daten. Beim Deinstallieren entfernt Android alles. Daten in Notion löschst du in Notion.</string>
+
+    <string name="legal_licenses_openfoodfacts">Produktdaten stammen von Open Food Facts und stehen unter der Open Database License (ODbL), Produktbilder unter CC BY-SA. Die Daten werden von einer Community gepflegt und können Fehler enthalten.</string>
+    <string name="legal_licenses_libraries">Yummify verwendet unter anderem AndroidX und Jetpack Compose, Kotlin und Kotlin Coroutines, Coil, OkHttp und Gson (alle unter der Apache License 2.0) sowie die Google Play-Dienste mit dem Code-Scanner (unter den Bedingungen von Google).</string>
+
+    <string name="legal_notes_nutrition">Nährwert-, Zutaten- und Haltbarkeitsangaben sind Hilfen und keine Gewähr. Bei Allergien und Unverträglichkeiten prüfe immer die Packung.</string>
+    <string name="legal_notes_trademarks">Notion, Open Food Facts, Bring! und Home Assistant sind Marken ihrer jeweiligen Inhaber. Yummify ist ein unabhängiges Projekt und mit diesen Diensten nicht verbunden.</string>
+</resources>

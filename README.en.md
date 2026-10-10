@@ -95,7 +95,8 @@ The menu opens seven sub menus:
 - **Verbindungen** (Connections): Notion token, recipe and inventory database IDs, connection test and synchronization (see [Set up Notion](#set-up-notion)).
 - **Datenpflege** (Data care): extend the dropdown lists of the Notion databases (see below).
 - **Daten und Backup** (Data and backup): export, import, storage and deletion of local data (see [Data and backup](#data-and-backup)).
-- **Info** and **Rechtliches** (legal): the sub menus exist but have no content yet.
+- **Info:** the sub menu exists but has no content yet.
+- **Rechtliches** (legal): shows privacy notes (which connections the app makes and which data they transmit), licences and sources (Open Food Facts, libraries used) and notes (nutrition data without warranty, trademarks). The “Anbieter” (provider) block appears once name, address and email are entered in `app/src/main/res/values/legal_provider.xml`; fill it in before any publication. A Play Store checklist is in `docs/veroeffentlichung.md`.
 
 In the English app only the Appearance entry is translated; the other menu labels stay German.
 
