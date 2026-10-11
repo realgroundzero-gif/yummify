@@ -134,11 +134,19 @@ class RecipeRepository internal constructor(
         _state.value = _state.value.copy(recipes = withFavorites(raw))
     }
 
-    /** Returns false when the recipe is not from Notion or the database has no "Geplant am" column. */
-    suspend fun setPlannedDate(recipeId: String, date: LocalDate?): Boolean = withContext(Dispatchers.IO) {
-        if (!configured || raw.none { it.id == recipeId && it.notionPageId != null }) false
-        else reader().updatePlannedDate(recipeId, date)
+    enum class PlannedWrite { WRITTEN, NO_COLUMN, UNAVAILABLE }
+
+    /**
+     * Writes the planned date to Notion. [PlannedWrite.NO_COLUMN]: the database has no date column "Geplant am";
+     * [PlannedWrite.UNAVAILABLE]: Notion is not set up or the recipe is not (yet) loaded from Notion, so nothing was tried.
+     */
+    suspend fun writePlannedDate(recipeId: String, date: LocalDate?): PlannedWrite = withContext(Dispatchers.IO) {
+        if (!configured || raw.none { it.id == recipeId && it.notionPageId != null }) PlannedWrite.UNAVAILABLE
+        else if (reader().updatePlannedDate(recipeId, date)) PlannedWrite.WRITTEN else PlannedWrite.NO_COLUMN
     }
+
+    /** Returns false when the recipe is not from Notion or the database has no "Geplant am" column. */
+    suspend fun setPlannedDate(recipeId: String, date: LocalDate?): Boolean = writePlannedDate(recipeId, date) == PlannedWrite.WRITTEN
 
     suspend fun setRating(recipeId: String, rating: Int) = withContext(Dispatchers.IO) {
         require(configured) { "Bewertungen werden in Notion gespeichert. Bitte zuerst Notion einrichten." }

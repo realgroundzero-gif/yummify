@@ -48,7 +48,7 @@ fun SettingsScreen() {
         SettingsSection.DATA_CARE -> DataCareSection(back)
         SettingsSection.DATA_BACKUP -> DataBackupSection(back)
         SettingsSection.INFO -> EmptySection(section.title, back)
-        SettingsSection.LEGAL -> EmptySection(section.title, back)
+        SettingsSection.LEGAL -> LegalSection(back)
     }
 }
 

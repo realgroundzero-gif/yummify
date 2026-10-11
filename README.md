@@ -32,7 +32,7 @@ Veröffentlicht ist bisher noch kein Tag. Eine Zeile kommt mit dem Git-Tag `vX.Y
 
 Rezepte lassen sich für ein Datum und eine Mahlzeit planen: Frühstück, Mittagessen, Abendessen oder Snack. Der Wochenplan wird lokal gespeichert und unterstützt den Wechsel zwischen Wochen sowie das Markieren gekochter Gerichte. Ein neuer Wochenplan startet leer; Beispiel-Einträge früherer Versionen werden beim ersten Start entfernt.
 
-Bei verbundenen Notion-Rezepten wird das geplante Datum in das Datumsfeld `Geplant am` zurückgeschrieben, sofern die Spalte existiert. Da Notion pro Rezept nur ein Datum kennt, steht dort das nächste geplante Datum ab heute (sonst das letzte vergangene). Wird die letzte Planung eines Rezepts entfernt, wird das Feld geleert. Kann Notion nicht erreicht werden, bleibt der lokale Plan gespeichert und die App meldet, dass das Notion-Datum nicht aktualisiert wurde. Eine Nährwert-Tagesübersicht am Ende des Planers wird nicht angezeigt.
+Bei verbundenen Notion-Rezepten wird das geplante Datum in das Datumsfeld `Geplant am` zurückgeschrieben, sofern die Spalte existiert. Da Notion pro Rezept nur ein Datum kennt, steht dort das nächste geplante Datum ab heute (sonst das letzte vergangene). Wird die letzte Planung eines Rezepts entfernt, wird das Feld geleert. Die App merkt sich pro Rezept, welches Datum sie zuletzt nach Notion geschrieben hat. Alles, was davon abweicht, gilt als offen und wird beim Start, nach dem Laden der Rezepte, beim Ändern des Plans und beim Aktualisieren im Planer erneut übertragen, auch Einträge aus der Zeit vor der Einrichtung oder aus einer Offline-Phase, und wenn das nächste Datum mit der Zeit weiterwandert. Fehlt die Spalte `Geplant am` (Typ Datum) in der Rezept-Datenbank, meldet die App das ausdrücklich. Kann Notion nicht erreicht werden, bleibt der lokale Plan gespeichert, die Übertragung bleibt offen und die App meldet es. Eine Nährwert-Tagesübersicht am Ende des Planers wird nicht angezeigt.
 
 Das Startbildschirm-Widget zeigt Montag bis Sonntag mit Kalenderwoche, Datum und geplanten Gerichten. Der aktuelle Tag ist hervorgehoben; leere Tage zeigen „Noch nichts geplant“. Antippen öffnet den Wochenplan. Das Widget ist ab 4×2 nutzbar, lässt sich vergrößern und bietet eine je Widget gespeicherte Hintergrundtransparenz. Seine Konfiguration zeigt das tatsächliche Layout mit den aktuellen Planungen. Änderungen am Plan, Datum und Zeitzone aktualisieren die Anzeige.
 
@@ -95,7 +95,8 @@ Das Menü öffnet sieben Untermenüs:
 - **Verbindungen:** Notion-Token, Rezept- und Inventar-Datenbank-ID, Verbindungstest und Synchronisation (siehe [Notion einrichten](#notion-einrichten)).
 - **Datenpflege:** Auswahllisten der Notion-Datenbanken erweitern (siehe unten).
 - **Daten und Backup:** Export, Import, Speicher und Löschen lokaler Daten (siehe [Daten und Backup](#daten-und-backup)).
-- **Info** und **Rechtliches:** Die Untermenüs sind angelegt, haben aber noch keinen Inhalt.
+- **Info:** Das Untermenü ist angelegt, hat aber noch keinen Inhalt.
+- **Rechtliches:** Zeigt Datenschutzhinweise (welche Verbindungen die App aufbaut und welche Daten dabei übertragen werden), Lizenzen und Quellen (Open Food Facts, verwendete Bibliotheken) und Hinweise (Nährwertangaben ohne Gewähr, Marken). Der Block „Anbieter“ erscheint, sobald in `app/src/main/res/values/legal_provider.xml` Name, Anschrift und E-Mail eingetragen sind; das ist vor einer Veröffentlichung auszufüllen. Eine Checkliste für den Play Store steht in `docs/veroeffentlichung.md`.
 
 **Darstellung**
 

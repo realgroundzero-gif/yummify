@@ -138,12 +138,7 @@ class RecipeDetailViewModel(application: Application) : AndroidViewModel(applica
         )
         feedbackJob?.cancel()
         feedbackJob = viewModelScope.launch {
-            try {
-                recipes.setPlannedDate(recipe.id, mealPlanRepo.plannedDateFor(recipe.id))
-            } catch (e: CancellationException) { throw e
-            } catch (e: Exception) {
-                showMessage("Im Wochenplan gespeichert. Notion-Datum nicht aktualisiert: ${e.message ?: "nicht erreichbar"}")
-            }
+            mealPlanRepo.reconcilePlannedDates(recipes).problem?.let { showMessage("Im Wochenplan gespeichert. Notion-Datum nicht aktualisiert: $it") }
             delay(3500)
             _uiState.value = _uiState.value.copy(isPlannedSaved = false)
         }
