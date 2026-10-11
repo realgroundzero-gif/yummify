@@ -114,17 +114,19 @@ class MealPlannerViewModel(application: Application) : AndroidViewModel(applicat
         if (!recipeId.isNullOrEmpty()) syncPlannedDate(recipeId)
     }
 
-    /** Notion has one "Geplant am" per recipe: keep it on the next planned date, or clear it. */
-    private fun syncPlannedDate(recipeId: String) {
-        viewModelScope.launch {
-            try {
-                recipes.setPlannedDate(recipeId, mealPlanRepo.plannedDateFor(recipeId))
-            } catch (e: kotlinx.coroutines.CancellationException) { throw e
-            } catch (e: Exception) {
-                message.value = "Im Wochenplan gespeichert. Notion-Datum nicht aktualisiert: ${e.message ?: "nicht erreichbar"}"
-            }
-        }
+    /** Notion has one "Geplant am" per recipe: keep it on the next planned date, or clear it. Failed writes stay pending. */
+    private fun syncPlannedDate(@Suppress("UNUSED_PARAMETER") recipeId: String) {
+        viewModelScope.launch { reportSync(mealPlanRepo.reconcilePlannedDates(recipes), userAction = true) }
     }
 
-    fun syncFromNotion() = recipes.refreshAsync()
+    private fun reportSync(report: MealPlanRepository.PlannedSyncReport, userAction: Boolean) {
+        if (report.problem != null && (userAction || report.missingColumn)) message.value = "Im Wochenplan gespeichert. Notion-Datum nicht aktualisiert: ${report.problem}"
+    }
+
+    fun syncFromNotion() {
+        viewModelScope.launch {
+            recipes.refresh()
+            reportSync(mealPlanRepo.reconcilePlannedDates(recipes), userAction = true)
+        }
+    }
 }

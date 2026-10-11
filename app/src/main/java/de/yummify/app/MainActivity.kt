@@ -2,6 +2,13 @@ package de.yummify.app
 
 import android.content.Context
 import android.os.Bundle
+import de.yummify.app.data.repository.RecipeRepository
+import de.yummify.app.data.repository.MealPlanRepository
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -84,6 +91,15 @@ class MainActivity : ComponentActivity() {
         val prefsRepo = UserPreferencesRepository.getInstance(applicationContext)
         // From Android 13 on the language can also be changed in the system settings; that choice wins.
         AppLocale.systemChoice(this)?.let { if (it != prefsRepo.preferences.value.appLanguage) prefsRepo.setAppLanguage(it) }
+        // Notion's "Geplant am" follows the meal plan: write what is still pending whenever the recipes are loaded.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                val recipeRepo = RecipeRepository.getInstance(applicationContext)
+                recipeRepo.state.map { it.fromNotion && !it.loading && it.recipes.isNotEmpty() }.distinctUntilChanged().collect { ready ->
+                    if (ready) MealPlanRepository.getInstance(applicationContext).reconcilePlannedDates(recipeRepo)
+                }
+            }
+        }
         setContent {
             val userPrefs by prefsRepo.preferences.collectAsState()
             val launchRecipeId by launchRecipeIdState
